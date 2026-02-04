@@ -1,61 +1,59 @@
 //
 //  ContentView.swift
-//  Naviari_IOS
+//  Naviari
 //
 //  Created by Ari Peltoniemi on 4.2.2026.
 //
 
 import SwiftUI
-import SwiftData
-
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
+        TabView {
+            RaceStartSelectorView()
+                .tabItem {
+                    Label("Race/Start", systemImage: "list.bullet")
                 }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
+
+            RaceManagerView()
+                .tabItem {
+                    Label("Race Manager", systemImage: "clipboard")
                 }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
+
+            BoatView()
+                .tabItem {
+                    Label("Boat", systemImage: "sailboat.fill")
                 }
-            }
-        } detail: {
-            Text("Select an item")
         }
     }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
+}
+//test
+private struct RaceStartSelectorView: View {
+    var body: some View {
+        Text("Select a race and start")
+            .font(.title3)
+            .multilineTextAlignment(.center)
+            .padding()
     }
+}
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
+private struct RaceManagerView: View {
+    var body: some View {
+        Text("Here you manage race related data")
+            .font(.title3)
+            .multilineTextAlignment(.center)
+            .padding()
+    }
+}
+
+private struct BoatView: View {
+    var body: some View {
+        Text("Enter on race start")
+            .font(.title3)
+            .multilineTextAlignment(.center)
+            .padding()
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
