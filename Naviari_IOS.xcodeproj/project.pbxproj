@@ -192,6 +192,8 @@
 			knownRegions = (
 				en,
 				Base,
+				fi,
+				sv,
 			);
 			mainGroup = 024717A62F33E9AC0029E7BC;
 			minimizedProjectReferenceProxies = 1;
@@ -399,7 +401,10 @@
 				DEVELOPMENT_TEAM = 5ZU2SU5BXG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Naviari-IOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Naviari;
+				INFOPLIST_KEY_NaviariAPIBaseURL = "$(NAVIARI_API_BASE)";
+				INFOPLIST_KEY_NaviariAPIKey = "$(NAVIARI_API_KEY)";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -411,6 +416,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				NAVIARI_API_BASE = "http://192.168.86.56:3000";
+				NAVIARI_API_KEY = "dev-sailing-api-key";
 				PRODUCT_BUNDLE_IDENTIFIER = "fi.mobiari.Naviari-IOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -430,7 +437,10 @@
 				DEVELOPMENT_TEAM = 5ZU2SU5BXG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Naviari-IOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Naviari;
+				INFOPLIST_KEY_NaviariAPIBaseURL = "$(NAVIARI_API_BASE)";
+				INFOPLIST_KEY_NaviariAPIKey = "$(NAVIARI_API_KEY)";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -442,6 +452,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				NAVIARI_API_BASE = "https://naviaribackend-production.up.railway.app";
+				NAVIARI_API_KEY = 2d7fa1686e751498c3397fd7f4a19ff578f5b73698cd6e857c39a190e283ffe8;
 				PRODUCT_BUNDLE_IDENTIFIER = "fi.mobiari.Naviari-IOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

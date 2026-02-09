@@ -6,54 +6,45 @@
 //
 
 import SwiftUI
+
 struct ContentView: View {
+    @StateObject private var viewModel = RaceBrowserViewModel()
+    @State private var navigationPath: [AppRoute] = []
+
     var body: some View {
-        TabView {
-            RaceStartSelectorView()
-                .tabItem {
-                    Label("Race/Start", systemImage: "list.bullet")
+        NavigationStack(path: $navigationPath) {
+            WelcomeScreen {
+                navigationPath.append(.races)
+            }
+            .navigationDestination(for: AppRoute.self) { route in
+                switch route {
+                case .races:
+                    RaceListScreen { summary in
+                        navigationPath.append(.raceDetail(summary))
+                    }
+                case let .raceDetail(summary):
+                    RaceDetailScreen(summary: summary) { start in
+                        navigationPath.append(.startDetail(summary, start))
+                    }
+                case let .startDetail(summary, start):
+                    StartDetailScreen(raceSummary: summary, start: start) {
+                        navigationPath.append(.participate(summary, start))
+                    }
+                case let .participate(summary, start):
+                    ParticipateView(raceSummary: summary, start: start)
                 }
-
-            RaceManagerView()
-                .tabItem {
-                    Label("Race Manager", systemImage: "clipboard")
-                }
-
-            BoatView()
-                .tabItem {
-                    Label("Boat", systemImage: "sailboat.fill")
-                }
+            }
         }
-    }
-}
-//test
-private struct RaceStartSelectorView: View {
-    var body: some View {
-        Text("Select a race and start")
-            .font(.title3)
-            .multilineTextAlignment(.center)
-            .padding()
+        .environmentObject(viewModel)
     }
 }
 
-private struct RaceManagerView: View {
-    var body: some View {
-        Text("Here you manage race related data")
-            .font(.title3)
-            .multilineTextAlignment(.center)
-            .padding()
-    }
+private enum AppRoute: Hashable {
+    case races
+    case raceDetail(RaceSummary)
+    case startDetail(RaceSummary, RaceStart)
+    case participate(RaceSummary, RaceStart)
 }
-
-private struct BoatView: View {
-    var body: some View {
-        Text("Enter on race start")
-            .font(.title3)
-            .multilineTextAlignment(.center)
-            .padding()
-    }
-}
-
 #Preview {
     ContentView()
 }
