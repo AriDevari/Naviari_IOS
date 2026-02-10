@@ -8,5 +8,14 @@
 	<string>$(NAVIARI_API_BASE)</string>
 	<key>NaviariAPIKey</key>
 	<string>$(NAVIARI_API_KEY)</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>fi.mobiari.naviari-ios.boatmetrics.flush</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>processing</string>
+	</array>
 </dict>
 </plist>

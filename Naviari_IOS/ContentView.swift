@@ -10,30 +10,36 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = RaceBrowserViewModel()
     @State private var navigationPath: [AppRoute] = []
+    @EnvironmentObject private var locationManager: LocationDataManager
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            WelcomeScreen {
-                navigationPath.append(.races)
-            }
-            .navigationDestination(for: AppRoute.self) { route in
-                switch route {
-                case .races:
-                    RaceListScreen { summary in
-                        navigationPath.append(.raceDetail(summary))
+        ZStack(alignment: .bottomTrailing) {
+            NavigationStack(path: $navigationPath) {
+                WelcomeScreen {
+                    navigationPath.append(.races)
+                }
+                .navigationDestination(for: AppRoute.self) { route in
+                    switch route {
+                    case .races:
+                        RaceListScreen { summary in
+                            navigationPath.append(.raceDetail(summary))
+                        }
+                    case let .raceDetail(summary):
+                        RaceDetailScreen(summary: summary) { start in
+                            navigationPath.append(.startDetail(summary, start))
+                        }
+                    case let .startDetail(summary, start):
+                        StartDetailScreen(raceSummary: summary, start: start) {
+                            navigationPath.append(.participate(summary, start))
+                        }
+                    case let .participate(summary, start):
+                        ParticipateView(raceSummary: summary, start: start)
                     }
-                case let .raceDetail(summary):
-                    RaceDetailScreen(summary: summary) { start in
-                        navigationPath.append(.startDetail(summary, start))
-                    }
-                case let .startDetail(summary, start):
-                    StartDetailScreen(raceSummary: summary, start: start) {
-                        navigationPath.append(.participate(summary, start))
-                    }
-                case let .participate(summary, start):
-                    ParticipateView(raceSummary: summary, start: start)
                 }
             }
+            GPSStatusButton(locationManager: locationManager)
+                .padding(.trailing, 24)
+                .padding(.bottom, 24)
         }
         .environmentObject(viewModel)
     }
@@ -47,4 +53,6 @@ private enum AppRoute: Hashable {
 }
 #Preview {
     ContentView()
+        .environmentObject(LocationDataManager())
+        .environmentObject(BoatMetricsUploader())
 }

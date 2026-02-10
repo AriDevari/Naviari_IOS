@@ -32,6 +32,7 @@ struct ParticipateView: View {
     private let service = ParticipationService()
     private let storage = ParticipationStorage.shared
     @FocusState private var focusedField: ParticipationField?
+    @EnvironmentObject private var metricsUploader: BoatMetricsUploader
 
     var body: some View {
         ScreenContainer(
@@ -53,6 +54,7 @@ struct ParticipateView: View {
 
                     if let summary = submittedSummary {
                         ParticipationSummaryView(summary: summary)
+                        broadcastStatusSection
                     } else {
                         formFields
 
@@ -254,7 +256,9 @@ struct ParticipateView: View {
                 colorHex: colorHex
             )
             submittedSummary = summary
-            persistRecords(token: token, result: result, summary: summary)
+            if let startRecord = persistRecords(token: token, result: result, summary: summary) {
+                startBroadcastIfReady(record: startRecord, summaryOverride: summary)
+            }
         } catch {
             submissionError = error.localizedDescription
         }
@@ -318,6 +322,7 @@ struct ParticipateView: View {
         storedScopeId = record.scopeId
         if record.scope == .start, record.scopeId == startIdentifier {
             submittedSummary = record.summary
+            startBroadcastIfReady(record: record)
         } else {
             prefillFieldsIfNeeded(from: record.summary)
         }
@@ -354,23 +359,25 @@ struct ParticipateView: View {
         }
     }
 
-    private func persistRecords(token: String, result: ParticipationResult, summary: ParticipationSummary) {
+    @discardableResult
+    private func persistRecords(token: String, result: ParticipationResult, summary: ParticipationSummary) -> ParticipationRecord? {
         var records: [ParticipationRecord] = []
         let now = Date()
+        var startRecord: ParticipationRecord?
         if let startId = startIdentifier {
-            records.append(
-                ParticipationRecord(
-                    scope: .start,
-                    scopeId: startId,
-                    token: token,
-                    startEntryId: result.startEntryId,
-                    boatId: result.boatId,
-                    boatToken: result.boatToken,
-                    boatCode: result.boatCode,
-                    summary: summary,
-                    savedAt: now
-                )
+            let record = ParticipationRecord(
+                scope: .start,
+                scopeId: startId,
+                token: token,
+                startEntryId: result.startEntryId,
+                boatId: result.boatId,
+                boatToken: result.boatToken,
+                boatCode: result.boatCode,
+                summary: summary,
+                savedAt: now
             )
+            records.append(record)
+            startRecord = record
         }
         if let raceId = raceIdentifier {
             records.append(
@@ -406,6 +413,7 @@ struct ParticipateView: View {
         storedToken = token
         storedScope = .start
         storedScopeId = startIdentifier
+        return startRecord
     }
 
     private func resetFormForNewStart() {
@@ -423,6 +431,59 @@ struct ParticipateView: View {
         storedScope = nil
         storedScopeId = nil
         hasPrefilledFields = false
+    }
+
+    private func startBroadcastIfReady(record: ParticipationRecord, summaryOverride: ParticipationSummary? = nil) {
+        guard
+            record.scope == .start,
+            record.scopeId == startIdentifier,
+            let startEntryId = record.startEntryId,
+            let startId = startIdentifier
+        else {
+            return
+        }
+        let summary = summaryOverride ?? record.summary
+        let session = BroadcastSession(
+            token: record.token,
+            boatToken: record.boatToken,
+            startEntryId: startEntryId,
+            startId: startId,
+            boatId: record.boatId,
+            raceId: raceIdentifier,
+            seriesId: seriesIdentifier,
+            summary: summary
+        )
+        metricsUploader.startBroadcast(session: session)
+    }
+
+    private var isBroadcastingForCurrentStart: Bool {
+        guard let currentStartId = startIdentifier else { return false }
+        guard
+            metricsUploader.isBroadcasting,
+            let session = metricsUploader.activeSession,
+            let sessionStartId = session.startId
+        else {
+            return false
+        }
+        return sessionStartId == currentStartId
+    }
+
+    @ViewBuilder
+    private var broadcastStatusSection: some View {
+        if isBroadcastingForCurrentStart {
+            BroadcastStatusCard(
+                lastSample: metricsUploader.lastAcceptedSample,
+                lastSendAt: metricsUploader.lastSendAt,
+                backlogSeconds: metricsUploader.backlogSeconds,
+                retryCount: metricsUploader.retryCount,
+                lastErrorAt: metricsUploader.lastErrorAt,
+                errorMessage: metricsUploader.lastErrorMessage
+            )
+            .transition(.opacity)
+        } else if submittedSummary != nil {
+            BroadcastStatusPlaceholder()
+                .transition(.opacity)
+        }
     }
 }
 
@@ -502,6 +563,198 @@ private struct ParticipationSummaryView: View {
         } label: {
             Text(key)
         }
+    }
+}
+
+private struct BroadcastStatusPlaceholder: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "antenna.radiowaves.left.and.right")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("broadcast_status_inactive")
+                    .font(.headline)
+                Text("broadcast_status_placeholder")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(.secondary.opacity(0.2))
+        )
+    }
+}
+
+private struct BroadcastStatusCard: View {
+    let lastSample: BoatSample?
+    let lastSendAt: Date?
+    let backlogSeconds: Int
+    let retryCount: Int
+    let lastErrorAt: Date?
+    let errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.title2)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("broadcast_status_active")
+                        .font(.headline)
+                    Text(statusSubtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                BroadcastStatusRow(
+                    titleKey: "broadcast_status_last_sample",
+                    value: sampleDescription
+                )
+                if let accuracyDescription {
+                    BroadcastStatusRow(
+                        titleKey: "gps_status_accuracy",
+                        value: accuracyDescription
+                    )
+                }
+                BroadcastStatusRow(
+                    titleKey: "broadcast_status_last_upload",
+                    value: uploadDescription
+                )
+                BroadcastStatusRow(
+                    titleKey: "broadcast_status_backlog_label",
+                    value: backlogDescription
+                )
+                if retryCount > 0 {
+                    BroadcastStatusRow(
+                        titleKey: "broadcast_status_retry_label",
+                        value: retryDescription
+                    )
+                }
+            }
+
+            if let errorMessage {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("broadcast_status_error_prefix")
+                            .font(.subheadline)
+                            .bold()
+                        Text(errorMessage)
+                            .font(.footnote)
+                    }
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.red.opacity(0.1))
+                )
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.thinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color.primary.opacity(0.05))
+        )
+    }
+
+    private var statusSubtitle: String {
+        NSLocalizedString("broadcast_status_active_subtitle", comment: "")
+    }
+
+    private var sampleDescription: String {
+        guard let lastSample else {
+            return NSLocalizedString("broadcast_status_waiting_sample", comment: "")
+        }
+        return Self.composeTimeDescription(from: lastSample.timestamp)
+    }
+
+    private var uploadDescription: String {
+        guard let lastSendAt else {
+            return NSLocalizedString("broadcast_status_waiting_upload", comment: "")
+        }
+        return Self.composeTimeDescription(from: lastSendAt)
+    }
+
+    private var accuracyDescription: String? {
+        guard let accuracy = lastSample?.accuracy, accuracy >= 0 else { return nil }
+        let measurement = Measurement(value: accuracy, unit: UnitLength.meters)
+        BroadcastStatusCard.measurementFormatter.locale = Locale.current
+        return BroadcastStatusCard.measurementFormatter.string(from: measurement)
+    }
+
+    private var backlogDescription: String {
+        if backlogSeconds <= 0 {
+            return NSLocalizedString("broadcast_status_backlog_clear", comment: "")
+        }
+        let duration = TimeInterval(backlogSeconds)
+        let formatted = BroadcastStatusCard.durationFormatter.string(from: duration) ?? "\(backlogSeconds)s"
+        return String(
+            format: NSLocalizedString("broadcast_status_backlog_value", comment: ""),
+            formatted
+        )
+    }
+
+    private var retryDescription: String {
+        let countString = String(
+            format: NSLocalizedString("broadcast_status_retry_count_value", comment: ""),
+            retryCount
+        )
+        if let lastErrorAt {
+            let relative = DateFormattingHelper.relativeTimeString(from: lastErrorAt)
+            return "\(countString) • \(relative)"
+        }
+        return countString
+    }
+
+    private static func composeTimeDescription(from date: Date) -> String {
+        let relative = DateFormattingHelper.relativeTimeString(from: date)
+        let absolute = DateFormattingHelper.localizedShortDateTime(from: date)
+        return "\(relative) • \(absolute)"
+    }
+
+    private static let measurementFormatter: MeasurementFormatter = {
+        let formatter = MeasurementFormatter()
+        formatter.unitOptions = .providedUnit
+        formatter.numberFormatter.maximumFractionDigits = 0
+        formatter.numberFormatter.roundingMode = .halfUp
+        return formatter
+    }()
+
+    private static let durationFormatter: DateComponentsFormatter = {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.minute, .second]
+        formatter.unitsStyle = .short
+        formatter.collapsesLargestUnit = false
+        return formatter
+    }()
+}
+
+private struct BroadcastStatusRow: View {
+    let titleKey: LocalizedStringKey
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(titleKey)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.body)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

@@ -23,6 +23,21 @@ enum DateFormattingHelper {
         return formatter
     }()
 
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        formatter.locale = Locale.current
+        return formatter
+    }()
+
+    private static let shortDateTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+
     static func localizedDateString(from value: String?, includeTime: Bool) -> String? {
         guard let value else { return nil }
         guard let date = parseDate(from: value) else { return nil }
@@ -31,6 +46,16 @@ enum DateFormattingHelper {
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = includeTime ? .short : .none
         return dateFormatter.string(from: date)
+    }
+
+    static func relativeTimeString(from date: Date) -> String {
+        relativeFormatter.locale = Locale.current
+        return relativeFormatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    static func localizedShortDateTime(from date: Date) -> String {
+        shortDateTimeFormatter.locale = Locale.current
+        return shortDateTimeFormatter.string(from: date)
     }
 
     private static func parseDate(from value: String) -> Date? {
