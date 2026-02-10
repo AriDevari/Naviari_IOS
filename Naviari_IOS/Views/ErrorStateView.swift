@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Small helper view for inline error messages and retry CTA.
 struct ErrorStateView: View {
     let message: String
     let buttonTitleKey: LocalizedStringKey

@@ -5,6 +5,7 @@ import Combine
 import UIKit
 #endif
 
+/// Captures the context needed to upload boat metrics for a single start entry.
 struct BroadcastSession {
     let token: String
     let boatToken: String?
@@ -16,6 +17,7 @@ struct BroadcastSession {
     let summary: ParticipationSummary
 }
 
+/// Intermediate row produced after interpolation (still in knots/deg for UI display).
 struct BoatMetricRow: Codable, Hashable {
     let timestampMs: Int64
     let latitude: Double
@@ -27,15 +29,25 @@ struct BoatMetricRow: Codable, Hashable {
     let accuracy: Double
 }
 
+/// Buffers accepted samples, resamples them to whole seconds, and uploads 10 s (or catch-up) batches to `/api/boat-metrics`.
+/// Publishes diagnostic state for the UI (backlog, retries, last send/error times).
 @MainActor
 final class BoatMetricsUploader: ObservableObject {
+    /// Indicates whether a broadcast session is currently active.
     @Published private(set) var isBroadcasting = false
+    /// Most recent `BoatSample` accepted from the location manager.
     @Published private(set) var lastAcceptedSample: BoatSample?
+    /// Last error description returned by the network call (if any).
     @Published private(set) var lastErrorMessage: String?
+    /// Timestamp when the most recent batch was successfully sent.
     @Published private(set) var lastSendAt: Date?
+    /// Details about the active broadcast session (token, start IDs, etc.).
     @Published private(set) var activeSession: BroadcastSession?
+    /// Number of seconds between the latest buffered sample and the last successful send (used for UI status).
     @Published private(set) var backlogSeconds: Int = 0
+    /// How many consecutive retries have been attempted since the last success.
     @Published private(set) var retryCount: Int = 0
+    /// Timestamp when the last network error happened.
     @Published private(set) var lastErrorAt: Date?
 
     private let metricsService = BoatMetricsService()
@@ -54,6 +66,7 @@ final class BoatMetricsUploader: ObservableObject {
 
     private(set) var sampleBuffer: [BoatSample] = []
 
+    /// Subscribes to the shared `LocationDataManager` stream so the uploader only handles business logic.
     func configure(with manager: LocationDataManager) {
         guard locationManager !== manager else { return }
         locationManager = manager
@@ -62,6 +75,7 @@ final class BoatMetricsUploader: ObservableObject {
             .sink { [weak self] in self?.handle(sample: $0) }
     }
 
+    /// Resets buffers/state and begins listening for samples under the provided session context.
     func startBroadcast(session: BroadcastSession) {
         activeSession = session
         isBroadcasting = true
@@ -79,6 +93,7 @@ final class BoatMetricsUploader: ObservableObject {
         BoatMetricsBackgroundScheduler.shared.scheduleIfNeeded()
     }
 
+    /// Clears buffers and stops the broadcast loop.
     func stopBroadcast() {
         isBroadcasting = false
         sampleBuffer.removeAll()
@@ -96,6 +111,7 @@ final class BoatMetricsUploader: ObservableObject {
         BoatMetricsBackgroundScheduler.shared.cancelScheduledTasks()
     }
 
+    /// Accepts a new boat sample, updates backlog stats, and kicks the batching loop.
     private func handle(sample: BoatSample) {
         guard isBroadcasting, activeSession != nil else { return }
         sampleBuffer.append(sample)
@@ -278,6 +294,7 @@ final class BoatMetricsUploader: ObservableObject {
         }
     }
 
+    /// Called by BGProcessing / scene transitions to retry sending whatever is buffered.
     func flushPendingUploads() {
         guard let latest = sampleBuffer.last else { return }
         processUploadQueue(latestSecond: Int(latest.timestamp.timeIntervalSince1970))

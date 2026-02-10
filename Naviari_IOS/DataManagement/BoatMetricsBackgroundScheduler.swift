@@ -4,6 +4,7 @@ import BackgroundTasks
 #endif
 import OSLog
 
+/// Coordinates BGProcessingTasks so buffered telemetry can flush even during long background sessions.
 @MainActor
 final class BoatMetricsBackgroundScheduler {
     static let shared = BoatMetricsBackgroundScheduler()
@@ -13,10 +14,13 @@ final class BoatMetricsBackgroundScheduler {
     private let taskIdentifier = "fi.mobiari.naviari-ios.boatmetrics.flush"
     private let logger = Logger(subsystem: "fi.mobiari.naviari-ios", category: "BoatMetricsBackgroundScheduler")
 
+    /// Assigns the uploader whose backlog should be flushed during BG tasks.
     func configure(uploader: BoatMetricsUploader) {
         self.uploader = uploader
     }
 
+    /// Registers the BG task identifier; call once during app launch.
+    /// Registers the BGProcessing identifier; call once during app launch.
     func register() {
 #if canImport(BackgroundTasks)
         if #available(iOS 13.0, *) {
@@ -27,6 +31,8 @@ final class BoatMetricsBackgroundScheduler {
 #endif
     }
 
+    /// Schedules (or cancels) the BGProcessing request depending on broadcast state.
+    /// Schedules (or cancels) the BGProcessing request depending on broadcast state.
     func scheduleIfNeeded() {
 #if canImport(BackgroundTasks)
         guard #available(iOS 13.0, *) else { return }
@@ -47,13 +53,15 @@ final class BoatMetricsBackgroundScheduler {
 #endif
     }
 
+    /// Cancels any pending BGProcessing requests (e.g., when broadcasting stops).
     func cancelScheduledTasks() {
-#if canImport(BackgroundTasks)
+        #if canImport(BackgroundTasks)
         guard #available(iOS 13.0, *) else { return }
         BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: taskIdentifier)
-#endif
+        #endif
     }
 
+    /// Invoked by BGTaskScheduler; flushes uploads and reschedules the next request.
     private func handle(task: BGTask) {
 #if canImport(BackgroundTasks)
         guard #available(iOS 13.0, *) else {

@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Displays metadata for the selected race plus its list of starts.
 struct RaceDetailScreen: View {
     let summary: RaceSummary
     var onSelectStart: (RaceStart) -> Void

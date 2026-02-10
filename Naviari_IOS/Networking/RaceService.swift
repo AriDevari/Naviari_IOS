@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 
+/// Common error cases surfaced by `RaceService`.
 enum RaceServiceError: LocalizedError {
     case invalidURL
     case invalidResponse
@@ -28,6 +29,7 @@ enum RaceServiceError: LocalizedError {
     }
 }
 
+/// Fetches race series and start lists from the Naviari backend.
 struct RaceService {
     private let baseURL: URL
     private let apiKey: String
@@ -44,6 +46,7 @@ struct RaceService {
         self.session = session
     }
 
+    /// Loads every published race series plus their races.
     func fetchRaceSeries() async throws -> [RaceSeries] {
         let request = try makeRequest(
             path: "/api/race-series",
@@ -62,6 +65,7 @@ struct RaceService {
         throw RaceServiceError.decodingFailed
     }
 
+    /// Loads starts belonging to a specific race.
     func fetchStarts(for race: Race) async throws -> [RaceStart] {
         guard let raceId = race.rawId ?? race.slug else {
             throw RaceServiceError.missingRaceIdentifier
@@ -161,6 +165,7 @@ struct RaceService {
 }
 
 extension RaceService {
+    /// Resolves the base URL from environment, Info.plist, or production fallback.
     static var defaultBaseURL: URL {
         if
             let value = ProcessInfo.processInfo.environment["NAVIARI_API_BASE"],
@@ -177,6 +182,7 @@ extension RaceService {
         return URL(string: "https://naviaribackend-production.up.railway.app")!
     }
 
+    /// Resolves the API key from environment, Info.plist, or production fallback.
     static var defaultAPIKey: String {
         if let value = ProcessInfo.processInfo.environment["NAVIARI_API_KEY"] {
             return value

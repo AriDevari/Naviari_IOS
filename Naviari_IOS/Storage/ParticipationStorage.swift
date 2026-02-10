@@ -1,11 +1,13 @@
 import Foundation
 
+/// Scopes that determine how broadly a participation token can be reused.
 enum ParticipationScope: String, Codable {
     case start
     case race
     case series
 }
 
+/// Stored snapshot of the participation flow (token, identifiers, summary fields).
 struct ParticipationRecord: Codable {
     let scope: ParticipationScope
     let scopeId: String
@@ -18,6 +20,7 @@ struct ParticipationRecord: Codable {
     let savedAt: Date
 }
 
+/// Simple UserDefaults-backed cache for participation tokens/metadata.
 final class ParticipationStorage {
     static let shared = ParticipationStorage()
 
@@ -28,6 +31,7 @@ final class ParticipationStorage {
         self.userDefaults = userDefaults
     }
 
+    /// Returns the best-matching record given optional start/race/series identifiers (prefers the most specific scope).
     func loadRecord(for startId: String?, raceId: String?, seriesId: String?) -> ParticipationRecord? {
         let records = loadAllRecords()
         if let startId, let record = records[ParticipationStorage.makeKey(.start, id: startId)] {
@@ -42,6 +46,7 @@ final class ParticipationStorage {
         return nil
     }
 
+    /// Saves/overwrites a single record for its scope.
     func save(record: ParticipationRecord) {
         var records = loadAllRecords()
         records[ParticipationStorage.makeKey(record.scope, id: record.scopeId)] = record
@@ -50,6 +55,7 @@ final class ParticipationStorage {
         }
     }
 
+    /// Bulk-saves records (used when we want to persist start/race/series scopes together).
     func saveRecords(_ records: [ParticipationRecord]) {
         guard !records.isEmpty else { return }
         var stored = loadAllRecords()
@@ -61,6 +67,7 @@ final class ParticipationStorage {
         }
     }
 
+    /// Loads and decodes all stored records from disk.
     private func loadAllRecords() -> [String: ParticipationRecord] {
         guard let data = userDefaults.data(forKey: storageKey) else {
             return [:]
@@ -68,6 +75,7 @@ final class ParticipationStorage {
         return (try? JSONDecoder().decode([String: ParticipationRecord].self, from: data)) ?? [:]
     }
 
+    /// Generates the dictionary key for a scope/id pair.
     private static func makeKey(_ scope: ParticipationScope, id: String) -> String {
         "\(scope.rawValue)::\(id)"
     }

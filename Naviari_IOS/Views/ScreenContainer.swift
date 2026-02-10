@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Lightweight layout primitive that renders a custom header + supplied content.
 struct ScreenContainer<Content: View>: View {
     var showBack: Bool
     var title: Text

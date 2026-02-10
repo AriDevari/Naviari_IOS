@@ -8,6 +8,7 @@
 import SwiftUI
 import CoreLocation
 
+/// Floating circular button that reflects live GPS accuracy and opens a diagnostic sheet.
 struct GPSStatusButton: View {
     @ObservedObject var locationManager: LocationDataManager
     @State private var showDetail = false
@@ -56,6 +57,7 @@ struct GPSStatusButton: View {
     }
 }
 
+/// Modal sheet that surfaces detailed GPS telemetry (accuracy, lat/lon, speed, course).
 private struct GPSStatusDetailView: View {
     @ObservedObject var locationManager: LocationDataManager
     @Environment(\.dismiss) private var dismiss

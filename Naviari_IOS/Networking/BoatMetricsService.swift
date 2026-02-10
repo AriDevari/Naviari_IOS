@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 
+/// Error cases thrown by `BoatMetricsService`.
 enum BoatMetricsServiceError: LocalizedError {
     case invalidURL
     case missingStartEntryId
@@ -24,6 +25,7 @@ enum BoatMetricsServiceError: LocalizedError {
     }
 }
 
+/// Encodable payload that mirrors the backend’s `/api/boat-metrics` schema.
 struct BoatMetricsPayload: Encodable {
     struct Sample: Encodable {
         let timestamp: String
@@ -42,6 +44,7 @@ struct BoatMetricsPayload: Encodable {
     let samples: [Sample]
 }
 
+/// Thin client responsible for encoding `BoatMetricRow` batches and POSTing them to the backend.
 final class BoatMetricsService {
     private let session: URLSession
     private let baseURL: URL
@@ -58,6 +61,12 @@ final class BoatMetricsService {
         self.apiKey = apiKey
     }
 
+    /// Sends a batch of interpolated rows to `/api/boat-metrics`.
+    /// - Parameters:
+    ///   - token: Participate/manage token returned from the start-entry login flow.
+    ///   - boatToken: Optional per-boat secret, if available.
+    ///   - startEntryId/startId/boatId: Identifiers used by backend validation.
+    ///   - samples: Normalized rows (in knots/deg) produced by `BoatMetricsUploader`.
     func submit(
         token: String,
         boatToken: String? = nil,
@@ -107,6 +116,7 @@ final class BoatMetricsService {
         try Self.validate(response: response, data: data)
     }
 
+    /// Builds a signed request pointing at the shared base URL.
     private func makeRequest(path: String) throws -> URLRequest {
         guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
             throw BoatMetricsServiceError.invalidURL

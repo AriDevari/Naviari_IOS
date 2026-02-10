@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Shows start-specific metadata and the entry point into the participation flow.
 struct StartDetailScreen: View {
     let raceSummary: RaceSummary
     let start: RaceStart

@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Compact row summarizing a single race start, used inside race detail lists.
 struct RaceStartRowView: View {
     let start: RaceStart
     let timeText: String?

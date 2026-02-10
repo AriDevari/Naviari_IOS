@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Landing view shown before the user opens the race browser.
 struct WelcomeScreen: View {
     var onOpenRaces: () -> Void
 

@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 
+/// Collects basic entrant info + participation code, then starts GPS broadcasting.
 struct ParticipateView: View {
     let raceSummary: RaceSummary
     let start: RaceStart
@@ -216,6 +217,7 @@ struct ParticipateView: View {
         return isSubmitting || participationCode == nil
     }
 
+    /// Validates code/token, submits the start entry, persists it, and starts broadcasting.
     private func submitBroadcastRequest() async {
         guard !isSubmitting else { return }
         guard let startId = startIdentifier else {
@@ -265,6 +267,7 @@ struct ParticipateView: View {
         isSubmitting = false
     }
 
+    /// Converts the localized rating text field into a decimal value (fallback to en_US when needed).
     private func parsedRatingValue() -> Double? {
         let trimmed = ratingValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -314,6 +317,7 @@ struct ParticipateView: View {
         raceSummary.seriesId
     }
 
+    /// Restores any saved participation token/summary for the current start/race/series.
     private func loadStoredParticipation() async {
         let record = storage.loadRecord(for: startIdentifier, raceId: raceIdentifier, seriesId: seriesIdentifier)
         guard let record else { return }
@@ -328,6 +332,7 @@ struct ParticipateView: View {
         }
     }
 
+    /// Populates editable fields using a saved summary only once per start to avoid overwriting user edits.
     private func prefillFieldsIfNeeded(from summary: ParticipationSummary) {
         guard !hasPrefilledFields else { return }
         hasPrefilledFields = true
@@ -359,6 +364,7 @@ struct ParticipateView: View {
         }
     }
 
+    /// Persists participation records for start/race/series scopes and returns the start-level record for broadcasting.
     @discardableResult
     private func persistRecords(token: String, result: ParticipationResult, summary: ParticipationSummary) -> ParticipationRecord? {
         var records: [ParticipationRecord] = []
@@ -416,6 +422,7 @@ struct ParticipateView: View {
         return startRecord
     }
 
+    /// Clears state when the user navigates to a different start.
     private func resetFormForNewStart() {
         name = ""
         sailNumber = ""
@@ -433,6 +440,7 @@ struct ParticipateView: View {
         hasPrefilledFields = false
     }
 
+    /// Boots the uploader once we have a valid start-level token/scope.
     private func startBroadcastIfReady(record: ParticipationRecord, summaryOverride: ParticipationSummary? = nil) {
         guard
             record.scope == .start,
@@ -566,6 +574,7 @@ private struct ParticipationSummaryView: View {
     }
 }
 
+/// Informational card shown when no broadcast session is active for the selected start.
 private struct BroadcastStatusPlaceholder: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -589,6 +598,7 @@ private struct BroadcastStatusPlaceholder: View {
     }
 }
 
+/// Displays live telemetry/broadcast diagnostics (last sample, backlog, retries, errors).
 private struct BroadcastStatusCard: View {
     let lastSample: BoatSample?
     let lastSendAt: Date?
@@ -742,6 +752,7 @@ private struct BroadcastStatusCard: View {
     }()
 }
 
+/// Reusable row layout inside the broadcast status card.
 private struct BroadcastStatusRow: View {
     let titleKey: LocalizedStringKey
     let value: String

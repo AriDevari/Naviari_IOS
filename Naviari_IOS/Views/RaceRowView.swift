@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Simple list row presenting a race name + series and an optional checkmark.
 struct RaceRowView: View {
     let summary: RaceSummary
     let isSelected: Bool

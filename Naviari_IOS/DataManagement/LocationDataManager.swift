@@ -8,14 +8,22 @@
 import CoreLocation
 import Foundation
 
+/// Centralizes Core Location configuration and exposes both raw locations and 1 Hz “accepted” samples for telemetry components.
 @MainActor
 final class LocationDataManager: NSObject, ObservableObject {
+    /// Sliding window of raw `CLLocation` updates (used for debugging overlays).
     @Published private(set) var recentSamples: [CLLocation] = []
+    /// Most recent `CLLocation` value.
     @Published private(set) var latestLocation: CLLocation?
+    /// Accuracy (meters) for the latest reading.
     @Published private(set) var lastAccuracy: CLLocationAccuracy?
+    /// Error message surfaced when Core Location reports a failure.
     @Published private(set) var lastErrorMessage: String?
+    /// Authorization state mirrored into SwiftUI.
     @Published private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    /// Flag that mirrors whether the manager is actively receiving updates.
     @Published private(set) var isUpdating = false
+    /// Debounced ≥1 Hz samples converted into `BoatSample` structs for broadcast services.
     @Published private(set) var acceptedSamples: [BoatSample] = []
 
     private let manager = CLLocationManager()
@@ -34,6 +42,7 @@ final class LocationDataManager: NSObject, ObservableObject {
         manager.showsBackgroundLocationIndicator = supportsBackground
     }
 
+    /// Requests permission (if needed) and starts listening for GPS updates.
     func start() {
         authorizationStatus = manager.authorizationStatus
         switch manager.authorizationStatus {
@@ -49,11 +58,13 @@ final class LocationDataManager: NSObject, ObservableObject {
         }
     }
 
+    /// Stops GPS updates entirely (used when the user opts out).
     func stop() {
         manager.stopUpdatingLocation()
         isUpdating = false
     }
 
+    /// Returns true when Info.plist enables background `location` mode.
     private static var supportsBackgroundLocation: Bool {
         if let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] {
             return modes.contains("location")
@@ -98,6 +109,7 @@ extension LocationDataManager: CLLocationManagerDelegate {
         }
     }
 
+    /// Converts a raw `CLLocation` into a `BoatSample` when ≥1 s has elapsed and appends it to the shared buffer.
     private func processAcceptedSample(from location: CLLocation) {
         let timestamp = location.timestamp.timeIntervalSince1970
         if timestamp - lastAcceptedTimestamp < 1 {

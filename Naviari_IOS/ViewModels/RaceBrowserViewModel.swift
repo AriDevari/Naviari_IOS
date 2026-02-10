@@ -1,5 +1,6 @@
 import Foundation
 
+/// Drives the “Browse races / starts” flow (series list, selected race state, error/loading flags).
 @MainActor
 final class RaceBrowserViewModel: ObservableObject {
     @Published private(set) var raceItems: [RaceSummary] = []
@@ -17,20 +18,24 @@ final class RaceBrowserViewModel: ObservableObject {
         self.service = service
     }
 
+    /// Fetches races only when the current cache is empty.
     func loadRacesIfNeeded() async {
         guard raceItems.isEmpty else { return }
         await loadRaces(force: false)
     }
 
+    /// Forces a full reload of series/races (used by pull-to-refresh).
     func reloadRaces() async {
         await loadRaces(force: true)
     }
 
+    /// Marks a race as selected and loads its starts.
     func selectRace(_ summary: RaceSummary) async {
         selectedRace = summary
         await loadStarts(for: summary.race, force: true)
     }
 
+    /// Ensures the selected race matches the given summary and loads starts if missing.
     func ensureRaceData(for summary: RaceSummary) async {
         if selectedRace?.id != summary.id {
             await selectRace(summary)
@@ -39,11 +44,13 @@ final class RaceBrowserViewModel: ObservableObject {
         }
     }
 
+    /// Retries loading starts for the currently selected race after an error.
     func retryStarts() async {
         guard let race = selectedRace?.race else { return }
         await loadStarts(for: race, force: true)
     }
 
+    /// Helper for rendering localized race dates.
     func formattedDate(for race: Race) -> String? {
         DateFormattingHelper.localizedDateString(
             from: race.scheduledUTC ?? race.actualUTC ?? race.date,
@@ -51,6 +58,7 @@ final class RaceBrowserViewModel: ObservableObject {
         )
     }
 
+    /// Helper for rendering localized start times (date + time).
     func formattedStartTime(for start: RaceStart) -> String? {
         DateFormattingHelper.localizedDateString(
             from: start.scheduledUTC ?? start.actualUTC,
@@ -58,6 +66,7 @@ final class RaceBrowserViewModel: ObservableObject {
         )
     }
 
+    /// Core race fetch implementation (optionally clearing cached selections).
     private func loadRaces(force: Bool) async {
         if isLoadingRaces {
             return
@@ -99,6 +108,7 @@ final class RaceBrowserViewModel: ObservableObject {
         }
     }
 
+    /// Fetches and sorts starts for a specific race (optionally bypassing in-flight requests).
     private func loadStarts(for race: Race, force: Bool) async {
         if isLoadingStarts && !force {
             return

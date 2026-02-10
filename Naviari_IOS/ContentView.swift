@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Root navigation stack for the iOS app (welcome → races → starts → participate).
 struct ContentView: View {
     @StateObject private var viewModel = RaceBrowserViewModel()
     @State private var navigationPath: [AppRoute] = []
@@ -45,6 +46,7 @@ struct ContentView: View {
     }
 }
 
+/// Typed routes for the root NavigationStack.
 private enum AppRoute: Hashable {
     case races
     case raceDetail(RaceSummary)

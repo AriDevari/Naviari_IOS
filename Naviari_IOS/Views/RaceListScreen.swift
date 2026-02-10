@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Lists every race summary fetched from the backend and forwards selections upstream.
 struct RaceListScreen: View {
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
     var onSelectRace: (RaceSummary) -> Void

@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+/// Request payload for creating/updating a start entry (and optional boat record).
 struct ParticipationSubmission: Encodable {
     struct BoatPayload: Encodable {
         let name: String?
@@ -51,6 +52,7 @@ struct ParticipationSubmission: Encodable {
     }
 }
 
+/// Lightweight copy of the submitted data stored on device for pre-fill.
 struct ParticipationSummary: Hashable, Codable {
     let name: String?
     let sailNumber: String?
@@ -60,6 +62,7 @@ struct ParticipationSummary: Hashable, Codable {
     let colorHex: String?
 }
 
+/// Minimal subset returned by `/api/start-entries` that we need for persistence/broadcasts.
 struct ParticipationResult {
     let startEntryId: String?
     let boatId: String?
@@ -67,6 +70,7 @@ struct ParticipationResult {
     let boatCode: String?
 }
 
+/// Handles participation code login and start-entry submissions.
 final class ParticipationService {
     private let session: URLSession
     private let baseURL: URL
@@ -82,6 +86,7 @@ final class ParticipationService {
         self.apiKey = apiKey
     }
 
+    /// Exchanges a participation/race code for a scoped token (required for submissions + telemetry).
     func exchangeCodeForToken(_ code: String) async throws -> String {
         var request = try makeRequest(path: "/api/access/login")
         request.httpMethod = "POST"
@@ -96,6 +101,7 @@ final class ParticipationService {
         return token
     }
 
+    /// Creates or updates a start entry using the provided token and payload.
     func submitStartEntry(token: String, submission: ParticipationSubmission) async throws -> ParticipationResult {
         var request = try makeRequest(path: "/api/start-entries")
         request.httpMethod = "POST"

@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 
+/// Main entry point that wires together shared environment objects + background schedulers.
 @main
 struct Naviari_IOSApp: App {
     @StateObject private var locationManager = LocationDataManager()
