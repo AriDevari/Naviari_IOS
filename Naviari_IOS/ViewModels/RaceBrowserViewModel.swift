@@ -75,7 +75,11 @@ final class RaceBrowserViewModel: ObservableObject {
             let series = try await service.fetchRaceSeries()
             let summaries = series.flatMap { seriesItem in
                 seriesItem.races.map { race in
-                    RaceSummary(race: race, seriesName: seriesItem.name)
+                    RaceSummary(
+                        race: race,
+                        seriesName: seriesItem.name,
+                        seriesId: seriesItem.rawId ?? seriesItem.slug
+                    )
                 }
             }
             let sorted = summaries.sorted(by: { lhs, rhs in

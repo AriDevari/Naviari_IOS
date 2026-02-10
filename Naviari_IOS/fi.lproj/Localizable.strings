@@ -34,6 +34,9 @@
 "participate_cta_hint" = "Jaa GPS-sijaintisi kilpailujohdolle.";
 "participate_info_title" = "GPS-lähetyksen ohje";
 "participate_info_body" = "Anna veneen tiedot sekä kilpailutoimistolta saatu koodi ja käynnistä GPS-lähetys, jotta yleisö ja kilpailunjohto näkevät sijaintisi reaaliajassa.";
+"participate_code_required" = "Anna koko osallistumiskoodi.";
+"participate_start_missing" = "Lähtöä ei löytynyt.";
+"participate_code_reuse_notice" = "Koodi on jo tallessa tältä sarjalta – voit aloittaa lähetyksen heti.";
 "error_invalid_url" = "Virheellinen palvelimen osoite.";
 "error_invalid_response" = "Palvelin vastasi virheellä.";
 "error_decoding_failed" = "Vastausta ei voitu lukea.";
@@ -42,3 +45,4 @@
 "error_server_without_message" = "Palvelinvirhe (%d)";
 "race_unnamed_placeholder" = "Nimetön kilpailu";
 "start_status_unknown" = "Tuntematon";
+"done_button" = "Valmis";

@@ -34,6 +34,9 @@
 "participate_cta_hint" = "Dela din GPS-position med tävlingsledningen.";
 "participate_info_title" = "GPS-sändning – hjälp";
 "participate_info_body" = "Fyll i båtuppgifterna och koden från tävlingskontoret och starta sedan GPS-sändningen så att publik och arrangör kan följa din position i realtid.";
+"participate_code_required" = "Ange hela deltagarkoden.";
+"participate_start_missing" = "Starten hittades inte.";
+"participate_code_reuse_notice" = "Koden finns redan sparad för den här serien – du kan starta sändningen direkt.";
 "error_invalid_url" = "Ogiltig serveradress.";
 "error_invalid_response" = "Servern svarade med ett fel.";
 "error_decoding_failed" = "Appen kunde inte läsa svaret.";
@@ -42,3 +45,4 @@
 "error_server_without_message" = "Serverfel (%d)";
 "race_unnamed_placeholder" = "Namnlös tävling";
 "start_status_unknown" = "Okänd";
+"done_button" = "Klar";

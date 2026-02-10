@@ -58,6 +58,7 @@ struct Race: Decodable, Identifiable, Equatable, Hashable {
     let actualUTC: String?
     let date: String?
     let slug: String?
+    let parentSeriesId: String?
     let starts: [RaceStart]?
 
     var id: String {
@@ -73,6 +74,7 @@ struct Race: Decodable, Identifiable, Equatable, Hashable {
         case actualUTC = "actual_utc"
         case date
         case slug
+        case parentSeriesId
         case starts
     }
 }
@@ -106,6 +108,7 @@ struct RaceStart: Decodable, Identifiable, Equatable, Hashable {
 struct RaceSummary: Identifiable, Equatable, Hashable {
     let race: Race
     let seriesName: String?
+    let seriesId: String?
 
     var id: String {
         race.id

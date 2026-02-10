@@ -403,6 +403,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Naviari-IOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Naviari;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used to send boat and bouy location for race platfrom";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Location is used to send boat and bouy location for race platfrom";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to send boat and bouy location for race platfrom";
 				INFOPLIST_KEY_NaviariAPIBaseURL = "$(NAVIARI_API_BASE)";
 				INFOPLIST_KEY_NaviariAPIKey = "$(NAVIARI_API_KEY)";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -439,6 +442,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Naviari-IOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Naviari;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used to send boat and bouy location for race platfrom";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Location is used to send boat and bouy location for race platfrom";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to send boat and bouy location for race platfrom";
 				INFOPLIST_KEY_NaviariAPIBaseURL = "$(NAVIARI_API_BASE)";
 				INFOPLIST_KEY_NaviariAPIKey = "$(NAVIARI_API_KEY)";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

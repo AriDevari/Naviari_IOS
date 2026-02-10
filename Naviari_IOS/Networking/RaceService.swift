@@ -160,12 +160,14 @@ struct RaceService {
     }
 }
 
-private extension RaceService {
+extension RaceService {
     static var defaultBaseURL: URL {
-        
-        
-        
-        
+        if
+            let value = ProcessInfo.processInfo.environment["NAVIARI_API_BASE"],
+            let envURL = URL(string: value)
+        {
+            return envURL
+        }
         if
             let plistValue = Bundle.main.object(forInfoDictionaryKey: "NaviariAPIBaseURL") as? String,
             let plistURL = URL(string: plistValue)
@@ -176,7 +178,9 @@ private extension RaceService {
     }
 
     static var defaultAPIKey: String {
-        
+        if let value = ProcessInfo.processInfo.environment["NAVIARI_API_KEY"] {
+            return value
+        }
         if let plistValue = Bundle.main.object(forInfoDictionaryKey: "NaviariAPIKey") as? String {
             return plistValue
         }

@@ -34,6 +34,9 @@
 "participate_cta_hint" = "Share your live GPS with the race team.";
 "participate_info_title" = "GPS Broadcast Help";
 "participate_info_body" = "Provide boat and contact details plus the code from the race office, then start the GPS broadcast so spectators and race management can see your live position.";
+"participate_code_required" = "Enter the full participation code.";
+"participate_start_missing" = "Missing start identifier.";
+"participate_code_reuse_notice" = "Code already on file from this race – you can start broadcasting immediately.";
 "error_invalid_url" = "Invalid server URL.";
 "error_invalid_response" = "Server responded with an error.";
 "error_decoding_failed" = "App could not read the response.";
@@ -42,3 +45,4 @@
 "error_server_without_message" = "Server error (%d)";
 "race_unnamed_placeholder" = "Unnamed race";
 "start_status_unknown" = "Unknown";
+"done_button" = "Done";
