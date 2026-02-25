@@ -420,7 +420,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.2;
-				NAVIARI_API_BASE = "http://192.168.86.56:3000";
+				NAVIARI_API_BASE = "http://192.168.1.204:3000";
 				NAVIARI_API_KEY = "dev-sailing-api-key";
 				PRODUCT_BUNDLE_IDENTIFIER = "fi.mobiari.Naviari-IOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
