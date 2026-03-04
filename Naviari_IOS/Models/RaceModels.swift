@@ -1,5 +1,6 @@
 import Foundation
 
+/// API payload describing a race series plus its nested race objects.
 struct RaceSeries: Decodable, Identifiable {
     let rawId: String?
     let name: String?
@@ -49,6 +50,7 @@ struct RaceSeries: Decodable, Identifiable {
     }
 }
 
+/// Backend race object (contains metadata and optional embedded starts).
 struct Race: Decodable, Identifiable, Equatable, Hashable {
     let rawId: String?
     let name: String?
@@ -79,6 +81,7 @@ struct Race: Decodable, Identifiable, Equatable, Hashable {
     }
 }
 
+/// Individual start within a race (class information, schedule, status).
 struct RaceStart: Decodable, Identifiable, Equatable, Hashable {
     let rawId: String?
     let name: String?
@@ -105,6 +108,7 @@ struct RaceStart: Decodable, Identifiable, Equatable, Hashable {
     }
 }
 
+/// Convenience wrapper used by the UI to tag a race with its parent series info.
 struct RaceSummary: Identifiable, Equatable, Hashable {
     let race: Race
     let seriesName: String?
@@ -116,6 +120,7 @@ struct RaceSummary: Identifiable, Equatable, Hashable {
 }
 
 extension Race {
+    /// Returns the provided race name or a localization-backed placeholder when missing.
     var nameOrFallback: String {
         if let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty {
             return trimmed
