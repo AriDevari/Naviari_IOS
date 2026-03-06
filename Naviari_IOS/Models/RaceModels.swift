@@ -8,6 +8,7 @@ struct RaceSeries: Decodable, Identifiable {
     let status: String?
     let slug: String?
     let races: [Race]
+    let imageId: String?
 
     var id: String {
         rawId ?? slug ?? UUID().uuidString
@@ -20,6 +21,7 @@ struct RaceSeries: Decodable, Identifiable {
         case status
         case slug
         case races
+        case imageId = "image_id"
     }
 
     init(
@@ -28,7 +30,8 @@ struct RaceSeries: Decodable, Identifiable {
         description: String?,
         status: String?,
         slug: String?,
-        races: [Race]
+        races: [Race],
+        imageId: String?
     ) {
         self.rawId = rawId
         self.name = name
@@ -36,6 +39,7 @@ struct RaceSeries: Decodable, Identifiable {
         self.status = status
         self.slug = slug
         self.races = races
+        self.imageId = imageId
     }
 
     init(from decoder: Decoder) throws {
@@ -46,7 +50,8 @@ struct RaceSeries: Decodable, Identifiable {
         let status = try container.decodeIfPresent(String.self, forKey: .status)
         let slug = try container.decodeIfPresent(String.self, forKey: .slug)
         let races = try container.decodeIfPresent([Race].self, forKey: .races) ?? []
-        self.init(rawId: rawId, name: name, description: description, status: status, slug: slug, races: races)
+        let imageId = try container.decodeIfPresent(String.self, forKey: .imageId)
+        self.init(rawId: rawId, name: name, description: description, status: status, slug: slug, races: races, imageId: imageId)
     }
 }
 
@@ -62,6 +67,7 @@ struct Race: Decodable, Identifiable, Equatable, Hashable {
     let slug: String?
     let parentSeriesId: String?
     let starts: [RaceStart]?
+    let imageId: String?
 
     var id: String {
         rawId ?? slug ?? UUID().uuidString
@@ -78,6 +84,7 @@ struct Race: Decodable, Identifiable, Equatable, Hashable {
         case slug
         case parentSeriesId
         case starts
+        case imageId = "image_id"
     }
 }
 
@@ -91,6 +98,7 @@ struct RaceStart: Decodable, Identifiable, Equatable, Hashable {
     let description: String?
     let className: String?
     let slug: String?
+    let imageId: String?
 
     var id: String {
         rawId ?? slug ?? UUID().uuidString
@@ -105,6 +113,7 @@ struct RaceStart: Decodable, Identifiable, Equatable, Hashable {
         case description
         case className = "class_name"
         case slug
+        case imageId = "image_id"
     }
 }
 
@@ -113,9 +122,18 @@ struct RaceSummary: Identifiable, Equatable, Hashable {
     let race: Race
     let seriesName: String?
     let seriesId: String?
+    let seriesImageId: String?
+    let raceImageId: String?
 
     var id: String {
         race.id
+    }
+
+    var preferredImageId: String? {
+        if let trimmed = normalizedIdentifier(seriesImageId) {
+            return trimmed
+        }
+        return normalizedIdentifier(raceImageId)
     }
 }
 
@@ -127,4 +145,10 @@ extension Race {
         }
         return slug ?? NSLocalizedString("race_unnamed_placeholder", comment: "Unnamed race")
     }
+}
+
+private func normalizedIdentifier(_ value: String?) -> String? {
+    guard let value else { return nil }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
 }

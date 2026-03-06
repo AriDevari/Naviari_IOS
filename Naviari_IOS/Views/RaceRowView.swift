@@ -13,7 +13,8 @@ struct RaceRowView: View {
     let isSelected: Bool
 
     var body: some View {
-        HStack {
+        HStack(spacing: 16) {
+            RaceAvatarView(summary: summary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(summary.race.nameOrFallback)
                     .font(.headline)

@@ -87,7 +87,9 @@ final class RaceBrowserViewModel: ObservableObject {
                     RaceSummary(
                         race: race,
                         seriesName: seriesItem.name,
-                        seriesId: seriesItem.rawId ?? seriesItem.slug
+                        seriesId: seriesItem.rawId ?? seriesItem.slug,
+                        seriesImageId: seriesItem.imageId,
+                        raceImageId: race.imageId
                     )
                 }
             }

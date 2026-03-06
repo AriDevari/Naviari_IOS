@@ -13,20 +13,24 @@ struct RaceStartRowView: View {
     let timeText: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(start.name?.isEmpty == false ? start.name! : NSLocalizedString("race_unnamed_placeholder", comment: ""))
-                .font(.subheadline)
-                .bold()
-            if let timeText {
-                Text(timeText)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 16) {
+            StartAvatarView(start: start)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(start.name?.isEmpty == false ? start.name! : NSLocalizedString("race_unnamed_placeholder", comment: ""))
+                    .font(.subheadline)
+                    .bold()
+                if let timeText {
+                    Text(timeText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let status = start.status {
+                    Text(status)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
-            if let status = start.status {
-                Text(status)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            Spacer()
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
