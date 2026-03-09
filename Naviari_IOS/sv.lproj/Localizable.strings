@@ -1,7 +1,10 @@
 "welcome_message" = "Välkommen till Naviari-systemet. Den här appen är för tävlingsledare och båtar som deltar i tävlingar. Börja med att välja tävling och start.";
+"welcome_spectator_hint" = "Du kan följa tävlingar på [naviari.org](https://naviari.org).";
 "select_race_button" = "Välj en tävling";
 "open_races_button" = "Öppna tävlingar";
 "races_title" = "Tävlingar";
+"race_title" = "Tävling";
+"start_title" = "Start";
 "races_loading" = "Hämtar tävlingar…";
 "races_error" = "Det gick inte att hämta tävlingar.";
 "races_retry_button" = "Försök igen";

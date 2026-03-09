@@ -14,9 +14,12 @@ struct RaceDetailScreen: View {
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
 
     var body: some View {
-        ScreenContainer(showBack: true, title: Text(summary.race.nameOrFallback)) {
+        ScreenContainer(showBack: true, title: Text("race_title")) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    Text(summary.race.nameOrFallback)
+                        .font(AppFont.textStyle(.title2, weight: .semibold))
+
                     if let dateText = viewModel.formattedDate(for: summary.race) {
                         LabeledContent {
                             Text(dateText)
@@ -27,11 +30,11 @@ struct RaceDetailScreen: View {
                     }
 
                     LabeledContent {
-                    Text(summary.race.status ?? NSLocalizedString("start_status_unknown", comment: ""))
-                } label: {
-                    Text("race_status_label")
-                        .foregroundStyle(.secondary)
-                }
+                        Text(summary.race.status ?? NSLocalizedString("start_status_unknown", comment: ""))
+                    } label: {
+                        Text("race_status_label")
+                            .foregroundStyle(.secondary)
+                    }
 
                     if let description = summary.race.description, !description.isEmpty {
                         LabeledContent {
@@ -45,7 +48,7 @@ struct RaceDetailScreen: View {
                     Divider().padding(.vertical, 8)
 
                     Text("race_starts_title")
-                        .font(.headline)
+                        .font(AppFont.textStyle(.headline))
 
                     if viewModel.isLoadingStarts(for: summary) && viewModel.starts(for: summary).isEmpty {
                         ProgressView()

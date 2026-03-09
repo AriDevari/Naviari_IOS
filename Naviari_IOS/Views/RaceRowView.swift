@@ -17,11 +17,11 @@ struct RaceRowView: View {
             RaceAvatarView(summary: summary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(summary.race.nameOrFallback)
-                    .font(.headline)
+                    .font(AppFont.textStyle(.headline))
                     .foregroundStyle(.primary)
                 if let seriesName = summary.seriesName {
                     Text(seriesName)
-                        .font(.subheadline)
+                        .font(AppFont.textStyle(.subheadline))
                         .foregroundStyle(.secondary)
                 }
             }

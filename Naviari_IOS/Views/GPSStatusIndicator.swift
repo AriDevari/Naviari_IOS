@@ -110,7 +110,7 @@ private struct GPSStatusDetailView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(accuracyText)
-                        .font(.system(size: 48, weight: .semibold, design: .rounded))
+                        .font(AppFont.fixed(48, weight: .semibold))
                         .minimumScaleFactor(0.5)
                         .multilineTextAlignment(.trailing)
                 }
@@ -137,6 +137,7 @@ private struct GPSStatusDetailView: View {
                     Button("close_button") {
                         dismiss()
                     }
+                    .font(AppUI.buttonFont)
                 }
             }
         }

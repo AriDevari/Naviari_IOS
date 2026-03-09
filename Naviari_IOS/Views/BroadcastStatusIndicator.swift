@@ -66,6 +66,9 @@ private struct BroadcastStatusDetailView: View {
     @ObservedObject var uploader: BoatMetricsUploader
     @Environment(\.dismiss) private var dismiss
     @State private var showStopConfirmation = false
+    @State private var plink = false
+    @State private var breathing = false
+    @State private var lastAttemptCount = 0
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { timeline in
@@ -73,26 +76,29 @@ private struct BroadcastStatusDetailView: View {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        statusHeader(state: state)
-                        applicationStatusRow(isBroadcasting: uploader.isBroadcasting)
-
                         if uploader.isBroadcasting {
                             BroadcastDiagnosticsCard(
+                                state: state,
+                                plink: plink,
+                                breathing: breathing,
                                 lastSample: uploader.lastAcceptedSample,
                                 lastSendAt: uploader.lastSendAt,
                                 backlogSeconds: uploader.backlogSeconds,
                                 retryCount: uploader.retryCount,
                                 lastErrorAt: uploader.lastErrorAt,
-                                errorMessage: uploader.lastErrorMessage,
-                                statusColor: state.color
+                                errorMessage: uploader.lastErrorMessage
                             )
 
-                            Button("broadcast_stop_button") {
+                            Button {
                                 showStopConfirmation = true
+                            } label: {
+                                Text("broadcast_stop_button")
+                                    .font(AppUI.buttonFont)
+                                    .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
                             }
+                            .padding(.top, 8)
                             .buttonStyle(.borderedProminent)
                             .tint(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
                             BroadcastDiagnosticsPlaceholder()
                         }
@@ -105,10 +111,11 @@ private struct BroadcastStatusDetailView: View {
                         Button("close_button") {
                             dismiss()
                         }
+                        .font(AppUI.buttonFont)
                     }
                 }
             }
-            .presentationDetents([.fraction(0.45), .medium])
+            .presentationDetents([.fraction(0.6), .large])
         }
         .alert(
             Text("broadcast_stop_confirm_title"),
@@ -121,27 +128,22 @@ private struct BroadcastStatusDetailView: View {
         } message: {
             Text("broadcast_stop_confirm_message")
         }
-    }
-
-    private func statusHeader(state: BroadcastIndicatorState) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(state.color)
-                .frame(width: 12, height: 12)
-            Text(state.label)
-                .font(.headline)
+        .onAppear {
+            lastAttemptCount = uploader.sendAttemptCount
+            breathing = true
+        }
+        .onChange(of: uploader.sendAttemptCount) { newCount in
+            if newCount > lastAttemptCount {
+                lastAttemptCount = newCount
+                triggerPlink()
+            }
         }
     }
 
-    private func applicationStatusRow(isBroadcasting: Bool) -> some View {
-        HStack {
-            Text("broadcast_status_app_label")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(isBroadcasting ? "broadcast_status_app_on" : "broadcast_status_app_off")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isBroadcasting ? .green : .secondary)
+    private func triggerPlink() {
+        plink = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            plink = false
         }
     }
 }
@@ -162,19 +164,6 @@ private enum BroadcastIndicatorState: Equatable {
             return .orange
         case .red:
             return .red
-        }
-    }
-
-    var label: LocalizedStringKey {
-        switch self {
-        case .inactive:
-            return "broadcast_indicator_state_inactive"
-        case .green:
-            return "broadcast_indicator_state_green"
-        case .yellow:
-            return "broadcast_indicator_state_yellow"
-        case .red:
-            return "broadcast_indicator_state_red"
         }
     }
 
@@ -199,6 +188,11 @@ private enum BroadcastIndicatorState: Equatable {
     static func evaluate(uploader: BoatMetricsUploader, now: Date) -> BroadcastIndicatorState {
         guard uploader.isBroadcasting else {
             return .inactive
+        }
+
+        // Treat initial startup as healthy until the first batch has been sent.
+        if uploader.lastSendAt == nil {
+            return .green
         }
 
         let locationAge = uploader.lastAcceptedSample.map { now.timeIntervalSince($0.timestamp) }
@@ -242,50 +236,56 @@ private enum BroadcastIndicatorState: Equatable {
 
 private struct BroadcastDiagnosticsPlaceholder: View {
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "antenna.radiowaves.left.and.right")
-                .font(.title3)
+        VStack(alignment: .leading, spacing: 4) {
+            Text("broadcast_status_inactive")
+                .font(AppFont.textStyle(.headline))
+            Text("broadcast_status_placeholder")
+                .font(AppFont.textStyle(.subheadline))
                 .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("broadcast_status_inactive")
-                    .font(.headline)
-                Text("broadcast_status_placeholder")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.secondary.opacity(0.2))
-        )
     }
 }
 
 private struct BroadcastDiagnosticsCard: View {
+    let state: BroadcastIndicatorState
+    let plink: Bool
+    let breathing: Bool
     let lastSample: BoatSample?
     let lastSendAt: Date?
     let backlogSeconds: Int
     let retryCount: Int
     let lastErrorAt: Date?
     let errorMessage: String?
-    let statusColor: Color
+    private let iconSize: CGFloat = 28
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
-                    .foregroundStyle(statusColor)
-                    .font(.title2)
+                ZStack {
+                    Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: iconSize, height: iconSize)
+                        .foregroundStyle(state.color)
+                        .brightness(plink ? 0.25 : 0)
+                        .scaleEffect(plink ? 1.12 : 1.0)
+                        .animation(.easeOut(duration: 0.22), value: plink)
+
+                    if state == .green {
+                        Circle()
+                            .stroke(state.color.opacity(0.55), lineWidth: 2)
+                            .frame(width: iconSize, height: iconSize)
+                            .scaleEffect(breathing ? 1.25 : 1.02)
+                            .opacity(breathing ? 0.0 : 0.85)
+                            .animation(.easeOut(duration: 1.1).repeatForever(autoreverses: false), value: breathing)
+                    }
+                }
+                .frame(width: iconSize, height: iconSize)
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text("broadcast_status_active")
-                        .font(.headline)
-                    Text("broadcast_status_active_subtitle")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(AppFont.textStyle(.headline))
                 }
-                Spacer()
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -310,47 +310,30 @@ private struct BroadcastDiagnosticsCard: View {
             }
 
             if let errorMessage {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("broadcast_status_error_prefix")
+                        .font(AppFont.textStyle(.subheadline, weight: .semibold))
                         .foregroundStyle(.red)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("broadcast_status_error_prefix")
-                            .font(.subheadline)
-                            .bold()
-                        Text(errorMessage)
-                            .font(.footnote)
-                    }
+                    Text(errorMessage)
+                        .font(AppFont.textStyle(.footnote))
+                        .foregroundStyle(.red)
                 }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.red.opacity(0.1))
-                )
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.thinMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.primary.opacity(0.05))
-        )
     }
 
     private var sampleDescription: String {
         guard let lastSample else {
             return NSLocalizedString("broadcast_status_waiting_sample", comment: "")
         }
-        return composeTimeDescription(from: lastSample.timestamp)
+        return DateFormattingHelper.localizedTime(from: lastSample.timestamp)
     }
 
     private var uploadDescription: String {
         guard let lastSendAt else {
             return NSLocalizedString("broadcast_status_waiting_upload", comment: "")
         }
-        return composeTimeDescription(from: lastSendAt)
+        return DateFormattingHelper.relativeTimeString(from: lastSendAt)
     }
 
     private var backlogDescription: String {
@@ -377,12 +360,6 @@ private struct BroadcastDiagnosticsCard: View {
         return countString
     }
 
-    private func composeTimeDescription(from date: Date) -> String {
-        let relative = DateFormattingHelper.relativeTimeString(from: date)
-        let absolute = DateFormattingHelper.localizedShortDateTime(from: date)
-        return "\(relative) • \(absolute)"
-    }
-
     private static let durationFormatter: DateComponentsFormatter = {
         let formatter = DateComponentsFormatter()
         formatter.allowedUnits = [.minute, .second]
@@ -397,13 +374,13 @@ private struct BroadcastDiagnosticsRow: View {
     let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: 12) {
             Text(titleKey)
-                .font(.caption)
                 .foregroundStyle(.secondary)
+            Spacer()
             Text(value)
-                .font(.body)
+                .fontWeight(.medium)
+                .multilineTextAlignment(.trailing)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

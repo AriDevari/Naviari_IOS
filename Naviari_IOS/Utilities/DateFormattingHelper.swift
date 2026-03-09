@@ -39,6 +39,14 @@ enum DateFormattingHelper {
         return formatter
     }()
 
+    private static let timeOnlyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateStyle = .none
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+
     /// Parses an ISO8601 string and returns a localized date (optionally with time) for display in lists.
     static func localizedDateString(from value: String?, includeTime: Bool) -> String? {
         guard let value else { return nil }
@@ -60,6 +68,12 @@ enum DateFormattingHelper {
     static func localizedShortDateTime(from date: Date) -> String {
         shortDateTimeFormatter.locale = Locale.current
         return shortDateTimeFormatter.string(from: date)
+    }
+
+    /// Formats a date using the user’s locale with time only.
+    static func localizedTime(from date: Date) -> String {
+        timeOnlyFormatter.locale = Locale.current
+        return timeOnlyFormatter.string(from: date)
     }
 
     /// Attempts to parse backend date strings (with or without fractional seconds) plus legacy date-only values.

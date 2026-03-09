@@ -18,6 +18,7 @@ struct ErrorStateView: View {
             Text(message.isEmpty ? NSLocalizedString("races_error", comment: "") : message)
                 .foregroundStyle(.red)
             Button(buttonTitleKey, action: action)
+                .font(AppUI.buttonFont)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

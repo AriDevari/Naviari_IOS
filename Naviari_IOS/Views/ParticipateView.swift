@@ -40,6 +40,7 @@ struct ParticipateView: View {
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
     @Environment(\.dismiss) private var dismiss
     private let maxCodeValidationAttempts = 5
+    private let inputContentFont = AppFont.fixed(21)
 
     var body: some View {
         ScreenContainer(
@@ -58,7 +59,7 @@ struct ParticipateView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text(start.name ?? raceSummary.race.nameOrFallback)
-                        .font(.headline)
+                        .font(AppFont.textStyle(.headline))
 
                     formFields
 
@@ -70,28 +71,21 @@ struct ParticipateView: View {
                     Button(action: { Task { await submitBroadcastRequest() } }) {
                         if isSubmitting {
                             ProgressView()
+                                .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
                         } else {
-                            VStack(spacing: 12) {
-                                Circle()
-                                    .fill(Color.accentColor)
-                                    .frame(width: 140, height: 140)
-                                    .overlay(
-                                        Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
-                                            .font(.system(size:120))
-                                            .foregroundStyle(.white)
-                                            .backgroundStyle(.yellow)
-                                    )
-
-                                Text("participate_cta_hint")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
+                            Text("participate_button")
+                                .font(AppUI.buttonFont)
+                                .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderedProminent)
                     .padding(.top, 16)
                     .disabled(isBroadcastActionDisabled)
+
+                    Text("participate_cta_hint")
+                        .font(AppFont.textStyle(.footnote))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .padding()
             }
@@ -113,6 +107,7 @@ struct ParticipateView: View {
                 Button("done_button") {
                     focusedField = nil
                 }
+                .font(AppUI.buttonFont)
             }
         }
     }
@@ -135,7 +130,7 @@ struct ParticipateView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("participate_color_label")
-                        .font(.subheadline)
+                        .font(AppFont.textStyle(.subheadline))
                         .foregroundStyle(.secondary)
                     ColorPicker("participate_color_label", selection: $selectedColor)
                         .labelsHidden()
@@ -152,10 +147,11 @@ struct ParticipateView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Text(titleKey)
-                    .font(.subheadline)
+                    .font(AppFont.textStyle(.subheadline))
                     .foregroundStyle(.secondary)
             }
             TextField(placeholder, text: text)
+                .font(inputContentFont)
                 .textFieldStyle(.roundedBorder)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,9 +160,10 @@ struct ParticipateView: View {
     private func decimalInputField(titleKey: LocalizedStringKey, text: Binding<String>, placeholder: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(titleKey)
-                .font(.subheadline)
+                .font(AppFont.textStyle(.subheadline))
                 .foregroundStyle(.secondary)
             TextField(placeholder, text: text)
+                .font(inputContentFont)
                 .keyboardType(.decimalPad)
                 .textInputAutocapitalization(.none)
                 .textFieldStyle(.roundedBorder)
@@ -481,18 +478,20 @@ struct ParticipateView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 Text("participate_code_modal_message")
-                    .font(.subheadline)
+                    .font(AppFont.textStyle(.subheadline))
                     .foregroundStyle(.secondary)
 
                 HStack {
                     TextField("participate_code_prefix", text: $codePrefix)
+                        .font(inputContentFont)
                         .textFieldStyle(.roundedBorder)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     Text("-")
-                        .font(.title2)
+                        .font(AppFont.textStyle(.title2))
                         .foregroundStyle(.secondary)
                     TextField("participate_code_suffix", text: $codeSuffix)
+                        .font(inputContentFont)
                         .textFieldStyle(.roundedBorder)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -501,7 +500,7 @@ struct ParticipateView: View {
                 if let codeValidationError {
                     Text(codeValidationError)
                         .foregroundStyle(.red)
-                        .font(.footnote)
+                        .font(AppFont.textStyle(.footnote))
                 }
 
                 if hasCodeAttemptsRemaining {
@@ -511,11 +510,11 @@ struct ParticipateView: View {
                             codeAttemptsRemaining
                         )
                     )
-                    .font(.footnote)
+                    .font(AppFont.textStyle(.footnote))
                     .foregroundStyle(.secondary)
                 } else {
                     Text("participate_code_attempts_exhausted")
-                        .font(.footnote)
+                        .font(AppFont.textStyle(.footnote))
                         .foregroundStyle(.red)
                 }
 
@@ -527,6 +526,7 @@ struct ParticipateView: View {
                             .frame(maxWidth: .infinity)
                     } else {
                         Text("participate_code_verify_button")
+                            .font(AppUI.buttonFont)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -536,6 +536,7 @@ struct ParticipateView: View {
                 Button("back_button") {
                     dismiss()
                 }
+                .font(AppUI.buttonFont)
                 .frame(maxWidth: .infinity)
 
                 Spacer()
@@ -600,6 +601,7 @@ private struct InfoHelpView: View {
                     Button("close_button") {
                         dismiss()
                     }
+                    .font(AppUI.buttonFont)
                 }
             }
         }
@@ -635,7 +637,7 @@ struct ParticipationSummaryView: View {
                         .fill(Color(hex: colorHex) ?? .gray)
                         .frame(width: 20, height: 20)
                     Text(colorHex)
-                        .font(.caption)
+                        .font(AppFont.textStyle(.caption))
                         .foregroundStyle(.secondary)
                 }
             }

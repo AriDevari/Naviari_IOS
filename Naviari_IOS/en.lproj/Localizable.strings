@@ -1,7 +1,10 @@
 "welcome_message" = "Welcome to use Naviari system. This app is for race managers and boats participating in races. Please start by selecting the race and start.";
+"welcome_spectator_hint" = "You can follow races at [naviari.org](https://naviari.org).";
 "select_race_button" = "Select a race";
 "open_races_button" = "Open races";
 "races_title" = "Races";
+"race_title" = "Race";
+"start_title" = "Start";
 "races_loading" = "Loading races…";
 "races_error" = "Couldn't load races.";
 "races_retry_button" = "Try again";

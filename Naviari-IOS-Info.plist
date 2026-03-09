@@ -12,6 +12,10 @@
 	<array>
 		<string>fi.mobiari.naviari-ios.boatmetrics.flush</string>
 	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/Nunito-Regular.ttf</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

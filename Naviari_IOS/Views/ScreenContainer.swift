@@ -35,6 +35,7 @@ struct ScreenContainer<Content: View>: View {
                     if showBack {
                         Button(action: { dismiss() }) {
                             Label("back_button", systemImage: "chevron.left")
+                                .font(AppUI.buttonFont)
                                 .labelStyle(.titleAndIcon)
                         }
                     }
@@ -45,7 +46,7 @@ struct ScreenContainer<Content: View>: View {
                 }
 
                 title
-                    .font(.headline)
+                    .font(AppFont.textStyle(.headline))
             }
             .padding(.horizontal)
             .padding(.vertical, 12)

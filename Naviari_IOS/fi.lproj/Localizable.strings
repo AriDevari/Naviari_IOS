@@ -1,7 +1,10 @@
 "welcome_message" = "Tervetuloa käyttämään Naviari-järjestelmää. Tämä sovellus on kilpailun järjestäjille ja kilpailuihin osallistuville veneille. Aloita valitsemalla kilpailu ja lähtö.";
+"welcome_spectator_hint" = "Voit seurata kilpailuja osoitteessa [naviari.org](https://naviari.org)";
 "select_race_button" = "Valitse kilpailu";
 "open_races_button" = "Avaa kilpailut";
 "races_title" = "Kilpailut";
+"race_title" = "Kilpailu";
+"start_title" = "Lähtö";
 "races_loading" = "Ladataan kilpailuja…";
 "races_error" = "Kilpailujen lataus epäonnistui.";
 "races_retry_button" = "Yritä uudelleen";
@@ -41,7 +44,7 @@
 "broadcast_status_active_subtitle" = "Puhelin lähettää GPS-tietoa myös lukittuna.";
 "broadcast_status_inactive" = "Valmistellaan lähetystä";
 "broadcast_status_placeholder" = "Lähetys ei ole käynnissä. Käynnistä se uudelleen tarvittaessa.";
-"broadcast_status_last_sample" = "Uusin GPS-näyte";
+"broadcast_status_last_sample" = "Viimeisin GPS-sijainti";
 "broadcast_status_last_upload" = "Viimeisin lähetys";
 "broadcast_status_waiting_sample" = "Odotetaan GPS-näytettä";
 "broadcast_status_waiting_upload" = "Odotetaan ensimmäistä lähetystä";

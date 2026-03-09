@@ -22,7 +22,7 @@ struct RaceAvatarView: View {
                 Circle()
                     .fill(Color.blue.opacity(0.15))
                 Text(initials)
-                    .font(.headline)
+                    .font(AppFont.textStyle(.headline))
                     .foregroundStyle(.blue)
             }
         }

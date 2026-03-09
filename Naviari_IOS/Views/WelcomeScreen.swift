@@ -13,7 +13,7 @@ struct WelcomeScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
+            Spacer(minLength: 24)
 
             Image("AppLogo")
                 .resizable()
@@ -24,7 +24,7 @@ struct WelcomeScreen: View {
             Spacer()
 
             Text("welcome_message")
-                .font(.title3)
+                .font(AppFont.textStyle(.title3))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
@@ -32,13 +32,21 @@ struct WelcomeScreen: View {
 
             Button(action: onOpenRaces) {
                 Text("open_races_button")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
+                    .font(AppUI.buttonFont)
+                    .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
             }
             .buttonStyle(.borderedProminent)
             .padding(.horizontal, 48)
+            .offset(y: -20)
 
-            Spacer()
+            Text(.init(NSLocalizedString("welcome_spectator_hint", comment: "")))
+                .font(AppFont.textStyle(.footnote))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.top, 12)
+                .padding(.horizontal, 32)
+
+            Spacer(minLength: 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 24)

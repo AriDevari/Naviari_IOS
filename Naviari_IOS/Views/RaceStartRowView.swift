@@ -17,16 +17,16 @@ struct RaceStartRowView: View {
             StartAvatarView(start: start)
             VStack(alignment: .leading, spacing: 4) {
                 Text(start.name?.isEmpty == false ? start.name! : NSLocalizedString("race_unnamed_placeholder", comment: ""))
-                    .font(.subheadline)
+                    .font(AppFont.textStyle(.subheadline))
                     .bold()
                 if let timeText {
                     Text(timeText)
-                        .font(.footnote)
+                        .font(AppFont.textStyle(.footnote))
                         .foregroundStyle(.secondary)
                 }
                 if let status = start.status {
                     Text(status)
-                        .font(.footnote)
+                        .font(AppFont.textStyle(.footnote))
                         .foregroundStyle(.secondary)
                 }
             }

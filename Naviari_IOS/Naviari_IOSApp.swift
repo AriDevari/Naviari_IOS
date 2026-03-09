@@ -7,6 +7,12 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
+
+enum AppUI {
+    static let primaryButtonHeight: CGFloat = 66
+    static let buttonFont: Font = AppFont.fixed(21, weight: .semibold)
+}
 
 /// Main entry point that wires together shared environment objects + background schedulers.
 @main
@@ -17,6 +23,7 @@ struct Naviari_IOSApp: App {
 
     init() {
         BoatMetricsBackgroundScheduler.shared.register()
+        configureTypographyAppearance()
     }
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -34,6 +41,7 @@ struct Naviari_IOSApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(\.font, AppFont.textStyle(.body))
                 .environmentObject(locationManager)
                 .environmentObject(boatMetricsUploader)
                 .onAppear {
@@ -48,5 +56,15 @@ struct Naviari_IOSApp: App {
                 BoatMetricsBackgroundScheduler.shared.scheduleIfNeeded()
             }
         }
+    }
+
+    private func configureTypographyAppearance() {
+        let titleFont = UIFont(name: "Nunito-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17, weight: .semibold)
+        let largeTitleFont = UIFont(name: "Nunito-Regular", size: 34) ?? UIFont.systemFont(ofSize: 34, weight: .bold)
+        let barButtonFont = UIFont(name: "Nunito-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17)
+
+        UINavigationBar.appearance().titleTextAttributes = [.font: titleFont]
+        UINavigationBar.appearance().largeTitleTextAttributes = [.font: largeTitleFont]
+        UIBarButtonItem.appearance().setTitleTextAttributes([.font: barButtonFont], for: .normal)
     }
 }

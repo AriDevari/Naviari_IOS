@@ -17,10 +17,8 @@ struct StartDetailScreen: View {
     @State private var metadataHeight: CGFloat = 0
     @State private var showStopConfirmation = false
 
-    private let participateButtonHeight: CGFloat = 88
-
     var body: some View {
-        ScreenContainer(showBack: true, title: Text(start.name ?? raceSummary.race.nameOrFallback)) {
+        ScreenContainer(showBack: true, title: Text("start_title")) {
             GeometryReader { proxy in
                 let scrollHeight = metadataSectionHeight(for: proxy.size.height)
                 let spacerHeight = metricsUploader.isBroadcasting
@@ -30,6 +28,9 @@ struct StartDetailScreen: View {
                 VStack(spacing: 24) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
+                            Text(start.name ?? raceSummary.race.nameOrFallback)
+                                .font(AppFont.textStyle(.title2, weight: .semibold))
+
                             LabeledContent {
                                 Text(viewModel.formattedStartTime(for: start) ?? "—")
                             } label: {
@@ -47,9 +48,6 @@ struct StartDetailScreen: View {
                             if let description = start.description, !description.isEmpty {
                                 Text(description)
                                     .padding(.top, 8)
-                            } else {
-                                Text("race_selection_placeholder")
-                                    .foregroundStyle(.secondary)
                             }
                         }
                         .padding()
@@ -75,9 +73,9 @@ struct StartDetailScreen: View {
                     } else {
                         Button(action: onParticipate) {
                             Text("participate_button")
-                                .font(.headline)
+                                .font(AppUI.buttonFont)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: participateButtonHeight)
+                                .frame(minHeight: AppUI.primaryButtonHeight)
                         }
                         .buttonStyle(.borderedProminent)
                         .padding(.horizontal)
@@ -115,12 +113,15 @@ struct StartDetailScreen: View {
                     .foregroundStyle(.secondary)
             }
 
-            Button("broadcast_stop_button") {
+            Button {
                 showStopConfirmation = true
+            } label: {
+                Text("broadcast_stop_button")
+                    .font(AppUI.buttonFont)
+                    .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal)
     }
@@ -133,7 +134,7 @@ struct StartDetailScreen: View {
 
     private func buttonSpacerHeight(for containerHeight: CGFloat, scrollHeight: CGFloat) -> CGFloat {
         let targetCenter = containerHeight / 2
-        let offset = targetCenter - scrollHeight - (participateButtonHeight / 2)
+        let offset = targetCenter - scrollHeight - (AppUI.primaryButtonHeight / 2)
         return max(0, offset)
     }
 }
