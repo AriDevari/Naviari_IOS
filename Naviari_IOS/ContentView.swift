@@ -12,9 +12,10 @@ struct ContentView: View {
     @StateObject private var viewModel = RaceBrowserViewModel()
     @State private var navigationPath: [AppRoute] = []
     @EnvironmentObject private var locationManager: LocationDataManager
+    @EnvironmentObject private var metricsUploader: BoatMetricsUploader
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack {
             NavigationStack(path: $navigationPath) {
                 WelcomeScreen {
                     navigationPath.append(.races)
@@ -38,7 +39,13 @@ struct ContentView: View {
                     }
                 }
             }
+            BroadcastStatusButton(uploader: metricsUploader)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(.leading, 24)
+                .padding(.bottom, 24)
+
             GPSStatusButton(locationManager: locationManager)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 24)
                 .padding(.bottom, 24)
         }

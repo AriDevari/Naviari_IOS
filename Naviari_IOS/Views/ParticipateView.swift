@@ -628,12 +628,6 @@ private struct BroadcastStatusCard: View {
                     titleKey: "broadcast_status_last_sample",
                     value: sampleDescription
                 )
-                if let accuracyDescription {
-                    BroadcastStatusRow(
-                        titleKey: "gps_status_accuracy",
-                        value: accuracyDescription
-                    )
-                }
                 BroadcastStatusRow(
                     titleKey: "broadcast_status_last_upload",
                     value: uploadDescription
@@ -698,13 +692,6 @@ private struct BroadcastStatusCard: View {
         return Self.composeTimeDescription(from: lastSendAt)
     }
 
-    private var accuracyDescription: String? {
-        guard let accuracy = lastSample?.accuracy, accuracy >= 0 else { return nil }
-        let measurement = Measurement(value: accuracy, unit: UnitLength.meters)
-        BroadcastStatusCard.measurementFormatter.locale = Locale.current
-        return BroadcastStatusCard.measurementFormatter.string(from: measurement)
-    }
-
     private var backlogDescription: String {
         if backlogSeconds <= 0 {
             return NSLocalizedString("broadcast_status_backlog_clear", comment: "")
@@ -734,14 +721,6 @@ private struct BroadcastStatusCard: View {
         let absolute = DateFormattingHelper.localizedShortDateTime(from: date)
         return "\(relative) • \(absolute)"
     }
-
-    private static let measurementFormatter: MeasurementFormatter = {
-        let formatter = MeasurementFormatter()
-        formatter.unitOptions = .providedUnit
-        formatter.numberFormatter.maximumFractionDigits = 0
-        formatter.numberFormatter.roundingMode = .halfUp
-        return formatter
-    }()
 
     private static let durationFormatter: DateComponentsFormatter = {
         let formatter = DateComponentsFormatter()

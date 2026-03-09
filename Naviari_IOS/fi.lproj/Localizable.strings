@@ -51,6 +51,11 @@
 "broadcast_status_backlog_value" = "%@ jonossa";
 "broadcast_status_retry_label" = "Uudelleenyritykset";
 "broadcast_status_retry_count_value" = "%d yritystä";
+"broadcast_status_sheet_title" = "Lähetyksen tila";
+"broadcast_indicator_state_green" = "Lähetys kunnossa";
+"broadcast_indicator_state_yellow" = "Lähetyksessä varoitus";
+"broadcast_indicator_state_red" = "Lähetyksessä ongelma";
+"broadcast_button_accessibility" = "%@";
 "error_invalid_url" = "Virheellinen palvelimen osoite.";
 "error_invalid_response" = "Palvelin vastasi virheellä.";
 "error_decoding_failed" = "Vastausta ei voitu lukea.";
@@ -69,3 +74,8 @@
 "gps_status_waiting" = "Odotetaan GPS-signaalia";
 "gps_status_accessibility" = "GPS-tarkkuus %.1f metriä";
 "gps_status_accuracy" = "Tarkkuus";
+"broadcast_stop_button" = "Pysäytä lähetys";
+"broadcast_stop_confirm_title" = "Pysäytä lähetys";
+"broadcast_stop_confirm_message" = "Haluatko varmasti lopettaa GPS-tiedon lähettämisen?";
+"broadcast_stop_confirm_yes" = "Kyllä";
+"broadcast_stop_confirm_no" = "Ei";

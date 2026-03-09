@@ -51,6 +51,11 @@
 "broadcast_status_backlog_value" = "%@ kvar att skicka";
 "broadcast_status_retry_label" = "Nya försök";
 "broadcast_status_retry_count_value" = "%d försök";
+"broadcast_status_sheet_title" = "Sändningsstatus";
+"broadcast_indicator_state_green" = "Sändningen fungerar";
+"broadcast_indicator_state_yellow" = "Sändningsvarning";
+"broadcast_indicator_state_red" = "Sändningsproblem";
+"broadcast_button_accessibility" = "%@";
 "error_invalid_url" = "Ogiltig serveradress.";
 "error_invalid_response" = "Servern svarade med ett fel.";
 "error_decoding_failed" = "Appen kunde inte läsa svaret.";
@@ -69,3 +74,8 @@
 "gps_status_waiting" = "Väntar på GPS-lås";
 "gps_status_accessibility" = "GPS-noggrannhet %.1f meter";
 "gps_status_accuracy" = "Noggrannhet";
+"broadcast_stop_button" = "Stoppa sändning";
+"broadcast_stop_confirm_title" = "Stoppa sändning";
+"broadcast_stop_confirm_message" = "Är du säker på att du vill sluta skicka GPS-information?";
+"broadcast_stop_confirm_yes" = "Ja";
+"broadcast_stop_confirm_no" = "Nej";

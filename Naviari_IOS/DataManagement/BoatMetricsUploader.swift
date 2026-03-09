@@ -49,6 +49,10 @@ final class BoatMetricsUploader: ObservableObject {
     @Published private(set) var retryCount: Int = 0
     /// Timestamp when the last network error happened.
     @Published private(set) var lastErrorAt: Date?
+    /// Number of batch submissions attempted (success or failure) during the active session.
+    @Published private(set) var sendAttemptCount: Int = 0
+    /// Number of batches successfully accepted by the backend during the active session.
+    @Published private(set) var successfulUploadCount: Int = 0
 
     private let metricsService = BoatMetricsService()
 
@@ -89,6 +93,8 @@ final class BoatMetricsUploader: ObservableObject {
         lastErrorAt = nil
         backlogSeconds = 0
         retryCount = 0
+        sendAttemptCount = 0
+        successfulUploadCount = 0
         activeSession = session
         BoatMetricsBackgroundScheduler.shared.scheduleIfNeeded()
     }
@@ -106,6 +112,8 @@ final class BoatMetricsUploader: ObservableObject {
         lastErrorAt = nil
         backlogSeconds = 0
         retryCount = 0
+        sendAttemptCount = 0
+        successfulUploadCount = 0
         activeSession = nil
         endBackgroundTaskIfNeeded()
         BoatMetricsBackgroundScheduler.shared.cancelScheduledTasks()
@@ -157,6 +165,7 @@ final class BoatMetricsUploader: ObservableObject {
     private func send(rows: [BoatMetricRow], range: (start: Int, end: Int), session: BroadcastSession) {
         guard !rows.isEmpty else { return }
         isSending = true
+        sendAttemptCount += 1
         beginBackgroundTaskIfNeeded()
         Task {
             do {
@@ -176,6 +185,7 @@ final class BoatMetricsUploader: ObservableObject {
                     lastErrorAt = nil
                     pendingRetryRows = []
                     pendingRetryRange = nil
+                    successfulUploadCount += 1
                     pruneBuffer(olderThan: range.end - 60)
                     updateBacklog(latestSecond: latestBufferedSecond())
                     isSending = false

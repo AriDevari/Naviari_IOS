@@ -51,6 +51,11 @@
 "broadcast_status_backlog_value" = "%@ pending";
 "broadcast_status_retry_label" = "Retries";
 "broadcast_status_retry_count_value" = "%d attempts";
+"broadcast_status_sheet_title" = "Broadcast Status";
+"broadcast_indicator_state_green" = "Broadcast healthy";
+"broadcast_indicator_state_yellow" = "Broadcast warning";
+"broadcast_indicator_state_red" = "Broadcast issue";
+"broadcast_button_accessibility" = "%@";
 "error_invalid_url" = "Invalid server URL.";
 "error_invalid_response" = "Server responded with an error.";
 "error_decoding_failed" = "App could not read the response.";
@@ -69,3 +74,8 @@
 "gps_status_waiting" = "Waiting for GPS lock";
 "gps_status_accessibility" = "GPS accuracy %.1f meters";
 "gps_status_accuracy" = "Accuracy";
+"broadcast_stop_button" = "Stop broadcast";
+"broadcast_stop_confirm_title" = "Stop broadcast";
+"broadcast_stop_confirm_message" = "Are you sure you want to stop sending GPS infomation?";
+"broadcast_stop_confirm_yes" = "Yes";
+"broadcast_stop_confirm_no" = "No";
