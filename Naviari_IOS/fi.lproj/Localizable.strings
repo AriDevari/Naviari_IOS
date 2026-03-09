@@ -55,7 +55,11 @@
 "broadcast_indicator_state_green" = "Lähetys kunnossa";
 "broadcast_indicator_state_yellow" = "Lähetyksessä varoitus";
 "broadcast_indicator_state_red" = "Lähetyksessä ongelma";
+"broadcast_indicator_state_inactive" = "Lähetys pois päältä";
 "broadcast_button_accessibility" = "%@";
+"broadcast_status_app_label" = "Sovelluksen tila";
+"broadcast_status_app_on" = "Lähetys PÄÄLLÄ";
+"broadcast_status_app_off" = "Lähetys POIS";
 "error_invalid_url" = "Virheellinen palvelimen osoite.";
 "error_invalid_response" = "Palvelin vastasi virheellä.";
 "error_decoding_failed" = "Vastausta ei voitu lukea.";
@@ -79,3 +83,4 @@
 "broadcast_stop_confirm_message" = "Haluatko varmasti lopettaa GPS-tiedon lähettämisen?";
 "broadcast_stop_confirm_yes" = "Kyllä";
 "broadcast_stop_confirm_no" = "Ei";
+"start_detail_broadcasting_header" = "Kilpaillaan ja lähetetään GPS-sijaintia";

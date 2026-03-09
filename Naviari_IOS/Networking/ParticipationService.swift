@@ -11,6 +11,7 @@ struct ParticipationSubmission: Encodable {
     }
 
     let startId: String
+    let boatId: String?
     let name: String?
     let sailNumber: String?
     let club: String?
@@ -24,16 +25,19 @@ struct ParticipationSubmission: Encodable {
 
     init(
         startId: String,
+        boatId: String? = nil,
         name: String?,
         sailNumber: String?,
         club: String?,
         rating: Double?,
         description: String?,
         displayColor: String?,
+        issueNewBoatSecret: Bool = true,
         dataSource: String = "Naviari iOS",
         updatedBy: String = "ios-app"
     ) {
         self.startId = startId
+        self.boatId = boatId
         self.name = name
         self.sailNumber = sailNumber
         self.club = club
@@ -41,7 +45,7 @@ struct ParticipationSubmission: Encodable {
         self.description = description
         self.displayColor = displayColor
         self.dataSource = dataSource
-        self.issueNewBoatSecret = true
+        self.issueNewBoatSecret = issueNewBoatSecret
         self.updatedBy = updatedBy
         self.boat = BoatPayload(
             name: name,

@@ -55,7 +55,11 @@
 "broadcast_indicator_state_green" = "Broadcast healthy";
 "broadcast_indicator_state_yellow" = "Broadcast warning";
 "broadcast_indicator_state_red" = "Broadcast issue";
+"broadcast_indicator_state_inactive" = "Broadcast off";
 "broadcast_button_accessibility" = "%@";
+"broadcast_status_app_label" = "Application status";
+"broadcast_status_app_on" = "Broadcasting ON";
+"broadcast_status_app_off" = "Broadcasting OFF";
 "error_invalid_url" = "Invalid server URL.";
 "error_invalid_response" = "Server responded with an error.";
 "error_decoding_failed" = "App could not read the response.";
@@ -79,3 +83,4 @@
 "broadcast_stop_confirm_message" = "Are you sure you want to stop sending GPS infomation?";
 "broadcast_stop_confirm_yes" = "Yes";
 "broadcast_stop_confirm_no" = "No";
+"start_detail_broadcasting_header" = "Racing and sending GPS position";

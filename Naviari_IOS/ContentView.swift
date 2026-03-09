@@ -39,10 +39,12 @@ struct ContentView: View {
                     }
                 }
             }
-            BroadcastStatusButton(uploader: metricsUploader)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .padding(.leading, 24)
-                .padding(.bottom, 24)
+            if metricsUploader.isBroadcasting {
+                BroadcastStatusButton(uploader: metricsUploader)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(.leading, 24)
+                    .padding(.bottom, 24)
+            }
 
             GPSStatusButton(locationManager: locationManager)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)

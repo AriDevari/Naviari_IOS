@@ -24,16 +24,17 @@ struct ParticipateView: View {
     @State private var showParticipationInfo = false
     @State private var submissionError: String?
     @State private var isSubmitting = false
-    @State private var submittedSummary: ParticipationSummary?
     @State private var storedToken: String?
     @State private var storedScope: ParticipationScope?
     @State private var storedScopeId: String?
+    @State private var storedRecord: ParticipationRecord?
     @State private var hasPrefilledFields = false
 
     private let service = ParticipationService()
     private let storage = ParticipationStorage.shared
     @FocusState private var focusedField: ParticipationField?
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScreenContainer(
@@ -53,43 +54,38 @@ struct ParticipateView: View {
                     Text(start.name ?? raceSummary.race.nameOrFallback)
                         .font(.headline)
 
-                    if let summary = submittedSummary {
-                        ParticipationSummaryView(summary: summary)
-                        broadcastStatusSection
-                    } else {
-                        formFields
+                    formFields
 
-                        if let submissionError {
-                            Text(submissionError)
-                                .foregroundStyle(.red)
-                        }
-
-                        Button(action: { Task { await submitBroadcastRequest() } }) {
-                            if isSubmitting {
-                                ProgressView()
-                            } else {
-                                VStack(spacing: 12) {
-                                    Circle()
-                                        .fill(Color.accentColor)
-                                        .frame(width: 140, height: 140)
-                                        .overlay(
-                                            Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
-                                                .font(.system(size:120))
-                                                .foregroundStyle(.white)
-                                                .backgroundStyle(.yellow)
-                                        )
-
-                                    Text("participate_cta_hint")
-                                        .font(.footnote)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 16)
-                        .disabled(isBroadcastActionDisabled)
+                    if let submissionError {
+                        Text(submissionError)
+                            .foregroundStyle(.red)
                     }
+
+                    Button(action: { Task { await submitBroadcastRequest() } }) {
+                        if isSubmitting {
+                            ProgressView()
+                        } else {
+                            VStack(spacing: 12) {
+                                Circle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 140, height: 140)
+                                    .overlay(
+                                        Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
+                                            .font(.system(size:120))
+                                            .foregroundStyle(.white)
+                                            .backgroundStyle(.yellow)
+                                    )
+
+                                Text("participate_cta_hint")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 16)
+                    .disabled(isBroadcastActionDisabled)
                 }
                 .padding()
             }
@@ -225,6 +221,7 @@ struct ParticipateView: View {
             return
         }
         isSubmitting = true
+        defer { isSubmitting = false }
         submissionError = nil
         do {
             let token: String
@@ -233,22 +230,31 @@ struct ParticipateView: View {
             } else {
                 guard let code = participationCode else {
                     submissionError = NSLocalizedString("participate_code_required", comment: "")
-                    isSubmitting = false
                     return
                 }
                 token = try await service.exchangeCodeForToken(code)
             }
+            let storedRecordForStart = storedRecordForCurrentStart
+            let existingBoatId = storedRecordForStart?.boatId
             let colorHex = hexString(from: selectedColor)
             let submission = ParticipationSubmission(
                 startId: startId,
+                boatId: existingBoatId,
                 name: trimmedOrNil(name),
                 sailNumber: trimmedOrNil(sailNumber),
                 club: trimmedOrNil(clubText),
                 rating: parsedRatingValue(),
                 description: trimmedOrNil(descriptionText),
-                displayColor: colorHex
+                displayColor: colorHex,
+                issueNewBoatSecret: existingBoatId == nil
             )
             let result = try await service.submitStartEntry(token: token, submission: submission)
+            let mergedResult = ParticipationResult(
+                startEntryId: result.startEntryId ?? storedRecordForStart?.startEntryId,
+                boatId: result.boatId ?? storedRecordForStart?.boatId,
+                boatToken: result.boatToken ?? storedRecordForStart?.boatToken,
+                boatCode: result.boatCode ?? storedRecordForStart?.boatCode
+            )
             let summary = ParticipationSummary(
                 name: submission.name,
                 sailNumber: submission.sailNumber,
@@ -257,14 +263,17 @@ struct ParticipateView: View {
                 description: submission.description,
                 colorHex: colorHex
             )
-            submittedSummary = summary
-            if let startRecord = persistRecords(token: token, result: result, summary: summary) {
-                startBroadcastIfReady(record: startRecord, summaryOverride: summary)
+            if let startRecord = persistRecords(token: token, result: mergedResult, summary: summary) {
+                storedRecord = startRecord
+                let started = startBroadcastIfReady(record: startRecord, summaryOverride: summary)
+                if started {
+                    await MainActor.run { dismiss() }
+                    return
+                }
             }
         } catch {
             submissionError = error.localizedDescription
         }
-        isSubmitting = false
     }
 
     /// Converts the localized rating text field into a decimal value (fallback to en_US when needed).
@@ -321,15 +330,11 @@ struct ParticipateView: View {
     private func loadStoredParticipation() async {
         let record = storage.loadRecord(for: startIdentifier, raceId: raceIdentifier, seriesId: seriesIdentifier)
         guard let record else { return }
+        storedRecord = record
         storedToken = record.token
         storedScope = record.scope
         storedScopeId = record.scopeId
-        if record.scope == .start, record.scopeId == startIdentifier {
-            submittedSummary = record.summary
-            startBroadcastIfReady(record: record)
-        } else {
-            prefillFieldsIfNeeded(from: record.summary)
-        }
+        prefillFieldsIfNeeded(from: record.summary)
     }
 
     /// Populates editable fields using a saved summary only once per start to avoid overwriting user edits.
@@ -433,22 +438,38 @@ struct ParticipateView: View {
         codePrefix = ""
         codeSuffix = ""
         submissionError = nil
-        submittedSummary = nil
+        storedRecord = nil
         storedToken = nil
         storedScope = nil
         storedScopeId = nil
         hasPrefilledFields = false
     }
 
+    private var storedRecordForCurrentStart: ParticipationRecord? {
+        guard let startIdentifier else { return nil }
+        guard let storedRecord else { return nil }
+        guard storedRecord.scope == .start, storedRecord.scopeId == startIdentifier else { return nil }
+        return storedRecord
+    }
+
     /// Boots the uploader once we have a valid start-level token/scope.
-    private func startBroadcastIfReady(record: ParticipationRecord, summaryOverride: ParticipationSummary? = nil) {
+    private func startBroadcastIfReady(record: ParticipationRecord, summaryOverride: ParticipationSummary? = nil) -> Bool {
         guard
             record.scope == .start,
             record.scopeId == startIdentifier,
             let startEntryId = record.startEntryId,
             let startId = startIdentifier
         else {
-            return
+            return false
+        }
+
+        if
+            let activeSession = metricsUploader.activeSession,
+            metricsUploader.isBroadcasting,
+            activeSession.startId == startId,
+            activeSession.startEntryId == startEntryId
+        {
+            return true
         }
         let summary = summaryOverride ?? record.summary
         let session = BroadcastSession(
@@ -462,36 +483,7 @@ struct ParticipateView: View {
             summary: summary
         )
         metricsUploader.startBroadcast(session: session)
-    }
-
-    private var isBroadcastingForCurrentStart: Bool {
-        guard let currentStartId = startIdentifier else { return false }
-        guard
-            metricsUploader.isBroadcasting,
-            let session = metricsUploader.activeSession,
-            let sessionStartId = session.startId
-        else {
-            return false
-        }
-        return sessionStartId == currentStartId
-    }
-
-    @ViewBuilder
-    private var broadcastStatusSection: some View {
-        if isBroadcastingForCurrentStart {
-            BroadcastStatusCard(
-                lastSample: metricsUploader.lastAcceptedSample,
-                lastSendAt: metricsUploader.lastSendAt,
-                backlogSeconds: metricsUploader.backlogSeconds,
-                retryCount: metricsUploader.retryCount,
-                lastErrorAt: metricsUploader.lastErrorAt,
-                errorMessage: metricsUploader.lastErrorMessage
-            )
-            .transition(.opacity)
-        } else if submittedSummary != nil {
-            BroadcastStatusPlaceholder()
-                .transition(.opacity)
-        }
+        return true
     }
 }
 
@@ -520,7 +512,7 @@ private struct InfoHelpView: View {
     }
 }
 
-private struct ParticipationSummaryView: View {
+struct ParticipationSummaryView: View {
     let summary: ParticipationSummary
 
     var body: some View {
@@ -571,180 +563,6 @@ private struct ParticipationSummaryView: View {
         } label: {
             Text(key)
         }
-    }
-}
-
-/// Informational card shown when no broadcast session is active for the selected start.
-private struct BroadcastStatusPlaceholder: View {
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "antenna.radiowaves.left.and.right")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("broadcast_status_inactive")
-                    .font(.headline)
-                Text("broadcast_status_placeholder")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.secondary.opacity(0.2))
-        )
-    }
-}
-
-/// Displays live telemetry/broadcast diagnostics (last sample, backlog, retries, errors).
-private struct BroadcastStatusCard: View {
-    let lastSample: BoatSample?
-    let lastSendAt: Date?
-    let backlogSeconds: Int
-    let retryCount: Int
-    let lastErrorAt: Date?
-    let errorMessage: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.title2)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("broadcast_status_active")
-                        .font(.headline)
-                    Text(statusSubtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                BroadcastStatusRow(
-                    titleKey: "broadcast_status_last_sample",
-                    value: sampleDescription
-                )
-                BroadcastStatusRow(
-                    titleKey: "broadcast_status_last_upload",
-                    value: uploadDescription
-                )
-                BroadcastStatusRow(
-                    titleKey: "broadcast_status_backlog_label",
-                    value: backlogDescription
-                )
-                if retryCount > 0 {
-                    BroadcastStatusRow(
-                        titleKey: "broadcast_status_retry_label",
-                        value: retryDescription
-                    )
-                }
-            }
-
-            if let errorMessage {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("broadcast_status_error_prefix")
-                            .font(.subheadline)
-                            .bold()
-                        Text(errorMessage)
-                            .font(.footnote)
-                    }
-                }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.red.opacity(0.1))
-                )
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.thinMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.primary.opacity(0.05))
-        )
-    }
-
-    private var statusSubtitle: String {
-        NSLocalizedString("broadcast_status_active_subtitle", comment: "")
-    }
-
-    private var sampleDescription: String {
-        guard let lastSample else {
-            return NSLocalizedString("broadcast_status_waiting_sample", comment: "")
-        }
-        return Self.composeTimeDescription(from: lastSample.timestamp)
-    }
-
-    private var uploadDescription: String {
-        guard let lastSendAt else {
-            return NSLocalizedString("broadcast_status_waiting_upload", comment: "")
-        }
-        return Self.composeTimeDescription(from: lastSendAt)
-    }
-
-    private var backlogDescription: String {
-        if backlogSeconds <= 0 {
-            return NSLocalizedString("broadcast_status_backlog_clear", comment: "")
-        }
-        let duration = TimeInterval(backlogSeconds)
-        let formatted = BroadcastStatusCard.durationFormatter.string(from: duration) ?? "\(backlogSeconds)s"
-        return String(
-            format: NSLocalizedString("broadcast_status_backlog_value", comment: ""),
-            formatted
-        )
-    }
-
-    private var retryDescription: String {
-        let countString = String(
-            format: NSLocalizedString("broadcast_status_retry_count_value", comment: ""),
-            retryCount
-        )
-        if let lastErrorAt {
-            let relative = DateFormattingHelper.relativeTimeString(from: lastErrorAt)
-            return "\(countString) • \(relative)"
-        }
-        return countString
-    }
-
-    private static func composeTimeDescription(from date: Date) -> String {
-        let relative = DateFormattingHelper.relativeTimeString(from: date)
-        let absolute = DateFormattingHelper.localizedShortDateTime(from: date)
-        return "\(relative) • \(absolute)"
-    }
-
-    private static let durationFormatter: DateComponentsFormatter = {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.minute, .second]
-        formatter.unitsStyle = .short
-        formatter.collapsesLargestUnit = false
-        return formatter
-    }()
-}
-
-/// Reusable row layout inside the broadcast status card.
-private struct BroadcastStatusRow: View {
-    let titleKey: LocalizedStringKey
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(titleKey)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.body)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

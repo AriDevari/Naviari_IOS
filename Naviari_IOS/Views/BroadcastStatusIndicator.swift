@@ -74,6 +74,7 @@ private struct BroadcastStatusDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         statusHeader(state: state)
+                        applicationStatusRow(isBroadcasting: uploader.isBroadcasting)
 
                         if uploader.isBroadcasting {
                             BroadcastDiagnosticsCard(
@@ -131,15 +132,30 @@ private struct BroadcastStatusDetailView: View {
                 .font(.headline)
         }
     }
+
+    private func applicationStatusRow(isBroadcasting: Bool) -> some View {
+        HStack {
+            Text("broadcast_status_app_label")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(isBroadcasting ? "broadcast_status_app_on" : "broadcast_status_app_off")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isBroadcasting ? .green : .secondary)
+        }
+    }
 }
 
 private enum BroadcastIndicatorState: Equatable {
+    case inactive
     case green
     case yellow
     case red
 
     var color: Color {
         switch self {
+        case .inactive:
+            return .gray
         case .green:
             return .green
         case .yellow:
@@ -151,6 +167,8 @@ private enum BroadcastIndicatorState: Equatable {
 
     var label: LocalizedStringKey {
         switch self {
+        case .inactive:
+            return "broadcast_indicator_state_inactive"
         case .green:
             return "broadcast_indicator_state_green"
         case .yellow:
@@ -166,6 +184,8 @@ private enum BroadcastIndicatorState: Equatable {
 
     private var accessibilityStateKey: String {
         switch self {
+        case .inactive:
+            return "broadcast_indicator_state_inactive"
         case .green:
             return "broadcast_indicator_state_green"
         case .yellow:
@@ -178,7 +198,7 @@ private enum BroadcastIndicatorState: Equatable {
     @MainActor
     static func evaluate(uploader: BoatMetricsUploader, now: Date) -> BroadcastIndicatorState {
         guard uploader.isBroadcasting else {
-            return .yellow
+            return .inactive
         }
 
         let locationAge = uploader.lastAcceptedSample.map { now.timeIntervalSince($0.timestamp) }

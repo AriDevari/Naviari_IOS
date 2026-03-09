@@ -55,7 +55,11 @@
 "broadcast_indicator_state_green" = "Sändningen fungerar";
 "broadcast_indicator_state_yellow" = "Sändningsvarning";
 "broadcast_indicator_state_red" = "Sändningsproblem";
+"broadcast_indicator_state_inactive" = "Sändning av";
 "broadcast_button_accessibility" = "%@";
+"broadcast_status_app_label" = "Applikationsstatus";
+"broadcast_status_app_on" = "Sändning PÅ";
+"broadcast_status_app_off" = "Sändning AV";
 "error_invalid_url" = "Ogiltig serveradress.";
 "error_invalid_response" = "Servern svarade med ett fel.";
 "error_decoding_failed" = "Appen kunde inte läsa svaret.";
@@ -79,3 +83,4 @@
 "broadcast_stop_confirm_message" = "Är du säker på att du vill sluta skicka GPS-information?";
 "broadcast_stop_confirm_yes" = "Ja";
 "broadcast_stop_confirm_no" = "Nej";
+"start_detail_broadcasting_header" = "Tävling pågår och GPS-position skickas";
