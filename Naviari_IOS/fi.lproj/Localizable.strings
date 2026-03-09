@@ -84,3 +84,8 @@
 "broadcast_stop_confirm_yes" = "Kyllä";
 "broadcast_stop_confirm_no" = "Ei";
 "start_detail_broadcasting_header" = "Kilpaillaan ja lähetetään GPS-sijaintia";
+"participate_code_modal_title" = "Osallistumiskoodi";
+"participate_code_modal_message" = "Anna osallistumiskoodi avataksesi lähtöilmoittautumisen.";
+"participate_code_verify_button" = "Vahvista koodi";
+"participate_code_attempts_remaining" = "%d yritystä jäljellä";
+"participate_code_attempts_exhausted" = "Koodin yritysraja täynnä.";

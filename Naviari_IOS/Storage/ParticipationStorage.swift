@@ -20,12 +20,21 @@ struct ParticipationRecord: Codable {
     let savedAt: Date
 }
 
+/// Lightweight token record persisted even before a start entry exists.
+struct ParticipationTokenRecord: Codable {
+    let scope: ParticipationScope
+    let scopeId: String
+    let token: String
+    let savedAt: Date
+}
+
 /// Simple UserDefaults-backed cache for participation tokens/metadata.
 final class ParticipationStorage {
     static let shared = ParticipationStorage()
 
     private let userDefaults: UserDefaults
     private let storageKey = "participation_records"
+    private let tokenStorageKey = "participation_tokens"
 
     private init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -73,6 +82,62 @@ final class ParticipationStorage {
             return [:]
         }
         return (try? JSONDecoder().decode([String: ParticipationRecord].self, from: data)) ?? [:]
+    }
+
+    /// Returns the best matching token record, preferring start scope over race and series.
+    func loadToken(for startId: String?, raceId: String?, seriesId: String?) -> ParticipationTokenRecord? {
+        let records = loadAllTokens()
+        if let startId, let record = records[ParticipationStorage.makeKey(.start, id: startId)] {
+            return record
+        }
+        if let raceId, let record = records[ParticipationStorage.makeKey(.race, id: raceId)] {
+            return record
+        }
+        if let seriesId, let record = records[ParticipationStorage.makeKey(.series, id: seriesId)] {
+            return record
+        }
+        return nil
+    }
+
+    /// Saves token records for all available scopes so code modal can be skipped on future opens.
+    func saveToken(token: String, startId: String?, raceId: String?, seriesId: String?) {
+        var records = loadAllTokens()
+        let now = Date()
+        if let startId {
+            records[ParticipationStorage.makeKey(.start, id: startId)] = ParticipationTokenRecord(
+                scope: .start,
+                scopeId: startId,
+                token: token,
+                savedAt: now
+            )
+        }
+        if let raceId {
+            records[ParticipationStorage.makeKey(.race, id: raceId)] = ParticipationTokenRecord(
+                scope: .race,
+                scopeId: raceId,
+                token: token,
+                savedAt: now
+            )
+        }
+        if let seriesId {
+            records[ParticipationStorage.makeKey(.series, id: seriesId)] = ParticipationTokenRecord(
+                scope: .series,
+                scopeId: seriesId,
+                token: token,
+                savedAt: now
+            )
+        }
+        if let data = try? JSONEncoder().encode(records) {
+            userDefaults.set(data, forKey: tokenStorageKey)
+        }
+    }
+
+    /// Loads and decodes all standalone token records from disk.
+    private func loadAllTokens() -> [String: ParticipationTokenRecord] {
+        guard let data = userDefaults.data(forKey: tokenStorageKey) else {
+            return [:]
+        }
+        return (try? JSONDecoder().decode([String: ParticipationTokenRecord].self, from: data)) ?? [:]
     }
 
     /// Generates the dictionary key for a scope/id pair.

@@ -84,3 +84,8 @@
 "broadcast_stop_confirm_yes" = "Yes";
 "broadcast_stop_confirm_no" = "No";
 "start_detail_broadcasting_header" = "Racing and sending GPS position";
+"participate_code_modal_title" = "Participation Code";
+"participate_code_modal_message" = "Enter participation code to unlock start entry.";
+"participate_code_verify_button" = "Verify Code";
+"participate_code_attempts_remaining" = "%d attempts remaining";
+"participate_code_attempts_exhausted" = "Maximum code attempts reached.";

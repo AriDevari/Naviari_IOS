@@ -84,3 +84,8 @@
 "broadcast_stop_confirm_yes" = "Ja";
 "broadcast_stop_confirm_no" = "Nej";
 "start_detail_broadcasting_header" = "Tävling pågår och GPS-position skickas";
+"participate_code_modal_title" = "Deltagarkod";
+"participate_code_modal_message" = "Ange deltagarkod för att öppna startanmälan.";
+"participate_code_verify_button" = "Verifiera kod";
+"participate_code_attempts_remaining" = "%d försök kvar";
+"participate_code_attempts_exhausted" = "Max antal kodförsök uppnått.";

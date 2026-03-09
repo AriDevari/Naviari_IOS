@@ -22,8 +22,12 @@ struct ParticipateView: View {
     @State private var codePrefix = ""
     @State private var codeSuffix = ""
     @State private var showParticipationInfo = false
+    @State private var showCodeModal = false
     @State private var submissionError: String?
+    @State private var codeValidationError: String?
     @State private var isSubmitting = false
+    @State private var isValidatingCode = false
+    @State private var codeValidationAttempts = 0
     @State private var storedToken: String?
     @State private var storedScope: ParticipationScope?
     @State private var storedScopeId: String?
@@ -35,6 +39,7 @@ struct ParticipateView: View {
     @FocusState private var focusedField: ParticipationField?
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
     @Environment(\.dismiss) private var dismiss
+    private let maxCodeValidationAttempts = 5
 
     var body: some View {
         ScreenContainer(
@@ -47,6 +52,7 @@ struct ParticipateView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .disabled(showCodeModal)
             )
         ) {
             ScrollView {
@@ -93,9 +99,13 @@ struct ParticipateView: View {
         .sheet(isPresented: $showParticipationInfo) {
             InfoHelpView(titleKey: "participate_info_title", bodyKey: "participate_info_body")
         }
+        .sheet(isPresented: $showCodeModal) {
+            codeValidationSheet
+        }
         .task(id: startIdentifier) {
             resetFormForNewStart()
             await loadStoredParticipation()
+            showCodeModal = !hasReusableToken
         }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -135,35 +145,6 @@ struct ParticipateView: View {
 
             inputField(titleKey: "participate_description_label", text: $descriptionText, placeholder: "participate_description_placeholder")
                 .focused($focusedField, equals: .description)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("participate_code_label")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                HStack {
-                    TextField("participate_code_prefix", text: $codePrefix)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($focusedField, equals: .codePrefix)
-                    Text("-")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                    TextField("participate_code_suffix", text: $codeSuffix)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($focusedField, equals: .codeSuffix)
-                }
-                if hasReusableToken {
-                    Text("participate_code_reuse_notice")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
         }
     }
 
@@ -207,10 +188,7 @@ struct ParticipateView: View {
     }
 
     private var isBroadcastActionDisabled: Bool {
-        if hasReusableToken {
-            return isSubmitting
-        }
-        return isSubmitting || participationCode == nil
+        isSubmitting || !hasReusableToken
     }
 
     /// Validates code/token, submits the start entry, persists it, and starts broadcasting.
@@ -224,15 +202,10 @@ struct ParticipateView: View {
         defer { isSubmitting = false }
         submissionError = nil
         do {
-            let token: String
-            if let storedToken, storedTokenIsValid {
-                token = storedToken
-            } else {
-                guard let code = participationCode else {
-                    submissionError = NSLocalizedString("participate_code_required", comment: "")
-                    return
-                }
-                token = try await service.exchangeCodeForToken(code)
+            guard let token = storedToken, storedTokenIsValid else {
+                submissionError = NSLocalizedString("participate_code_required", comment: "")
+                showCodeModal = true
+                return
             }
             let storedRecordForStart = storedRecordForCurrentStart
             let existingBoatId = storedRecordForStart?.boatId
@@ -328,13 +301,20 @@ struct ParticipateView: View {
 
     /// Restores any saved participation token/summary for the current start/race/series.
     private func loadStoredParticipation() async {
-        let record = storage.loadRecord(for: startIdentifier, raceId: raceIdentifier, seriesId: seriesIdentifier)
-        guard let record else { return }
-        storedRecord = record
-        storedToken = record.token
-        storedScope = record.scope
-        storedScopeId = record.scopeId
-        prefillFieldsIfNeeded(from: record.summary)
+        if let record = storage.loadRecord(for: startIdentifier, raceId: raceIdentifier, seriesId: seriesIdentifier) {
+            storedRecord = record
+            storedToken = record.token
+            storedScope = record.scope
+            storedScopeId = record.scopeId
+            prefillFieldsIfNeeded(from: record.summary)
+            return
+        }
+
+        if let tokenRecord = storage.loadToken(for: startIdentifier, raceId: raceIdentifier, seriesId: seriesIdentifier) {
+            storedToken = tokenRecord.token
+            storedScope = tokenRecord.scope
+            storedScopeId = tokenRecord.scopeId
+        }
     }
 
     /// Populates editable fields using a saved summary only once per start to avoid overwriting user edits.
@@ -438,6 +418,10 @@ struct ParticipateView: View {
         codePrefix = ""
         codeSuffix = ""
         submissionError = nil
+        codeValidationError = nil
+        codeValidationAttempts = 0
+        showCodeModal = false
+        isValidatingCode = false
         storedRecord = nil
         storedToken = nil
         storedScope = nil
@@ -450,6 +434,117 @@ struct ParticipateView: View {
         guard let storedRecord else { return nil }
         guard storedRecord.scope == .start, storedRecord.scopeId == startIdentifier else { return nil }
         return storedRecord
+    }
+
+    private var codeAttemptsRemaining: Int {
+        max(0, maxCodeValidationAttempts - codeValidationAttempts)
+    }
+
+    private var hasCodeAttemptsRemaining: Bool {
+        codeAttemptsRemaining > 0
+    }
+
+    private func verifyParticipationCode() async {
+        guard hasCodeAttemptsRemaining else { return }
+        guard !isValidatingCode else { return }
+        guard let code = participationCode else {
+            codeValidationError = NSLocalizedString("participate_code_required", comment: "")
+            return
+        }
+
+        isValidatingCode = true
+        codeValidationError = nil
+        defer { isValidatingCode = false }
+
+        do {
+            let token = try await service.exchangeCodeForToken(code)
+            storedToken = token
+            storedScope = .start
+            storedScopeId = startIdentifier
+            storage.saveToken(
+                token: token,
+                startId: startIdentifier,
+                raceId: raceIdentifier,
+                seriesId: seriesIdentifier
+            )
+            codePrefix = ""
+            codeSuffix = ""
+            showCodeModal = false
+        } catch {
+            codeValidationAttempts += 1
+            codeValidationError = error.localizedDescription
+        }
+    }
+
+    @ViewBuilder
+    private var codeValidationSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("participate_code_modal_message")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    TextField("participate_code_prefix", text: $codePrefix)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Text("-")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    TextField("participate_code_suffix", text: $codeSuffix)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                if let codeValidationError {
+                    Text(codeValidationError)
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                }
+
+                if hasCodeAttemptsRemaining {
+                    Text(
+                        String(
+                            format: NSLocalizedString("participate_code_attempts_remaining", comment: ""),
+                            codeAttemptsRemaining
+                        )
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                } else {
+                    Text("participate_code_attempts_exhausted")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+
+                Button {
+                    Task { await verifyParticipationCode() }
+                } label: {
+                    if isValidatingCode {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("participate_code_verify_button")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isValidatingCode || !hasCodeAttemptsRemaining || participationCode == nil)
+
+                Button("back_button") {
+                    dismiss()
+                }
+                .frame(maxWidth: .infinity)
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("participate_code_modal_title")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .interactiveDismissDisabled(true)
     }
 
     /// Boots the uploader once we have a valid start-level token/scope.
@@ -584,6 +679,4 @@ private enum ParticipationField: Hashable {
     case rating
     case club
     case description
-    case codePrefix
-    case codeSuffix
 }
