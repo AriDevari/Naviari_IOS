@@ -396,7 +396,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_ASSET_PATHS = "\"Naviari_IOS/Preview Content\"";
 				DEVELOPMENT_TEAM = 5ZU2SU5BXG;
 				ENABLE_PREVIEWS = YES;
@@ -419,7 +419,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.3;
 				NAVIARI_API_BASE = "http://192.168.1.204:3000";
 				NAVIARI_API_KEY = "dev-sailing-api-key";
 				PRODUCT_BUNDLE_IDENTIFIER = "fi.mobiari.Naviari-IOS";
@@ -436,7 +436,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_ASSET_PATHS = "\"Naviari_IOS/Preview Content\"";
 				DEVELOPMENT_TEAM = 5ZU2SU5BXG;
 				ENABLE_PREVIEWS = YES;
@@ -459,7 +459,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2;
+				MARKETING_VERSION = 0.3;
 				NAVIARI_API_BASE = "https://naviaribackend-production.up.railway.app";
 				NAVIARI_API_KEY = 2d7fa1686e751498c3397fd7f4a19ff578f5b73698cd6e857c39a190e283ffe8;
 				PRODUCT_BUNDLE_IDENTIFIER = "fi.mobiari.Naviari-IOS";
