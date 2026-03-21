@@ -99,6 +99,8 @@ struct RaceStart: Decodable, Identifiable, Equatable, Hashable {
     let className: String?
     let slug: String?
     let imageId: String?
+    let iconKey: String?
+    let iconColor: String?
 
     var id: String {
         rawId ?? slug ?? UUID().uuidString
@@ -114,6 +116,8 @@ struct RaceStart: Decodable, Identifiable, Equatable, Hashable {
         case className = "class_name"
         case slug
         case imageId = "image_id"
+        case iconKey = "icon_key"
+        case iconColor = "icon_color"
     }
 }
 

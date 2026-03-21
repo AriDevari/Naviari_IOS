@@ -47,11 +47,51 @@ final class Naviari_IOSTests: XCTestCase {
             date: nil,
             slug: nil,
             parentSeriesId: nil,
-            starts: nil
+            starts: nil,
+            imageId: nil
         )
         let starts = try await service.fetchStarts(for: race)
         wait(for: [inspectedURL], timeout: 1.0)
         XCTAssertEqual(starts.first?.name, "Morning Fleet")
+    }
+
+    func testFetchStartsDecodesVisualIdentityFields() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let payload = """
+            {"starts":[{"id":"start-1","name":"Morning Fleet","status":"open","icon_key":"laser","icon_color":"#D84315","image_id":"image-1"}]}
+            """.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, payload)
+        }
+        let service = makeService()
+        let race = Race(
+            rawId: "race-123",
+            name: "Sample",
+            description: nil,
+            status: nil,
+            scheduledUTC: nil,
+            actualUTC: nil,
+            date: nil,
+            slug: nil,
+            parentSeriesId: nil,
+            starts: nil,
+            imageId: nil
+        )
+        let starts = try await service.fetchStarts(for: race)
+        XCTAssertEqual(starts.first?.iconKey, "laser")
+        XCTAssertEqual(starts.first?.iconColor, "#D84315")
+        XCTAssertEqual(starts.first?.imageId, "image-1")
+    }
+
+    func testStartIconAssetNamesMatchApprovedKeys() {
+        XCTAssertEqual(debugStartIconAssetName(nil), "system:sailboat.fill")
+        XCTAssertEqual(debugStartIconAssetName("default"), "system:sailboat.fill")
+        XCTAssertEqual(debugStartIconAssetName("laser"), "StartIconLaser")
+        XCTAssertEqual(debugStartIconAssetName("kite"), "StartIconKite")
+        XCTAssertEqual(debugStartIconAssetName("sailboat-2"), "StartIconSailboat2")
+        XCTAssertEqual(debugStartIconAssetName("sport-boat"), "StartIconSportBoat")
+        XCTAssertEqual(debugStartIconAssetName("submarine"), "StartIconSubmarine")
+        XCTAssertEqual(debugStartIconAssetName("windsurfing"), "StartIconWindsurfing")
     }
 
     // MARK: - Helpers
