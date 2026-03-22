@@ -91,6 +91,8 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertEqual(debugStartIconAssetName("sailboat-2"), "StartIconSailboat2")
         XCTAssertEqual(debugStartIconAssetName("sport-boat"), "StartIconSportBoat")
         XCTAssertEqual(debugStartIconAssetName("submarine"), "StartIconSubmarine")
+        XCTAssertEqual(debugStartIconAssetName("sub"), "StartIconSUB")
+        XCTAssertEqual(debugStartIconAssetName("foil"), "StartIconFoil")
         XCTAssertEqual(debugStartIconAssetName("windsurfing"), "StartIconWindsurfing")
     }
 

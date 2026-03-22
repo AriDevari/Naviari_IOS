@@ -70,6 +70,8 @@ private enum StartIconKey: String {
     case sailboat2 = "sailboat-2"
     case sportBoat = "sport-boat"
     case submarine
+    case sub
+    case foil
     case windsurfing
 }
 
@@ -152,6 +154,10 @@ private func startIconAssetName(for iconKey: StartIconKey) -> String {
         return "StartIconSportBoat"
     case .submarine:
         return "StartIconSubmarine"
+    case .sub:
+        return "StartIconSUB"
+    case .foil:
+        return "StartIconFoil"
     case .windsurfing:
         return "StartIconWindsurfing"
     }
@@ -195,6 +201,10 @@ private enum StartIconAssetLibrary {
             return sportBoat
         case .submarine:
             return submarine
+        case .sub:
+            return sailboat1
+        case .foil:
+            return sailboat1
         case .windsurfing:
             return windsurfing
         }

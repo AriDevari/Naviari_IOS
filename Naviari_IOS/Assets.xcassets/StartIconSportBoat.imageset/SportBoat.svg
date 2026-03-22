@@ -7,8 +7,30 @@
    width="949.33331"
    height="992"
    viewBox="0 0 949.33331 992"
+   sodipodi:docname="SportBoat.svg"
+   inkscape:version="1.4.3 (0d15f750, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.61762634"
+     inkscape:cx="496.25474"
+     inkscape:cy="502.73115"
+     inkscape:window-width="1320"
+     inkscape:window-height="910"
+     inkscape:window-x="0"
+     inkscape:window-y="25"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg1" />
   <defs
      id="defs1" />
   <g
@@ -42,4 +64,8 @@
        d="M 500.7382,817.46401 C 224.64195,831.26882 224.64195,831.26882 224.64195,831.26882"
        id="path8" />
   </g>
+  <path
+     style="fill:none;stroke:#000000;stroke-width:30.6133;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+     d="m 463.21777,29.415818 c 0,0 15.00664,-9.822856 108.38127,29.468567 93.37463,39.291423 130.05751,67.122845 183.41444,145.705695 53.35693,78.58284 76.70059,160.43998 96.70943,222.6514 20.00886,62.21142 30.01328,129.33427 36.6829,180.08569 6.66962,50.75142 5.00221,96.59141 0,158.80284 -5.00222,62.21141 -11.67183,109.68855 -11.67183,109.68855"
+     id="path7" />
 </svg>
