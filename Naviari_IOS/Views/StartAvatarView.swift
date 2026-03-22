@@ -21,7 +21,7 @@ struct StartAvatarView: View {
             } else {
                 Circle()
                     .fill(iconBackgroundColor)
-                StartIconGlyphView(iconKey: resolvedIconKey)
+                StartIconGlyphView(icon: resolvedIcon)
                     .frame(width: size * 0.72, height: size * 0.72)
             }
         }
@@ -36,8 +36,8 @@ struct StartAvatarView: View {
         }
     }
 
-    private var resolvedIconKey: StartIconKey {
-        normalizedStartIconKey(start.iconKey) ?? .defaultSailboat
+    private var resolvedIcon: StartVisualIcon {
+        normalizedStartVisualIcon(start.iconKey)
     }
 
     private var iconBackgroundColor: Color {
@@ -62,6 +62,11 @@ private func normalizedIdentifier(_ value: String?) -> String? {
     return trimmed.isEmpty ? nil : trimmed
 }
 
+private let characterIconPrefix = "character:"
+private let characterIconAllowedCharacters: Set<Character> = Set(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~€$"
+)
+
 private enum StartIconKey: String {
     case defaultSailboat = "default"
     case kite
@@ -75,65 +80,102 @@ private enum StartIconKey: String {
     case windsurfing
 }
 
-private func normalizedStartIconKey(_ value: String?) -> StartIconKey? {
-    guard let value else { return nil }
-    let normalized = value
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-        .lowercased()
-    guard !normalized.isEmpty else { return nil }
-    return StartIconKey(rawValue: normalized)
+private enum StartVisualIcon {
+    case preset(StartIconKey)
+    case character(String)
+    case defaultSailboat
+}
+
+private func normalizedStartVisualIcon(_ value: String?) -> StartVisualIcon {
+    guard let value else { return .defaultSailboat }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return .defaultSailboat }
+
+    let lowered = trimmed.lowercased()
+    if let semanticKey = StartIconKey(rawValue: lowered) {
+        if semanticKey == .defaultSailboat {
+            return .defaultSailboat
+        }
+        return .preset(semanticKey)
+    }
+
+    guard lowered.hasPrefix(characterIconPrefix) else {
+        return .defaultSailboat
+    }
+
+    let glyph = String(trimmed.dropFirst(characterIconPrefix.count))
+    let glyphChars = Array(glyph)
+    guard glyphChars.count == 1 else {
+        return .defaultSailboat
+    }
+    guard characterIconAllowedCharacters.contains(glyphChars[0]) else {
+        return .defaultSailboat
+    }
+    return .character(String(glyphChars[0]))
 }
 
 private struct StartIconGlyphView: View {
-    let iconKey: StartIconKey
+    let icon: StartVisualIcon
 
     var body: some View {
-        let assetName = startIconAssetName(for: iconKey)
-
-        if iconKey == .defaultSailboat {
+        switch icon {
+        case .character(let glyph):
+            GeometryReader { proxy in
+                Text(glyph)
+                    .font(AppFont.fixed(min(proxy.size.width, proxy.size.height) * 0.86, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .minimumScaleFactor(0.2)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .accessibilityHidden(true)
+        case .defaultSailboat:
             Image(systemName: "sailboat.fill")
                 .resizable()
                 .scaledToFit()
                 .foregroundStyle(.white)
                 .accessibilityHidden(true)
-        } else if UIImage(named: assetName) != nil {
-            Image(assetName)
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(.white)
-                .accessibilityHidden(true)
-        } else {
-            Canvas { context, size in
-                let asset = StartIconAssetLibrary.asset(for: iconKey)
-                let scale = min(size.width / asset.viewBox.width, size.height / asset.viewBox.height)
-                let offsetX = (size.width - asset.viewBox.width * scale) * 0.5 - asset.viewBox.minX * scale
-                let offsetY = (size.height - asset.viewBox.height * scale) * 0.5 - asset.viewBox.minY * scale
+        case .preset(let iconKey):
+            let assetName = startIconAssetName(for: iconKey)
+            if UIImage(named: assetName) != nil {
+                Image(assetName)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(.white)
+                    .accessibilityHidden(true)
+            } else {
+                Canvas { context, size in
+                    let asset = StartIconAssetLibrary.asset(for: iconKey)
+                    let scale = min(size.width / asset.viewBox.width, size.height / asset.viewBox.height)
+                    let offsetX = (size.width - asset.viewBox.width * scale) * 0.5 - asset.viewBox.minX * scale
+                    let offsetY = (size.height - asset.viewBox.height * scale) * 0.5 - asset.viewBox.minY * scale
 
-                for item in asset.paths {
-                    var transform = CGAffineTransform(scaleX: scale, y: scale)
-                        .translatedBy(x: offsetX / scale, y: offsetY / scale)
-                    guard let transformed = item.cgPath.copy(using: &transform) else {
-                        continue
-                    }
-                    let path = Path(transformed)
-                    if item.fill {
-                        context.fill(path, with: .color(.white))
-                    }
-                    if let strokeWidth = item.strokeWidth {
-                        context.stroke(
-                            path,
-                            with: .color(.white),
-                            style: StrokeStyle(
-                                lineWidth: max(CGFloat(0.8), strokeWidth * scale),
-                                lineCap: .round,
-                                lineJoin: .round
+                    for item in asset.paths {
+                        var transform = CGAffineTransform(scaleX: scale, y: scale)
+                            .translatedBy(x: offsetX / scale, y: offsetY / scale)
+                        guard let transformed = item.cgPath.copy(using: &transform) else {
+                            continue
+                        }
+                        let path = Path(transformed)
+                        if item.fill {
+                            context.fill(path, with: .color(.white))
+                        }
+                        if let strokeWidth = item.strokeWidth {
+                            context.stroke(
+                                path,
+                                with: .color(.white),
+                                style: StrokeStyle(
+                                    lineWidth: max(CGFloat(0.8), strokeWidth * scale),
+                                    lineCap: .round,
+                                    lineJoin: .round
+                                )
                             )
-                        )
+                        }
                     }
                 }
+                .accessibilityHidden(true)
             }
-            .accessibilityHidden(true)
         }
     }
 }
@@ -727,9 +769,12 @@ private extension Color {
 }
 
 func debugStartIconAssetName(_ rawValue: String?) -> String {
-    let iconKey = normalizedStartIconKey(rawValue) ?? .defaultSailboat
-    if iconKey == .defaultSailboat {
+    switch normalizedStartVisualIcon(rawValue) {
+    case .defaultSailboat:
         return "system:sailboat.fill"
+    case .character(let glyph):
+        return "character:\(glyph)"
+    case .preset(let iconKey):
+        return startIconAssetName(for: iconKey)
     }
-    return startIconAssetName(for: iconKey)
 }

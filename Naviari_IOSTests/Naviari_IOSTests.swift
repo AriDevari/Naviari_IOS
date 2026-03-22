@@ -83,6 +83,34 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertEqual(starts.first?.imageId, "image-1")
     }
 
+    func testFetchStartsDecodesCharacterNamespacedIconKey() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let payload = """
+            {"starts":[{"id":"start-1","name":"Morning Fleet","status":"open","icon_key":"character:a","icon_color":"#D84315","image_id":null}]}
+            """.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, payload)
+        }
+        let service = makeService()
+        let race = Race(
+            rawId: "race-123",
+            name: "Sample",
+            description: nil,
+            status: nil,
+            scheduledUTC: nil,
+            actualUTC: nil,
+            date: nil,
+            slug: nil,
+            parentSeriesId: nil,
+            starts: nil,
+            imageId: nil
+        )
+        let starts = try await service.fetchStarts(for: race)
+        XCTAssertEqual(starts.first?.iconKey, "character:a")
+        XCTAssertEqual(starts.first?.iconColor, "#D84315")
+        XCTAssertNil(starts.first?.imageId)
+    }
+
     func testStartIconAssetNamesMatchApprovedKeys() {
         XCTAssertEqual(debugStartIconAssetName(nil), "system:sailboat.fill")
         XCTAssertEqual(debugStartIconAssetName("default"), "system:sailboat.fill")
@@ -94,6 +122,10 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertEqual(debugStartIconAssetName("sub"), "StartIconSUB")
         XCTAssertEqual(debugStartIconAssetName("foil"), "StartIconFoil")
         XCTAssertEqual(debugStartIconAssetName("windsurfing"), "StartIconWindsurfing")
+        XCTAssertEqual(debugStartIconAssetName("character:A"), "character:A")
+        XCTAssertEqual(debugStartIconAssetName("ChArAcTeR:z"), "character:z")
+        XCTAssertEqual(debugStartIconAssetName("character:🚀"), "system:sailboat.fill")
+        XCTAssertEqual(debugStartIconAssetName("character:ab"), "system:sailboat.fill")
     }
 
     // MARK: - Helpers
