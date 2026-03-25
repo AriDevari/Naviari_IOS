@@ -121,6 +121,93 @@ struct RaceStart: Decodable, Identifiable, Equatable, Hashable {
     }
 }
 
+extension RaceStart {
+    private static let startDateParsers: [ISO8601DateFormatter] = {
+        let withFractionalSeconds = ISO8601DateFormatter()
+        withFractionalSeconds.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let withoutFractionalSeconds = ISO8601DateFormatter()
+        withoutFractionalSeconds.formatOptions = [.withInternetDateTime]
+
+        return [withFractionalSeconds, withoutFractionalSeconds]
+    }()
+
+    var normalizedStatus: String? {
+        status?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
+    var estimatedStartDate: Date? {
+        Self.parseDateString(scheduledUTC)
+    }
+
+    var actualStartDate: Date? {
+        Self.parseDateString(actualUTC)
+    }
+
+    var hasEstimatedStartDate: Bool {
+        estimatedStartDate != nil
+    }
+
+    var isCompletedStatus: Bool {
+        switch normalizedStatus {
+        case "completed", "finished":
+            return true
+        default:
+            return false
+        }
+    }
+
+    var isScheduledStatus: Bool {
+        switch normalizedStatus {
+        case "scheduled", "planned":
+            return true
+        default:
+            return false
+        }
+    }
+
+    var localizedStatusKey: String {
+        switch normalizedStatus {
+        case "completed", "finished":
+            return "start_status_completed"
+        case "scheduled", "planned":
+            return "start_status_scheduled"
+        default:
+            return "start_status_unknown"
+        }
+    }
+
+    func isRehearsalWindow(referenceDate: Date = Date()) -> Bool {
+        guard !isCompletedStatus, estimatedStartDate != nil else {
+            return false
+        }
+        return !isRealBroadcastWindowOpen(referenceDate: referenceDate)
+    }
+
+    func isRealBroadcastWindowOpen(referenceDate: Date = Date()) -> Bool {
+        guard !isCompletedStatus, let estimatedStartDate else {
+            return false
+        }
+        return referenceDate >= estimatedStartDate.addingTimeInterval(-2 * 60 * 60)
+    }
+
+    private static func parseDateString(_ value: String?) -> Date? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+            return nil
+        }
+
+        for formatter in startDateParsers {
+            if let date = formatter.date(from: value) {
+                return date
+            }
+        }
+
+        return nil
+    }
+}
+
 /// Convenience wrapper used by the UI to tag a race with its parent series info.
 struct RaceSummary: Identifiable, Equatable, Hashable {
     let race: Race

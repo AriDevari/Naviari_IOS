@@ -61,7 +61,7 @@ final class RaceBrowserViewModel: ObservableObject {
     /// Helper for rendering localized start times (date + time).
     func formattedStartTime(for start: RaceStart) -> String? {
         DateFormattingHelper.localizedDateString(
-            from: start.scheduledUTC ?? start.actualUTC,
+            from: start.scheduledUTC,
             includeTime: true
         )
     }
@@ -121,7 +121,7 @@ final class RaceBrowserViewModel: ObservableObject {
         do {
             let starts = try await service.fetchStarts(for: race)
             selectedRaceStarts = starts.sorted(by: { lhs, rhs in
-                (lhs.scheduledUTC ?? lhs.actualUTC ?? "") < (rhs.scheduledUTC ?? rhs.actualUTC ?? "")
+                (lhs.scheduledUTC ?? "") < (rhs.scheduledUTC ?? "")
             })
             isLoadingStarts = false
         } catch {

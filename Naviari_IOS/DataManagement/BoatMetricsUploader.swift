@@ -6,7 +6,20 @@ import UIKit
 #endif
 
 /// Captures the context needed to upload boat metrics for a single start entry.
+enum BroadcastMode: Equatable {
+    case rehearsal
+    case live
+}
+
+enum BroadcastStopReason: Equatable {
+    case userRequested
+    case rehearsalTimeLimitReached
+    case completedStart
+}
+
 struct BroadcastSession {
+    static let rehearsalDuration: TimeInterval = 5 * 60
+
     let token: String
     let boatToken: String?
     let startEntryId: String
@@ -14,7 +27,36 @@ struct BroadcastSession {
     let boatId: String?
     let raceId: String?
     let seriesId: String?
+    let startDisplayName: String?
     let summary: ParticipationSummary
+    let mode: BroadcastMode
+    let startedAt: Date
+
+    var isRehearsal: Bool {
+        mode == .rehearsal
+    }
+
+    var autoStopAt: Date? {
+        guard isRehearsal else { return nil }
+        return startedAt.addingTimeInterval(Self.rehearsalDuration)
+    }
+
+    func matches(startId: String?) -> Bool {
+        guard let startId, !startId.isEmpty else { return false }
+        return self.startId == startId
+    }
+
+    func blocksStartBroadcastCTA(for startId: String?) -> Bool {
+        guard let startId, !startId.isEmpty else { return false }
+        return !matches(startId: startId)
+    }
+
+    var compactStartDisplayName: String {
+        let trimmed = startDisplayName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (trimmed?.isEmpty == false)
+            ? trimmed!
+            : NSLocalizedString("broadcast_drawer_start_unknown", comment: "")
+    }
 }
 
 /// Intermediate row produced after interpolation (still in knots/deg for UI display).
@@ -53,6 +95,10 @@ final class BoatMetricsUploader: ObservableObject {
     @Published private(set) var sendAttemptCount: Int = 0
     /// Number of batches successfully accepted by the backend during the active session.
     @Published private(set) var successfulUploadCount: Int = 0
+    /// Why the last broadcast ended, when the stop reason is relevant for the UI.
+    @Published private(set) var lastStopReason: BroadcastStopReason?
+    /// Last session that was stopped so the UI can show contextual follow-up messaging.
+    @Published private(set) var lastStoppedSession: BroadcastSession?
 
     private let metricsService = BoatMetricsService()
 
@@ -64,6 +110,7 @@ final class BoatMetricsUploader: ObservableObject {
     private var isSending = false
     private var pendingRetryRows: [BoatMetricRow] = []
     private var pendingRetryRange: (start: Int, end: Int)?
+    private var rehearsalAutoStopTask: Task<Void, Never>?
 #if canImport(UIKit)
     private var backgroundTaskIdentifier: UIBackgroundTaskIdentifier = .invalid
 #endif
@@ -81,6 +128,7 @@ final class BoatMetricsUploader: ObservableObject {
 
     /// Resets buffers/state and begins listening for samples under the provided session context.
     func startBroadcast(session: BroadcastSession) {
+        rehearsalAutoStopTask?.cancel()
         activeSession = session
         isBroadcasting = true
         sampleBuffer.removeAll(keepingCapacity: true)
@@ -95,12 +143,19 @@ final class BoatMetricsUploader: ObservableObject {
         retryCount = 0
         sendAttemptCount = 0
         successfulUploadCount = 0
+        lastStopReason = nil
+        lastStoppedSession = nil
         activeSession = session
+        scheduleRehearsalAutoStopIfNeeded(for: session)
         BoatMetricsBackgroundScheduler.shared.scheduleIfNeeded()
     }
 
     /// Clears buffers and stops the broadcast loop.
-    func stopBroadcast() {
+    func stopBroadcast(reason: BroadcastStopReason = .userRequested) {
+        rehearsalAutoStopTask?.cancel()
+        rehearsalAutoStopTask = nil
+        lastStopReason = reason
+        lastStoppedSession = activeSession
         isBroadcasting = false
         sampleBuffer.removeAll()
         lastAcceptedSample = nil
@@ -117,6 +172,24 @@ final class BoatMetricsUploader: ObservableObject {
         activeSession = nil
         endBackgroundTaskIfNeeded()
         BoatMetricsBackgroundScheduler.shared.cancelScheduledTasks()
+    }
+
+    private func scheduleRehearsalAutoStopIfNeeded(for session: BroadcastSession) {
+        guard let autoStopAt = session.autoStopAt else { return }
+        let delay = max(0, autoStopAt.timeIntervalSinceNow)
+        rehearsalAutoStopTask = Task { [weak self] in
+            if delay > 0 {
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                guard self.isBroadcasting, let activeSession = self.activeSession else { return }
+                guard activeSession.startEntryId == session.startEntryId, activeSession.startId == session.startId else { return }
+                guard activeSession.isRehearsal else { return }
+                self.stopBroadcast(reason: .rehearsalTimeLimitReached)
+            }
+        }
     }
 
     /// Accepts a new boat sample, updates backlog stats, and kicks the batching loop.

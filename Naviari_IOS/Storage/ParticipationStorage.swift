@@ -20,6 +20,26 @@ struct ParticipationRecord: Codable {
     let savedAt: Date
 }
 
+extension ParticipationSummary {
+    var compactBoatName: String {
+        let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (trimmed?.isEmpty == false)
+            ? trimmed!
+            : NSLocalizedString("broadcast_drawer_value_missing", comment: "")
+    }
+
+    func compactRatingText(locale: Locale = .current) -> String {
+        guard let rating else {
+            return NSLocalizedString("broadcast_drawer_value_missing", comment: "")
+        }
+        let formatter = NumberFormatter()
+        formatter.locale = locale
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 3
+        return formatter.string(from: NSNumber(value: rating)) ?? "\(rating)"
+    }
+}
+
 /// Lightweight token record persisted even before a start entry exists.
 struct ParticipationTokenRecord: Codable {
     let scope: ParticipationScope

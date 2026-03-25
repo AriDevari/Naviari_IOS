@@ -42,10 +42,49 @@ struct ParticipateView: View {
     private let maxCodeValidationAttempts = 5
     private let inputContentFont = AppFont.fixed(21)
 
+    private var isCompletedStart: Bool {
+        start.isCompletedStatus
+    }
+
+    private var isRealBroadcastWindowOpen: Bool {
+        start.isRealBroadcastWindowOpen()
+    }
+
+    private var isRehearsalMode: Bool {
+        start.isRehearsalWindow()
+    }
+
+    private var isMissingEstimatedStart: Bool {
+        !start.hasEstimatedStartDate
+    }
+
+    private var titleKey: LocalizedStringKey {
+        isRehearsalMode ? "participate_rehearsal_title" : "participate_title"
+    }
+
+    private var primaryButtonKey: LocalizedStringKey {
+        isRehearsalMode ? "participate_rehearsal_button" : "participate_button"
+    }
+
+    private var infoTitleKey: LocalizedStringKey {
+        isRehearsalMode ? "participate_rehearsal_info_title" : "participate_info_title"
+    }
+
+    private var infoBodyKey: LocalizedStringKey {
+        isRehearsalMode ? "participate_rehearsal_info_body" : "participate_info_body"
+    }
+
+    private var startDisplayName: String {
+        if let trimmed = start.name?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty {
+            return trimmed
+        }
+        return raceSummary.race.nameOrFallback
+    }
+
     var body: some View {
         ScreenContainer(
             showBack: true,
-            title: Text("participate_title"),
+            title: Text(titleKey),
             trailing: AnyView(
                 Button(action: { showParticipationInfo = true }) {
                     Image(systemName: "info.circle")
@@ -61,6 +100,10 @@ struct ParticipateView: View {
                     Text(start.name ?? raceSummary.race.nameOrFallback)
                         .font(AppFont.textStyle(.headline))
 
+                    if isRehearsalMode {
+                        rehearsalGuidanceCard
+                    }
+
                     formFields
 
                     if let submissionError {
@@ -73,7 +116,7 @@ struct ParticipateView: View {
                             ProgressView()
                                 .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
                         } else {
-                            Text("participate_button")
+                            Text(primaryButtonKey)
                                 .font(AppUI.buttonFont)
                                 .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
                         }
@@ -82,7 +125,7 @@ struct ParticipateView: View {
                     .padding(.top, 16)
                     .disabled(isBroadcastActionDisabled)
 
-                    Text("participate_cta_hint")
+                    Text(ctaHintKey)
                         .font(AppFont.textStyle(.footnote))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -91,7 +134,7 @@ struct ParticipateView: View {
             }
         }
         .sheet(isPresented: $showParticipationInfo) {
-            InfoHelpView(titleKey: "participate_info_title", bodyKey: "participate_info_body")
+            InfoHelpView(titleKey: infoTitleKey, bodyKey: infoBodyKey)
         }
         .sheet(isPresented: $showCodeModal) {
             codeValidationSheet
@@ -99,6 +142,7 @@ struct ParticipateView: View {
         .task(id: startIdentifier) {
             resetFormForNewStart()
             await loadStoredParticipation()
+            stopBroadcastIfCompletedForCurrentStart()
             showCodeModal = !hasReusableToken
         }
         .toolbar {
@@ -185,7 +229,47 @@ struct ParticipateView: View {
     }
 
     private var isBroadcastActionDisabled: Bool {
-        isSubmitting || !hasReusableToken
+        isSubmitting || !hasReusableToken || isCompletedStart || isMissingEstimatedStart
+    }
+
+    private var ctaHintKey: LocalizedStringKey {
+        if isCompletedStart {
+            return "participate_completed_hint"
+        }
+        if isMissingEstimatedStart {
+            return "participate_estimated_start_required_hint"
+        }
+        if isRehearsalMode {
+            return "participate_rehearsal_hint"
+        }
+        return "participate_cta_hint"
+    }
+
+    private var rehearsalGuidanceCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("participate_rehearsal_guidance_title")
+                .font(AppFont.textStyle(.headline))
+
+            Text("participate_rehearsal_guidance_body")
+                .font(AppFont.textStyle(.subheadline))
+                .foregroundStyle(.secondary)
+
+            Link(destination: URL(string: "https://naviari.org")!) {
+                Text("participate_rehearsal_verify_link")
+                    .font(AppFont.textStyle(.subheadline, weight: .semibold))
+            }
+
+            Text("participate_rehearsal_delay_reminder")
+                .font(AppFont.textStyle(.footnote))
+                .foregroundStyle(.secondary)
+
+            Text("participate_rehearsal_autostop")
+                .font(AppFont.textStyle(.footnote))
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     /// Validates code/token, submits the start entry, persists it, and starts broadcasting.
@@ -193,6 +277,15 @@ struct ParticipateView: View {
         guard !isSubmitting else { return }
         guard let startId = startIdentifier else {
             submissionError = NSLocalizedString("participate_start_missing", comment: "")
+            return
+        }
+        guard !isCompletedStart else {
+            submissionError = NSLocalizedString("participate_completed_hint", comment: "")
+            stopBroadcastIfCompletedForCurrentStart()
+            return
+        }
+        guard !isMissingEstimatedStart else {
+            submissionError = NSLocalizedString("participate_estimated_start_required_hint", comment: "")
             return
         }
         isSubmitting = true
@@ -550,6 +643,9 @@ struct ParticipateView: View {
 
     /// Boots the uploader once we have a valid start-level token/scope.
     private func startBroadcastIfReady(record: ParticipationRecord, summaryOverride: ParticipationSummary? = nil) -> Bool {
+        guard !isCompletedStart, !isMissingEstimatedStart else {
+            return false
+        }
         guard
             record.scope == .start,
             record.scopeId == startIdentifier,
@@ -576,10 +672,20 @@ struct ParticipateView: View {
             boatId: record.boatId,
             raceId: raceIdentifier,
             seriesId: seriesIdentifier,
-            summary: summary
+            startDisplayName: startDisplayName,
+            summary: summary,
+            mode: isRehearsalMode ? .rehearsal : .live,
+            startedAt: Date()
         )
         metricsUploader.startBroadcast(session: session)
         return true
+    }
+
+    private func stopBroadcastIfCompletedForCurrentStart() {
+        guard isCompletedStart, metricsUploader.activeSession?.startId == startIdentifier, metricsUploader.isBroadcasting else {
+            return
+        }
+        metricsUploader.stopBroadcast(reason: .completedStart)
     }
 }
 

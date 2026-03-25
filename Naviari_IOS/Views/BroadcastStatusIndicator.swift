@@ -75,8 +75,12 @@ private struct BroadcastStatusDetailView: View {
             let state = BroadcastIndicatorState.evaluate(uploader: uploader, now: timeline.date)
             NavigationStack {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 12) {
                         if uploader.isBroadcasting {
+                            if let session = uploader.activeSession {
+                                BroadcastDrawerContextCard(session: session)
+                            }
+
                             BroadcastDiagnosticsCard(
                                 state: state,
                                 plink: plink,
@@ -115,7 +119,7 @@ private struct BroadcastStatusDetailView: View {
                     }
                 }
             }
-            .presentationDetents([.fraction(0.6), .large])
+            .presentationDetents([.fraction(0.72), .large])
         }
         .alert(
             Text("broadcast_stop_confirm_title"),
@@ -246,6 +250,35 @@ private struct BroadcastDiagnosticsPlaceholder: View {
     }
 }
 
+private struct BroadcastDrawerContextCard: View {
+    let session: BroadcastSession
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("broadcast_drawer_start_label")
+                .font(AppFont.textStyle(.caption, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            Text(session.compactStartDisplayName)
+                .font(AppFont.textStyle(.headline))
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+
+            VStack(alignment: .leading, spacing: 6) {
+                BroadcastDiagnosticsRow(
+                    titleKey: "participate_name_label",
+                    value: session.summary.compactBoatName
+                )
+                BroadcastDiagnosticsRow(
+                    titleKey: "participate_rating_label",
+                    value: session.summary.compactRatingText()
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct BroadcastDiagnosticsCard: View {
     let state: BroadcastIndicatorState
     let plink: Bool
@@ -320,6 +353,7 @@ private struct BroadcastDiagnosticsCard: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var sampleDescription: String {

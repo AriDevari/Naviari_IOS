@@ -24,11 +24,9 @@ struct RaceStartRowView: View {
                         .font(AppFont.textStyle(.footnote))
                         .foregroundStyle(.secondary)
                 }
-                if let status = start.status {
-                    Text(status)
-                        .font(AppFont.textStyle(.footnote))
-                        .foregroundStyle(.secondary)
-                }
+                Text(LocalizedStringKey(start.localizedStatusKey))
+                    .font(AppFont.textStyle(.footnote))
+                    .foregroundStyle(.secondary)
             }
             Spacer()
         }

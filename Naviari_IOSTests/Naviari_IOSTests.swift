@@ -13,7 +13,7 @@ final class Naviari_IOSTests: XCTestCase {
             XCTAssertEqual(request.httpMethod, "GET")
             expectation.fulfill()
             let payload = """
-            {"series":[{"id":"series-1","name":"Spring Series","races":[{"id":"race-1","name":"Opener","status":"planned"}]}]}
+            {"series":[{"id":"series-1","name":"Spring Series","races":[{"id":"race-1","name":"Opener","status":"scheduled"}]}]}
             """.data(using: .utf8)!
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, payload)
@@ -31,7 +31,7 @@ final class Naviari_IOSTests: XCTestCase {
             XCTAssertTrue(request.url?.absoluteString.contains("raceId=race-123") ?? false)
             inspectedURL.fulfill()
             let payload = """
-            {"starts":[{"id":"start-1","name":"Morning Fleet","status":"open"}]}
+            {"starts":[{"id":"start-1","name":"Morning Fleet","status":"scheduled"}]}
             """.data(using: .utf8)!
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, payload)
@@ -58,7 +58,7 @@ final class Naviari_IOSTests: XCTestCase {
     func testFetchStartsDecodesVisualIdentityFields() async throws {
         MockURLProtocol.requestHandler = { request in
             let payload = """
-            {"starts":[{"id":"start-1","name":"Morning Fleet","status":"open","icon_key":"laser","icon_color":"#D84315","image_id":"image-1"}]}
+            {"starts":[{"id":"start-1","name":"Morning Fleet","status":"scheduled","icon_key":"laser","icon_color":"#D84315","image_id":"image-1"}]}
             """.data(using: .utf8)!
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, payload)
@@ -86,7 +86,7 @@ final class Naviari_IOSTests: XCTestCase {
     func testFetchStartsDecodesCharacterNamespacedIconKey() async throws {
         MockURLProtocol.requestHandler = { request in
             let payload = """
-            {"starts":[{"id":"start-1","name":"Morning Fleet","status":"open","icon_key":"character:a","icon_color":"#D84315","image_id":null}]}
+            {"starts":[{"id":"start-1","name":"Morning Fleet","status":"scheduled","icon_key":"character:a","icon_color":"#D84315","image_id":null}]}
             """.data(using: .utf8)!
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, payload)
@@ -126,6 +126,249 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertEqual(debugStartIconAssetName("ChArAcTeR:z"), "character:z")
         XCTAssertEqual(debugStartIconAssetName("character:🚀"), "system:sailboat.fill")
         XCTAssertEqual(debugStartIconAssetName("character:ab"), "system:sailboat.fill")
+    }
+
+    func testRaceStartRealBroadcastWindowOpensTwoHoursBeforeEstimatedStart() {
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertFalse(start.isRealBroadcastWindowOpen(referenceDate: Date(timeIntervalSince1970: 1_743_191_999)))
+        XCTAssertTrue(start.isRealBroadcastWindowOpen(referenceDate: Date(timeIntervalSince1970: 1_743_192_000)))
+    }
+
+    func testRaceStartUsesRehearsalWindowBeforeTwoHourThreshold() {
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertTrue(start.isRehearsalWindow(referenceDate: Date(timeIntervalSince1970: 1_743_191_999)))
+        XCTAssertFalse(start.isRehearsalWindow(referenceDate: Date(timeIntervalSince1970: 1_743_192_000)))
+    }
+
+    func testRaceStartCompletedStatusClosesRealBroadcastWindow() {
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "completed",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: "2026-03-25T12:05:00Z",
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertTrue(start.isCompletedStatus)
+        XCTAssertFalse(start.isRealBroadcastWindowOpen(referenceDate: Date(timeIntervalSince1970: 1_743_192_000)))
+    }
+
+    func testRaceStartWithoutEstimatedTimeCannotOpenBroadcastWindow() {
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: nil,
+            actualUTC: "2026-03-25T12:05:00Z",
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertFalse(start.hasEstimatedStartDate)
+        XCTAssertFalse(start.isRealBroadcastWindowOpen(referenceDate: Date(timeIntervalSince1970: 1_743_192_000)))
+        XCTAssertFalse(start.isRehearsalWindow(referenceDate: Date(timeIntervalSince1970: 1_743_191_000)))
+    }
+
+    func testRaceStartUsesLocalizedStatusKeysForApprovedStatuses() {
+        let scheduled = RaceStart(
+            rawId: "start-1",
+            name: nil,
+            status: "scheduled",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+        let completed = RaceStart(
+            rawId: "start-2",
+            name: nil,
+            status: "completed",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertEqual(scheduled.localizedStatusKey, "start_status_scheduled")
+        XCTAssertEqual(completed.localizedStatusKey, "start_status_completed")
+    }
+
+    func testRaceStartLegacyStatusesRemainCompatibleDuringTransition() {
+        let planned = RaceStart(
+            rawId: "start-1",
+            name: nil,
+            status: "planned",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+        let finished = RaceStart(
+            rawId: "start-2",
+            name: nil,
+            status: "finished",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertTrue(planned.isScheduledStatus)
+        XCTAssertTrue(finished.isCompletedStatus)
+    }
+
+    func testRehearsalBroadcastSessionGetsAutoStopDeadline() {
+        let startedAt = Date(timeIntervalSince1970: 1_743_190_000)
+        let session = BroadcastSession(
+            token: "token",
+            boatToken: nil,
+            startEntryId: "entry-1",
+            startId: "start-1",
+            boatId: nil,
+            raceId: nil,
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: ParticipationSummary(name: nil, sailNumber: nil, rating: nil, club: nil, description: nil, colorHex: nil),
+            mode: .rehearsal,
+            startedAt: startedAt
+        )
+
+        XCTAssertTrue(session.isRehearsal)
+        XCTAssertEqual(session.autoStopAt, startedAt.addingTimeInterval(BroadcastSession.rehearsalDuration))
+    }
+
+    func testLiveBroadcastSessionDoesNotGetAutoStopDeadline() {
+        let session = BroadcastSession(
+            token: "token",
+            boatToken: nil,
+            startEntryId: "entry-1",
+            startId: "start-1",
+            boatId: nil,
+            raceId: nil,
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: ParticipationSummary(name: nil, sailNumber: nil, rating: nil, club: nil, description: nil, colorHex: nil),
+            mode: .live,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_000)
+        )
+
+        XCTAssertFalse(session.isRehearsal)
+        XCTAssertNil(session.autoStopAt)
+    }
+
+    func testBroadcastSessionMatchesOnlyItsOwnStart() {
+        let session = BroadcastSession(
+            token: "token",
+            boatToken: nil,
+            startEntryId: "entry-1",
+            startId: "start-a",
+            boatId: nil,
+            raceId: "race-1",
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: ParticipationSummary(name: nil, sailNumber: nil, rating: nil, club: nil, description: nil, colorHex: nil),
+            mode: .live,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_000)
+        )
+
+        XCTAssertTrue(session.matches(startId: "start-a"))
+        XCTAssertFalse(session.matches(startId: "start-b"))
+        XCTAssertFalse(session.matches(startId: nil))
+        XCTAssertFalse(session.matches(startId: ""))
+    }
+
+    func testBroadcastSessionBlocksCTAForOtherStartsOnly() {
+        let session = BroadcastSession(
+            token: "token",
+            boatToken: nil,
+            startEntryId: "entry-1",
+            startId: "start-a",
+            boatId: nil,
+            raceId: "race-1",
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: ParticipationSummary(name: nil, sailNumber: nil, rating: nil, club: nil, description: nil, colorHex: nil),
+            mode: .live,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_000)
+        )
+
+        XCTAssertFalse(session.blocksStartBroadcastCTA(for: "start-a"))
+        XCTAssertTrue(session.blocksStartBroadcastCTA(for: "start-b"))
+        XCTAssertTrue(session.blocksStartBroadcastCTA(for: "cross-race-start"))
+        XCTAssertFalse(session.blocksStartBroadcastCTA(for: nil))
+        XCTAssertFalse(session.blocksStartBroadcastCTA(for: ""))
+    }
+
+    func testBroadcastSessionUsesSensibleDrawerFallbacks() {
+        let session = BroadcastSession(
+            token: "token",
+            boatToken: nil,
+            startEntryId: "entry-1",
+            startId: "start-a",
+            boatId: nil,
+            raceId: "race-1",
+            seriesId: nil,
+            startDisplayName: "  ",
+            summary: ParticipationSummary(name: nil, sailNumber: nil, rating: nil, club: nil, description: nil, colorHex: nil),
+            mode: .live,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_000)
+        )
+
+        XCTAssertEqual(session.compactStartDisplayName, "Unknown start")
+        XCTAssertEqual(session.summary.compactBoatName, "—")
+        XCTAssertEqual(session.summary.compactRatingText(locale: Locale(identifier: "en_US_POSIX")), "—")
     }
 
     // MARK: - Helpers
