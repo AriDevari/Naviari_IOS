@@ -38,9 +38,9 @@
 "participate_code_suffix" = "Loppuosa";
 "participate_cta_hint" = "Jaa GPS-sijaintisi kilpailujohdolle.";
 "participate_rehearsal_hint" = "Testaa tuleva lähtö ennen varsinaisen live-ikkunan alkamista.";
-"participate_rehearsal_guidance_title" = "Testaa tämä tuleva lähtö";
-"participate_rehearsal_guidance_body" = "Käytä lyhyttä testilähetystä tälle oikealle tulevalle lähdölle. Tarkista sitten Naviarista, että sijainti, veneen nimi ja veneen väri näkyvät oikein.";
-"participate_rehearsal_delay_reminder" = "Naviarin frontendissä rata voi näkyä noin 30 sekuntia sen jälkeen kun sovellus alkaa lähettää.";
+"participate_rehearsal_guidance_title" = "Lyhyt testilähetys";
+"participate_rehearsal_guidance_body" = "Käytä oikeita tietoja jotta ne ovat kilpailupäivänä valmiina.";
+"participate_rehearsal_delay_reminder" = "Huomaa että Naviari.org:ssa tiedot ovat 30 sekuntia viivästettyjä.";
 "participate_rehearsal_autostop" = "Tämä testilähetys pysähtyy automaattisesti 5 minuutin jälkeen.";
 "participate_rehearsal_verify_link" = "Avaa naviari.org ja tarkista vene";
 "participate_info_title" = "GPS-lähetyksen ohje";
@@ -105,9 +105,10 @@
 "broadcast_stop_confirm_yes" = "Kyllä";
 "broadcast_stop_confirm_no" = "Ei";
 "start_detail_broadcasting_header" = "Kilpaillaan ja lähetetään GPS-sijaintia";
-"start_detail_rehearsal_message" = "Tämä lähtö on vielä testitilassa. Käytä lyhyttä testilähetystä tarkistaaksesi sijainnin, veneen nimen ja veneen värin naviari.org-palvelussa.";
+"start_detail_rehearsal_message" = "Voit testata etukäteen että osallistuminen ja sijaintitiedon lähettäminen tähän lähtöön onnistuu. Tämä kannattaa tehdä hyvissä ajoin.";
 "start_detail_rehearsal_active_header" = "Testilähetys käynnissä";
-"start_detail_rehearsal_active_message" = "Tarkista naviari.org-palvelusta, että sijainti, veneen nimi ja veneen väri näkyvät oikein.";
+"start_detail_rehearsal_active_message" = "Tarkista [naviari.org](https://naviari.org)-palvelusta, että sijainti, veneen nimi ja veneen väri näkyvät oikein.";
+"start_detail_rehearsal_active_message_countdown" = "Tarkista [naviari.org](https://naviari.org)-palvelusta, %d sekunnin kuluttua, että sijainti, veneen nimi ja veneen väri näkyvät oikein.";
 "start_detail_rehearsal_autostop_message" = "Viiden minuutin testilähetys päättyi automaattisesti.";
 "start_detail_broadcast_window_message" = "GPS-lähetys avautuu 2 tuntia ennen arvioitua lähtöaikaa.";
 "start_detail_completed_message" = "Tämä lähtö on päättynyt. GPS-lähetys ei ole enää käytettävissä.";

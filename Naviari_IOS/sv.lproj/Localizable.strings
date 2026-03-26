@@ -38,9 +38,9 @@
 "participate_code_suffix" = "Suffix";
 "participate_cta_hint" = "Dela din GPS-position med tävlingsledningen.";
 "participate_rehearsal_hint" = "Testa den här kommande starten innan det riktiga live-fönstret öppnar.";
-"participate_rehearsal_guidance_title" = "Testa den här kommande starten";
-"participate_rehearsal_guidance_body" = "Använd en kort testsändning för den riktiga kommande starten. Kontrollera sedan i Naviari att din position, båtens namn och båtens färg visas korrekt.";
-"participate_rehearsal_delay_reminder" = "Naviaris frontend kan visa spåret cirka 30 sekunder efter att appen börjar skicka.";
+"participate_rehearsal_guidance_title" = "Kort testsändning";
+"participate_rehearsal_guidance_body" = "Använd de riktiga uppgifterna så att de är färdiga på tävlingsdagen.";
+"participate_rehearsal_delay_reminder" = "Observera att uppgifterna på Naviari.org är fördröjda med 30 sekunder.";
 "participate_rehearsal_autostop" = "Den här testsändningen stoppas automatiskt efter 5 minuter.";
 "participate_rehearsal_verify_link" = "Öppna naviari.org och kontrollera båten";
 "participate_info_title" = "GPS-sändning – hjälp";
@@ -105,9 +105,10 @@
 "broadcast_stop_confirm_yes" = "Ja";
 "broadcast_stop_confirm_no" = "Nej";
 "start_detail_broadcasting_header" = "Tävling pågår och GPS-position skickas";
-"start_detail_rehearsal_message" = "Den här starten är fortfarande i testläge. Använd en kort testsändning för att kontrollera position, båtens namn och båtens färg på naviari.org.";
+"start_detail_rehearsal_message" = "Du kan testa i förväg att deltagandet och sändningen av positionsdata till denna start fungerar. Det lönar sig att göra detta i god tid.";
 "start_detail_rehearsal_active_header" = "Testsändning pågår";
-"start_detail_rehearsal_active_message" = "Kontrollera på naviari.org att din position, båtens namn och båtens färg visas korrekt.";
+"start_detail_rehearsal_active_message" = "Kontrollera på [naviari.org](https://naviari.org) att din position, båtens namn och båtens färg visas korrekt.";
+"start_detail_rehearsal_active_message_countdown" = "Kontrollera på [naviari.org](https://naviari.org), om %d sekunder, att din position, båtens namn och båtens färg visas korrekt.";
 "start_detail_rehearsal_autostop_message" = "Testsändningen på 5 minuter avslutades automatiskt.";
 "start_detail_broadcast_window_message" = "GPS-sändningen öppnar 2 timmar före den uppskattade starttiden.";
 "start_detail_completed_message" = "Den här starten är avslutad. GPS-sändning är inte längre tillgänglig.";

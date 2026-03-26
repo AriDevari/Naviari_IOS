@@ -9,6 +9,8 @@ import SwiftUI
 
 /// Shows start-specific metadata and the entry point into the participation flow.
 struct StartDetailScreen: View {
+    private static let rehearsalVisibilityDelay: TimeInterval = 30
+
     let raceSummary: RaceSummary
     let start: RaceStart
     var onParticipate: () -> Void
@@ -27,6 +29,15 @@ struct StartDetailScreen: View {
 
     private var shouldShowActiveBroadcastSection: Bool {
         metricsUploader.isBroadcasting && activeSessionMatchesCurrentStart
+    }
+
+    private var activeRehearsalSession: BroadcastSession? {
+        guard activeSessionMatchesCurrentStart,
+              let session = metricsUploader.activeSession,
+              session.isRehearsal else {
+            return nil
+        }
+        return session
     }
 
     private var shouldHideParticipateCTAForOtherActiveBroadcast: Bool {
@@ -197,19 +208,6 @@ struct StartDetailScreen: View {
             Text("start_detail_rehearsal_message")
                 .font(AppFont.textStyle(.subheadline))
                 .foregroundStyle(.secondary)
-
-            Text("participate_rehearsal_delay_reminder")
-                .font(AppFont.textStyle(.footnote))
-                .foregroundStyle(.secondary)
-
-            Text("participate_rehearsal_autostop")
-                .font(AppFont.textStyle(.footnote))
-                .foregroundStyle(.secondary)
-
-            Link(destination: URL(string: "https://naviari.org")!) {
-                Text("participate_rehearsal_verify_link")
-                    .font(AppFont.textStyle(.subheadline, weight: .semibold))
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal)
@@ -217,16 +215,41 @@ struct StartDetailScreen: View {
 
     private var rehearsalActiveGuidance: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("start_detail_rehearsal_active_message")
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(.init(rehearsalActiveMessage(at: context.date)))
+                    .font(AppFont.textStyle(.subheadline))
+                    .foregroundStyle(.secondary)
+            }
+            Text("participate_rehearsal_delay_reminder")
                 .font(AppFont.textStyle(.subheadline))
                 .foregroundStyle(.secondary)
-            Text("participate_rehearsal_delay_reminder")
-                .font(AppFont.textStyle(.footnote))
-                .foregroundStyle(.secondary)
             Text("participate_rehearsal_autostop")
-                .font(AppFont.textStyle(.footnote))
+                .font(AppFont.textStyle(.subheadline))
                 .foregroundStyle(.secondary)
         }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func rehearsalActiveMessage(at referenceDate: Date) -> String {
+        let baseText = NSLocalizedString("start_detail_rehearsal_active_message", comment: "")
+        guard let secondsRemaining = rehearsalDelaySecondsRemaining(at: referenceDate) else {
+            return baseText
+        }
+
+        let countdownFormat = NSLocalizedString("start_detail_rehearsal_active_message_countdown", comment: "")
+        return String.localizedStringWithFormat(countdownFormat, secondsRemaining)
+    }
+
+    private func rehearsalDelaySecondsRemaining(at referenceDate: Date) -> Int? {
+        guard let startedAt = activeRehearsalSession?.startedAt else {
+            return nil
+        }
+
+        let visibleAt = startedAt.addingTimeInterval(Self.rehearsalVisibilityDelay)
+        let remaining = Int(ceil(visibleAt.timeIntervalSince(referenceDate)))
+        return remaining > 0 ? remaining : nil
     }
 
     private func unavailableState(messageKey: LocalizedStringKey) -> some View {

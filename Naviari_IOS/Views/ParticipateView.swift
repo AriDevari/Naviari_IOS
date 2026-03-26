@@ -125,10 +125,12 @@ struct ParticipateView: View {
                     .padding(.top, 16)
                     .disabled(isBroadcastActionDisabled)
 
-                    Text(ctaHintKey)
-                        .font(AppFont.textStyle(.footnote))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    if !isRehearsalMode {
+                        Text(ctaHintKey)
+                            .font(AppFont.textStyle(.footnote))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
                 }
                 .padding()
             }
@@ -252,19 +254,6 @@ struct ParticipateView: View {
 
             Text("participate_rehearsal_guidance_body")
                 .font(AppFont.textStyle(.subheadline))
-                .foregroundStyle(.secondary)
-
-            Link(destination: URL(string: "https://naviari.org")!) {
-                Text("participate_rehearsal_verify_link")
-                    .font(AppFont.textStyle(.subheadline, weight: .semibold))
-            }
-
-            Text("participate_rehearsal_delay_reminder")
-                .font(AppFont.textStyle(.footnote))
-                .foregroundStyle(.secondary)
-
-            Text("participate_rehearsal_autostop")
-                .font(AppFont.textStyle(.footnote))
                 .foregroundStyle(.secondary)
         }
         .padding()
