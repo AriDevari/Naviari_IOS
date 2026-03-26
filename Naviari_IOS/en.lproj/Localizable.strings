@@ -29,7 +29,7 @@
 "participate_rating_label" = "Rating";
 "participate_rating_placeholder" = "e.g. 1.123";
 "participate_description_label" = "Description";
-"participate_description_placeholder" = "Notes for organizers";
+"participate_description_placeholder" = "Boat description, like X-35, dark sails";
 "participate_club_label" = "Club";
 "participate_club_placeholder" = "Home club";
 "participate_color_label" = "Color";

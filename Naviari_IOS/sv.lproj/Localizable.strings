@@ -29,7 +29,7 @@
 "participate_rating_label" = "Rating";
 "participate_rating_placeholder" = "t.ex. 1,123";
 "participate_description_label" = "Beskrivning";
-"participate_description_placeholder" = "Info till arrangörerna";
+"participate_description_placeholder" = "Båtbeskrivning, till exempel X-35, mörka segel";
 "participate_club_label" = "Klubb";
 "participate_club_placeholder" = "Hemmaklubb";
 "participate_color_label" = "Färg";
