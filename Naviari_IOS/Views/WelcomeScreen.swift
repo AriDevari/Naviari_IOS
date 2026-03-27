@@ -36,6 +36,7 @@ struct WelcomeScreen: View {
                     .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
             }
             .buttonStyle(.borderedProminent)
+            .tint(AppUI.brandPrimary)
             .padding(.horizontal, 48)
             .offset(y: -20)
 

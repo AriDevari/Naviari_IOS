@@ -12,6 +12,8 @@ import UIKit
 enum AppUI {
     static let primaryButtonHeight: CGFloat = 66
     static let buttonFont: Font = AppFont.fixed(21, weight: .semibold)
+    static let brandPrimary = Color(red: 241 / 255, green: 133 / 255, blue: 16 / 255)
+    static let brandPrimaryMuted = brandPrimary.opacity(0.15)
 }
 
 /// Main entry point that wires together shared environment objects + background schedulers.

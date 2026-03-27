@@ -20,10 +20,10 @@ struct RaceAvatarView: View {
                     .scaledToFill()
             } else {
                 Circle()
-                    .fill(Color.blue.opacity(0.15))
+                    .fill(AppUI.brandPrimaryMuted)
                 Text(initials)
                     .font(AppFont.textStyle(.headline))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(AppUI.brandPrimary)
             }
         }
         .frame(width: size, height: size)

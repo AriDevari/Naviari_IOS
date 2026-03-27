@@ -41,7 +41,7 @@ struct StartAvatarView: View {
     }
 
     private var iconBackgroundColor: Color {
-        Color(hex: start.iconColor) ?? .blue
+        Color(hex: start.iconColor) ?? AppUI.brandPrimary
     }
 
     private func loadImage() async {

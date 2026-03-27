@@ -18,7 +18,7 @@ struct ParticipateView: View {
     @State private var ratingValue = ""
     @State private var descriptionText = ""
     @State private var clubText = ""
-    @State private var selectedColor = Color.blue
+    @State private var selectedColor = AppUI.brandPrimary
     @State private var codePrefix = ""
     @State private var codeSuffix = ""
     @State private var showParticipationInfo = false
@@ -122,6 +122,7 @@ struct ParticipateView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(AppUI.brandPrimary)
                     .padding(.top, 16)
                     .disabled(isBroadcastActionDisabled)
 
@@ -493,7 +494,7 @@ struct ParticipateView: View {
         ratingValue = ""
         descriptionText = ""
         clubText = ""
-        selectedColor = .blue
+        selectedColor = AppUI.brandPrimary
         codePrefix = ""
         codeSuffix = ""
         submissionError = nil
@@ -613,6 +614,7 @@ struct ParticipateView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(AppUI.brandPrimary)
                 .disabled(isValidatingCode || !hasCodeAttemptsRemaining || participationCode == nil)
 
                 Button("back_button") {

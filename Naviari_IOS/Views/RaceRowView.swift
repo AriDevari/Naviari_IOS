@@ -28,14 +28,14 @@ struct RaceRowView: View {
             Spacer()
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(AppUI.brandPrimary)
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? Color.blue.opacity(0.15) : Color(.secondarySystemBackground))
+                .fill(isSelected ? AppUI.brandPrimaryMuted : Color(.secondarySystemBackground))
         )
     }
 }

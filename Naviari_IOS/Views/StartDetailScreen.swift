@@ -136,6 +136,7 @@ struct StartDetailScreen: View {
                                 .frame(minHeight: AppUI.primaryButtonHeight)
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(AppUI.brandPrimary)
                         .padding(.horizontal)
 
                         if isRehearsalWindow {
