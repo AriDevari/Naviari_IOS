@@ -12,7 +12,7 @@ import UIKit
 enum AppUI {
     static let primaryButtonHeight: CGFloat = 66
     static let buttonFont: Font = AppFont.fixed(21, weight: .semibold)
-    static let brandPrimary = Color(red: 241 / 255, green: 133 / 255, blue: 16 / 255)
+    static let brandPrimary = Color(red: 0 / 255, green: 136 / 255, blue: 255 / 255)
     static let brandPrimaryMuted = brandPrimary.opacity(0.15)
 }
 
