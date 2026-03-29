@@ -10,6 +10,13 @@ import SwiftUI
 /// Shows start-specific metadata and the entry point into the participation flow.
 struct StartDetailScreen: View {
     private static let rehearsalVisibilityDelay: TimeInterval = 30
+    private static let rehearsalUploadCadence: TimeInterval = 10
+    private static let uploadBoundaryTolerance: TimeInterval = 0.001
+    private static let rehearsalVerificationBaseURL = URL(string: "https://naviari.org")!
+    private static let rehearsalVerificationMarkdownTargets = [
+        "https://naviari.org/",
+        "https://naviari.org"
+    ]
 
     let raceSummary: RaceSummary
     let start: RaceStart
@@ -21,6 +28,20 @@ struct StartDetailScreen: View {
 
     private var currentStartIdentifier: String? {
         start.rawId ?? start.slug
+    }
+
+    private var rehearsalVerificationURL: URL {
+        guard let rawStartId = currentStartIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawStartId.isEmpty else {
+            return Self.rehearsalVerificationBaseURL
+        }
+
+        var components = URLComponents(
+            url: Self.rehearsalVerificationBaseURL,
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [URLQueryItem(name: "start_id", value: rawStartId)]
+        return components?.url ?? Self.rehearsalVerificationBaseURL
     }
 
     private var activeSessionMatchesCurrentStart: Bool {
@@ -234,13 +255,24 @@ struct StartDetailScreen: View {
     }
 
     private func rehearsalActiveMessage(at referenceDate: Date) -> String {
-        let baseText = NSLocalizedString("start_detail_rehearsal_active_message", comment: "")
+        let baseText = rehearsalDeepLinkedMarkdown(
+            NSLocalizedString("start_detail_rehearsal_active_message", comment: "")
+        )
         guard let secondsRemaining = rehearsalDelaySecondsRemaining(at: referenceDate) else {
             return baseText
         }
 
-        let countdownFormat = NSLocalizedString("start_detail_rehearsal_active_message_countdown", comment: "")
+        let countdownFormat = rehearsalDeepLinkedMarkdown(
+            NSLocalizedString("start_detail_rehearsal_active_message_countdown", comment: "")
+        )
         return String.localizedStringWithFormat(countdownFormat, secondsRemaining)
+    }
+
+    private func rehearsalDeepLinkedMarkdown(_ localizedMarkdown: String) -> String {
+        let deepLink = rehearsalVerificationURL.absoluteString
+        return Self.rehearsalVerificationMarkdownTargets.reduce(localizedMarkdown) { partial, target in
+            partial.replacingOccurrences(of: target, with: deepLink)
+        }
     }
 
     private func rehearsalDelaySecondsRemaining(at referenceDate: Date) -> Int? {
@@ -248,9 +280,18 @@ struct StartDetailScreen: View {
             return nil
         }
 
-        let visibleAt = startedAt.addingTimeInterval(Self.rehearsalVisibilityDelay)
+        let uploadBoundaryDelay = uploadBoundaryDelaySeconds(from: startedAt)
+        let visibleAt = startedAt.addingTimeInterval(Self.rehearsalVisibilityDelay + uploadBoundaryDelay)
         let remaining = Int(ceil(visibleAt.timeIntervalSince(referenceDate)))
         return remaining > 0 ? remaining : nil
+    }
+
+    private func uploadBoundaryDelaySeconds(from startedAt: Date) -> TimeInterval {
+        let cadence = Self.rehearsalUploadCadence
+        let remainder = startedAt.timeIntervalSince1970.truncatingRemainder(dividingBy: cadence)
+        let normalizedRemainder = remainder >= 0 ? remainder : remainder + cadence
+        let delay = cadence - normalizedRemainder
+        return delay >= cadence - Self.uploadBoundaryTolerance ? 0 : delay
     }
 
     private func unavailableState(messageKey: LocalizedStringKey) -> some View {
