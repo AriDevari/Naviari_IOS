@@ -42,14 +42,14 @@ struct ContentView: View {
             if metricsUploader.isBroadcasting {
                 BroadcastStatusButton(uploader: metricsUploader)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                    .padding(.leading, 24)
-                    .padding(.bottom, 24)
+                    .padding(.leading, Theme.Spacing.floatingInset)
+                    .padding(.bottom, Theme.Spacing.floatingInset)
             }
 
             GPSStatusButton(locationManager: locationManager)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .padding(.trailing, 24)
-                .padding(.bottom, 24)
+                .padding(.trailing, Theme.Spacing.floatingInset)
+                .padding(.bottom, Theme.Spacing.floatingInset)
         }
         .environmentObject(viewModel)
     }

@@ -34,8 +34,8 @@ struct RaceRowView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? AppUI.brandPrimaryMuted : Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.rowCard)
+                .fill(isSelected ? AppUI.brandPrimaryMuted : Theme.Colors.surfaceSecondary)
         )
     }
 }

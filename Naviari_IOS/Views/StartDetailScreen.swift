@@ -192,13 +192,13 @@ struct StartDetailScreen: View {
     private var activeBroadcastSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(activeBroadcastHeaderKey)
-                .font(.headline)
+                .font(Theme.Typography.headline)
 
             if let summary = metricsUploader.activeSession?.summary {
                 ParticipationSummaryView(summary: summary)
             } else {
                 Text("broadcast_status_active_subtitle")
-                    .font(.subheadline)
+                    .font(Theme.Typography.subheadline)
                     .foregroundStyle(.secondary)
             }
 
@@ -214,7 +214,7 @@ struct StartDetailScreen: View {
                     .frame(maxWidth: .infinity, minHeight: AppUI.primaryButtonHeight)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.red)
+            .tint(Theme.Colors.destructive)
         }
         .padding(.horizontal)
     }
@@ -251,7 +251,7 @@ struct StartDetailScreen: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous))
     }
 
     private func rehearsalActiveMessage(at referenceDate: Date) -> String {

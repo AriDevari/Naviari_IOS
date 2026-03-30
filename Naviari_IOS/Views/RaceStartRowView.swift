@@ -33,8 +33,8 @@ struct RaceStartRowView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.rowCard)
+                .fill(Theme.Colors.surfaceSecondary)
         )
     }
 }

@@ -10,10 +10,10 @@ import SwiftData
 import UIKit
 
 enum AppUI {
-    static let primaryButtonHeight: CGFloat = 66
-    static let buttonFont: Font = AppFont.fixed(21, weight: .semibold)
-    static let brandPrimary = Color(red: 0 / 255, green: 136 / 255, blue: 255 / 255)
-    static let brandPrimaryMuted = brandPrimary.opacity(0.15)
+    static let primaryButtonHeight: CGFloat = Theme.Sizing.primaryButtonHeight
+    static let buttonFont: Font = Theme.Typography.button
+    static let brandPrimary = Theme.Colors.brandPrimary
+    static let brandPrimaryMuted = Theme.Colors.brandPrimaryMuted
 }
 
 /// Main entry point that wires together shared environment objects + background schedulers.

@@ -16,12 +16,12 @@ struct GPSStatusButton: View {
     var body: some View {
         Button(action: { showDetail = true }) {
             Image(systemName: "location.fill")
-                .font(.system(size: 24))
+                .font(Theme.Typography.iconMedium)
                 .foregroundStyle(.white)
                 .padding(18)
                 .background(statusColor)
                 .clipShape(Circle())
-                .shadow(color: statusColor.opacity(0.5), radius: 8, x: 0, y: 4)
+                .shadow(color: statusColor.opacity(Theme.Effects.floatingStatusShadowOpacity), radius: Theme.Effects.floatingStatusShadowRadius, x: 0, y: Theme.Effects.floatingStatusShadowYOffset)
         }
         .accessibilityLabel(Text(statusDescription))
         .sheet(isPresented: $showDetail) {
@@ -31,22 +31,19 @@ struct GPSStatusButton: View {
 
     private var statusColor: Color {
         if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
-            return .red
+            return Theme.Colors.statusRed
         }
         if let error = locationManager.lastErrorMessage, !error.isEmpty {
-            return .red
+            return Theme.Colors.statusRed
         }
         guard let accuracy = locationManager.lastAccuracy else {
-            return Color.orange
+            return Theme.Colors.statusYellow
         }
         if accuracy > 20 {
-            return Color.orange
+            return Theme.Colors.statusYellow
         }
         let normalized = max(0, min(1, accuracy / 20))
-        let minHue: Double = 0.33 // green
-        let maxHue: Double = 0.14 // yellow
-        let hue = minHue - (minHue - maxHue) * normalized
-        return Color(hue: hue, saturation: 0.9, brightness: 0.9)
+        return Theme.Colors.statusBlend(normalized: normalized)
     }
 
     private var statusDescription: String {
@@ -110,7 +107,7 @@ private struct GPSStatusDetailView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(accuracyText)
-                        .font(AppFont.fixed(48, weight: .semibold))
+                        .font(Theme.Typography.metricValue)
                         .minimumScaleFactor(0.5)
                         .multilineTextAlignment(.trailing)
                 }
@@ -124,7 +121,7 @@ private struct GPSStatusDetailView: View {
 
                 if let error = locationManager.lastErrorMessage {
                     Text(error)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.Colors.error)
                         .padding(.top, 8)
                 }
 

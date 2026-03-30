@@ -16,7 +16,7 @@ struct ErrorStateView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(message.isEmpty ? NSLocalizedString("races_error", comment: "") : message)
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.Colors.error)
             Button(buttonTitleKey, action: action)
                 .font(AppUI.buttonFont)
         }

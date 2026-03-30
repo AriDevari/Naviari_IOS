@@ -20,17 +20,17 @@ struct RaceAvatarView: View {
                     .scaledToFill()
             } else {
                 Circle()
-                    .fill(AppUI.brandPrimaryMuted)
+                    .fill(Theme.Colors.brandPrimaryMuted)
                 Text(initials)
                     .font(AppFont.textStyle(.headline))
-                    .foregroundStyle(AppUI.brandPrimary)
+                    .foregroundStyle(Theme.Colors.brandPrimary)
             }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
         .overlay(
             Circle()
-                .stroke(Color(.systemBackground).opacity(0.4), lineWidth: 1)
+                .stroke(Theme.Colors.surfacePrimary.opacity(Theme.Effects.avatarBorderOpacity), lineWidth: Theme.Effects.avatarBorderLineWidth)
         )
         .task(id: summary.preferredImageId) {
             await loadImage()

@@ -19,7 +19,7 @@ struct WelcomeScreen: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 120, height: 120)
-                .shadow(radius: 4)
+                .shadow(radius: Theme.Effects.logoShadowRadius)
 
             Spacer()
 
@@ -51,6 +51,6 @@ struct WelcomeScreen: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 24)
-        .background(Color(.systemBackground))
+        .background(Theme.Colors.surfacePrimary)
     }
 }

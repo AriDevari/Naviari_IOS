@@ -18,7 +18,7 @@ struct ParticipateView: View {
     @State private var ratingValue = ""
     @State private var descriptionText = ""
     @State private var clubText = ""
-    @State private var selectedColor = AppUI.brandPrimary
+    @State private var selectedColor = Theme.Colors.brandPrimary
     @State private var codePrefix = ""
     @State private var codeSuffix = ""
     @State private var showParticipationInfo = false
@@ -88,7 +88,7 @@ struct ParticipateView: View {
             trailing: AnyView(
                 Button(action: { showParticipationInfo = true }) {
                     Image(systemName: "info.circle")
-                        .font(.system(size: 28))
+                        .font(Theme.Typography.iconLarge)
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -108,7 +108,7 @@ struct ParticipateView: View {
 
                     if let submissionError {
                         Text(submissionError)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Theme.Colors.error)
                     }
 
                     Button(action: { Task { await submitBroadcastRequest() } }) {
@@ -259,7 +259,7 @@ struct ParticipateView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous))
     }
 
     /// Validates code/token, submits the start entry, persists it, and starts broadcasting.
@@ -494,7 +494,7 @@ struct ParticipateView: View {
         ratingValue = ""
         descriptionText = ""
         clubText = ""
-        selectedColor = AppUI.brandPrimary
+        selectedColor = Theme.Colors.brandPrimary
         codePrefix = ""
         codeSuffix = ""
         submissionError = nil
@@ -582,7 +582,7 @@ struct ParticipateView: View {
 
                 if let codeValidationError {
                     Text(codeValidationError)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.Colors.error)
                         .font(AppFont.textStyle(.footnote))
                 }
 
@@ -598,7 +598,7 @@ struct ParticipateView: View {
                 } else {
                     Text("participate_code_attempts_exhausted")
                         .font(AppFont.textStyle(.footnote))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.Colors.error)
                 }
 
                 Button {

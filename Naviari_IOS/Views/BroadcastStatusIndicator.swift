@@ -7,7 +7,7 @@ struct BroadcastStatusButton: View {
     @State private var plink = false
     @State private var breathing = false
     @State private var lastAttemptCount = 0
-    private let buttonSize: CGFloat = 62
+    private let buttonSize: CGFloat = Theme.Sizing.floatingButtonDiameter
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { timeline in
@@ -25,7 +25,7 @@ struct BroadcastStatusButton: View {
 
                     if state == .green {
                         Circle()
-                            .stroke(state.color.opacity(0.55), lineWidth: 2)
+                            .stroke(state.color.opacity(Theme.Effects.statusPulseStrokeOpacity), lineWidth: Theme.Effects.statusPulseLineWidth)
                             .frame(width: buttonSize, height: buttonSize)
                             .scaleEffect(breathing ? 1.25 : 1.02)
                             .opacity(breathing ? 0.0 : 0.85)
@@ -102,7 +102,7 @@ private struct BroadcastStatusDetailView: View {
                             }
                             .padding(.top, 8)
                             .buttonStyle(.borderedProminent)
-                            .tint(.red)
+                            .tint(Theme.Colors.destructive)
                         } else {
                             BroadcastDiagnosticsPlaceholder()
                         }
@@ -161,13 +161,13 @@ private enum BroadcastIndicatorState: Equatable {
     var color: Color {
         switch self {
         case .inactive:
-            return .gray
+            return Theme.Colors.statusInactive
         case .green:
-            return .green
+            return Theme.Colors.statusGreen
         case .yellow:
-            return .orange
+            return Theme.Colors.statusYellow
         case .red:
-            return .red
+            return Theme.Colors.statusRed
         }
     }
 
@@ -306,7 +306,7 @@ private struct BroadcastDiagnosticsCard: View {
 
                     if state == .green {
                         Circle()
-                            .stroke(state.color.opacity(0.55), lineWidth: 2)
+                            .stroke(state.color.opacity(Theme.Effects.statusPulseStrokeOpacity), lineWidth: Theme.Effects.statusPulseLineWidth)
                             .frame(width: iconSize, height: iconSize)
                             .scaleEffect(breathing ? 1.25 : 1.02)
                             .opacity(breathing ? 0.0 : 0.85)
@@ -346,10 +346,10 @@ private struct BroadcastDiagnosticsCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("broadcast_status_error_prefix")
                         .font(AppFont.textStyle(.subheadline, weight: .semibold))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.Colors.error)
                     Text(errorMessage)
                         .font(AppFont.textStyle(.footnote))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Theme.Colors.error)
                 }
             }
         }

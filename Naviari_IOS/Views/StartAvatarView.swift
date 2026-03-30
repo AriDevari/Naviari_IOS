@@ -29,7 +29,7 @@ struct StartAvatarView: View {
         .clipShape(Circle())
         .overlay(
             Circle()
-                .stroke(Color(.systemBackground).opacity(0.4), lineWidth: 1)
+                .stroke(Theme.Colors.surfacePrimary.opacity(Theme.Effects.avatarBorderOpacity), lineWidth: Theme.Effects.avatarBorderLineWidth)
         )
         .task(id: start.imageId) {
             await loadImage()
@@ -41,7 +41,7 @@ struct StartAvatarView: View {
     }
 
     private var iconBackgroundColor: Color {
-        Color(hex: start.iconColor) ?? AppUI.brandPrimary
+        Color(hex: start.iconColor) ?? Theme.Colors.brandPrimary
     }
 
     private func loadImage() async {
