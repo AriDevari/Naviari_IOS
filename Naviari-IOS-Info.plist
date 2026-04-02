@@ -15,6 +15,10 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fonts/Nunito-Regular.ttf</string>
+		<string>Fonts/Nunito-Medium.ttf</string>
+		<string>Fonts/Nunito-SemiBold.ttf</string>
+		<string>Fonts/Nunito-Bold.ttf</string>
+		<string>Fonts/Nunito-ExtraBold.ttf</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

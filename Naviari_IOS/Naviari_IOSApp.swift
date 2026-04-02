@@ -61,8 +61,8 @@ struct Naviari_IOSApp: App {
     }
 
     private func configureTypographyAppearance() {
-        let titleFont = UIFont(name: "Nunito-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17, weight: .semibold)
-        let largeTitleFont = UIFont(name: "Nunito-Regular", size: 34) ?? UIFont.systemFont(ofSize: 34, weight: .bold)
+        let titleFont = UIFont(name: "Nunito-SemiBold", size: 17) ?? UIFont.systemFont(ofSize: 17, weight: .semibold)
+        let largeTitleFont = UIFont(name: "Nunito-Bold", size: 34) ?? UIFont.systemFont(ofSize: 34, weight: .bold)
         let barButtonFont = UIFont(name: "Nunito-Regular", size: 17) ?? UIFont.systemFont(ofSize: 17)
 
         UINavigationBar.appearance().titleTextAttributes = [.font: titleFont]
