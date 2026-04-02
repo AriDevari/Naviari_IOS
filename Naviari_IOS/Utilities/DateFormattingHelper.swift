@@ -2,6 +2,8 @@ import Foundation
 
 /// Centralizes the various date/relative-time formatting helpers used throughout the app.
 enum DateFormattingHelper {
+    private static let twoDaysInSeconds: TimeInterval = 2 * 24 * 60 * 60
+
     private static let isoDateTimeWithFractional: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -74,6 +76,83 @@ enum DateFormattingHelper {
     static func localizedTime(from date: Date) -> String {
         timeOnlyFormatter.locale = Locale.current
         return timeOnlyFormatter.string(from: date)
+    }
+
+    /// Formats a date as a 24-hour local time string using `HH:mm`.
+    static func localizedHourMinute(
+        from date: Date,
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    /// Parses a backend date string and formats it as a 24-hour local time string using `HH:mm`.
+    static func localizedHourMinute(
+        from value: String?,
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> String? {
+        guard let value, let date = parseDate(from: value) else {
+            return nil
+        }
+        return localizedHourMinute(from: date, locale: locale, timeZone: timeZone)
+    }
+
+    /// Formats a date as a localized "Today, d MMMM yyyy" string for date context display.
+    static func localizedTodayDate(
+        from date: Date,
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
+    /// Formats a countdown for `actual_utc` display.
+    /// - More than 2 full days: day-based relative text, e.g. `in 4 days`
+    /// - 2 days or less: positional `HH:MM:SS`
+    /// - Past/zero: `00:00:00`
+    static func actualStartCountdownString(
+        to target: Date,
+        now: Date = Date(),
+        locale: Locale = .current
+    ) -> String {
+        let remainingSeconds = max(0, Int(target.timeIntervalSince(now).rounded(.down)))
+
+        if TimeInterval(remainingSeconds) > twoDaysInSeconds {
+            let fullDaysRemaining = max(1, remainingSeconds / 86_400)
+            let formatter = RelativeDateTimeFormatter()
+            formatter.unitsStyle = .full
+            formatter.locale = locale
+            let relativeTarget = now.addingTimeInterval(TimeInterval(fullDaysRemaining * 86_400))
+            return formatter.localizedString(for: relativeTarget, relativeTo: now)
+        }
+
+        let hours = remainingSeconds / 3_600
+        let minutes = (remainingSeconds % 3_600) / 60
+        let seconds = remainingSeconds % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    /// Parses a backend date string and formats it using the actual-start countdown rules.
+    static func actualStartCountdownString(
+        from value: String?,
+        now: Date = Date(),
+        locale: Locale = .current
+    ) -> String? {
+        guard let value, let date = parseDate(from: value) else {
+            return nil
+        }
+        return actualStartCountdownString(to: date, now: now, locale: locale)
     }
 
     /// Attempts to parse backend date strings (with or without fractional seconds) plus legacy date-only values.

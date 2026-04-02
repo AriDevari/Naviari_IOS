@@ -111,6 +111,125 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertNil(starts.first?.imageId)
     }
 
+    func testUpdateStartActualTimeUsesPatchTimingContract() async throws {
+        let inspectedRequest = expectation(description: "patch request inspected")
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PATCH")
+            XCTAssertEqual(request.url?.path, "/api/starts/start-1/timing")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-API-Key"), "test-key")
+
+            let json = try XCTUnwrap(
+                try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any]
+            )
+            XCTAssertEqual(json["actualUtc"] as? String, "2025-05-01T10:05:00Z")
+            XCTAssertEqual(json["updatedBy"] as? String, "ios-tests")
+            inspectedRequest.fulfill()
+
+            let payload = """
+            {"start":{"id":"start-1","name":"Morning Fleet","status":"scheduled","scheduled_utc":"2025-05-01T10:00:00Z","actual_utc":"2025-05-01T10:05:00Z"}}
+            """.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, payload)
+        }
+
+        let service = makeService()
+        let start = try await service.updateStartActualTime(
+            startId: "start-1",
+            actualUtc: "2025-05-01T10:05:00Z",
+            updatedBy: "ios-tests"
+        )
+
+        wait(for: [inspectedRequest], timeout: 1.0)
+        XCTAssertEqual(start.rawId, "start-1")
+        XCTAssertEqual(start.actualUTC, "2025-05-01T10:05:00Z")
+    }
+
+    func testUpdateStartActualTimeSurfacesServerError() async throws {
+        MockURLProtocol.requestHandler = { request in
+            let payload = """
+            {"ok":false,"error":"Manage access is required to update start timing."}
+            """.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 403, httpVersion: nil, headerFields: nil)!
+            return (response, payload)
+        }
+
+        let service = makeService()
+
+        do {
+            _ = try await service.updateStartActualTime(
+                startId: "start-1",
+                actualUtc: "2025-05-01T10:05:00Z"
+            )
+            XCTFail("Expected server error")
+        } catch let error as RaceServiceError {
+            switch error {
+            case let .serverError(statusCode, message):
+                XCTAssertEqual(statusCode, 403)
+                XCTAssertEqual(message, "Manage access is required to update start timing.")
+            default:
+                XCTFail("Unexpected RaceServiceError: \(error)")
+            }
+        }
+    }
+
+    func testUpdateStartActualTimeIncludesManageTokenHeaderWhenProvided() async throws {
+        let inspectedRequest = expectation(description: "manage header included")
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PATCH")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-User-Key"), "manage-token-1")
+            inspectedRequest.fulfill()
+
+            let payload = """
+            {"start":{"id":"start-1","name":"Morning Fleet","status":"scheduled","scheduled_utc":"2025-05-01T10:00:00Z","actual_utc":"2025-05-01T10:05:00Z"}}
+            """.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, payload)
+        }
+
+        let service = makeService()
+        _ = try await service.updateStartActualTime(
+            startId: "start-1",
+            actualUtc: "2025-05-01T10:05:00Z",
+            accessToken: "manage-token-1"
+        )
+
+        wait(for: [inspectedRequest], timeout: 1.0)
+    }
+
+    func testExchangeManageCodeForTokenUsesAccessLoginContract() async throws {
+        let inspectedRequest = expectation(description: "manage login request inspected")
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.url?.path, "/api/access/login")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-API-Key"), "test-key")
+
+            let json = try XCTUnwrap(
+                try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any]
+            )
+            XCTAssertEqual(json["code"] as? String, "ABCD-1234")
+            inspectedRequest.fulfill()
+
+            let payload = """
+            {"ok":true,"token":"manage-token-1"}
+            """.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 201, httpVersion: nil, headerFields: nil)!
+            return (response, payload)
+        }
+
+        let service = makeParticipationService()
+        let token = try await service.exchangeManageCodeForToken("ABCD-1234")
+
+        wait(for: [inspectedRequest], timeout: 1.0)
+        XCTAssertEqual(token, "manage-token-1")
+    }
+
     func testStartIconAssetNamesMatchApprovedKeys() {
         XCTAssertEqual(debugStartIconAssetName(nil), "system:sailboat.fill")
         XCTAssertEqual(debugStartIconAssetName("default"), "system:sailboat.fill")
@@ -235,6 +354,229 @@ final class Naviari_IOSTests: XCTestCase {
 
         XCTAssertEqual(scheduled.localizedStatusKey, "start_status_scheduled")
         XCTAssertEqual(completed.localizedStatusKey, "start_status_completed")
+    }
+
+    func testLocalizedHourMinuteFormatsTwentyFourHourClock() {
+        let date = Date(timeIntervalSince1970: 1_775_138_700)
+
+        let formatted = DateFormattingHelper.localizedHourMinute(
+            from: date,
+            locale: Locale(identifier: "en_US_POSIX"),
+            timeZone: TimeZone(secondsFromGMT: 0)!
+        )
+
+        XCTAssertEqual(formatted, "14:05")
+    }
+
+    func testActualStartCountdownUsesDayTextWhenMoreThanTwoDaysRemain() {
+        let now = Date(timeIntervalSince1970: 1_775_088_000)
+        let target = now.addingTimeInterval((4 * 86_400) + 3_600)
+
+        let formatted = DateFormattingHelper.actualStartCountdownString(
+            to: target,
+            now: now,
+            locale: Locale(identifier: "en_US_POSIX")
+        )
+
+        XCTAssertEqual(formatted, "in 4 days")
+    }
+
+    func testActualStartCountdownUsesClockFormatWhenTwoDaysOrLessRemain() {
+        let now = Date(timeIntervalSince1970: 1_775_088_000)
+        let target = now.addingTimeInterval((18 * 3_600) + (42 * 60) + 9)
+
+        let formatted = DateFormattingHelper.actualStartCountdownString(
+            to: target,
+            now: now,
+            locale: Locale(identifier: "en_US_POSIX")
+        )
+
+        XCTAssertEqual(formatted, "18:42:09")
+    }
+
+    func testActualStartCountdownClampsPastValuesToZero() {
+        let now = Date(timeIntervalSince1970: 1_775_088_000)
+        let target = now.addingTimeInterval(-30)
+
+        let formatted = DateFormattingHelper.actualStartCountdownString(
+            to: target,
+            now: now,
+            locale: Locale(identifier: "en_US_POSIX")
+        )
+
+        XCTAssertEqual(formatted, "00:00:00")
+    }
+
+    func testActualStartEditorInitialDatePrefersActualUtc() {
+        let referenceDate = Date(timeIntervalSince1970: 1_775_088_000)
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: "2026-03-25T12:05:00Z",
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertEqual(
+            start.actualStartEditorInitialDate(referenceDate: referenceDate).timeIntervalSince1970,
+            Date(timeIntervalSince1970: 1_743_005_100).timeIntervalSince1970,
+            accuracy: 0.001
+        )
+    }
+
+    func testActualStartEditorInitialDateFallsBackToScheduledUtc() {
+        let referenceDate = Date(timeIntervalSince1970: 1_775_088_000)
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertEqual(
+            start.actualStartEditorInitialDate(referenceDate: referenceDate).timeIntervalSince1970,
+            Date(timeIntervalSince1970: 1_743_004_800).timeIntervalSince1970,
+            accuracy: 0.001
+        )
+    }
+
+    func testActualStartEditorInitialDateFallsBackToRoundedCurrentMinute() {
+        let referenceDate = Date(timeIntervalSince1970: 1_775_138_759)
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: nil,
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        XCTAssertEqual(
+            start.actualStartEditorInitialDate(referenceDate: referenceDate).timeIntervalSince1970,
+            Date(timeIntervalSince1970: 1_775_138_740).timeIntervalSince1970,
+            accuracy: 0.001
+        )
+    }
+
+    func testActualStartDateFromTimerUsesDefaultFiveMinuteConcept() {
+        let referenceDate = Date(timeIntervalSince1970: 1_775_138_759)
+
+        XCTAssertEqual(
+            RaceStart.actualStartDateFromTimer(minutes: 5, referenceDate: referenceDate).timeIntervalSince1970,
+            Date(timeIntervalSince1970: 1_775_139_040).timeIntervalSince1970,
+            accuracy: 0.001
+        )
+    }
+
+    func testActualStartDateFromTimerUsesChangedMinuteValue() {
+        let referenceDate = Date(timeIntervalSince1970: 1_775_138_759)
+
+        XCTAssertEqual(
+            RaceStart.actualStartDateFromTimer(minutes: 12, referenceDate: referenceDate).timeIntervalSince1970,
+            Date(timeIntervalSince1970: 1_775_139_460).timeIntervalSince1970,
+            accuracy: 0.001
+        )
+    }
+
+    @MainActor
+    func testActualStartHeaderStateUsesScheduledWhenActualMissing() {
+        let viewModel = RaceBrowserViewModel()
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        let state = viewModel.actualStartHeaderState(for: start)
+        guard case let .scheduled(timeText) = state else {
+            return XCTFail("Expected scheduled state")
+        }
+
+        XCTAssertEqual(timeText, viewModel.formattedStartTime(for: start))
+    }
+
+    @MainActor
+    func testActualStartHeaderStateUsesCountdownWhenActualInFuture() {
+        let viewModel = RaceBrowserViewModel()
+        let now = Date(timeIntervalSince1970: 1_775_088_000)
+        let target = now.addingTimeInterval((2 * 3_600) + (15 * 60) + 10)
+        let actualUtc = ISO8601DateFormatter().string(from: target)
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: actualUtc,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        let expected = DateFormattingHelper.actualStartCountdownString(to: target, now: now)
+        let state = viewModel.actualStartHeaderState(for: start, now: now)
+        guard case let .countdown(timeToStartText) = state else {
+            return XCTFail("Expected countdown state")
+        }
+
+        XCTAssertEqual(timeToStartText, expected)
+    }
+
+    @MainActor
+    func testActualStartHeaderStateUsesStartedWhenActualReached() {
+        let viewModel = RaceBrowserViewModel()
+        let now = Date(timeIntervalSince1970: 1_775_088_000)
+        let actualDate = now.addingTimeInterval(-30)
+        let actualUtc = ISO8601DateFormatter().string(from: actualDate)
+        let start = RaceStart(
+            rawId: "start-1",
+            name: "Morning Fleet",
+            status: "scheduled",
+            scheduledUTC: "2026-03-25T12:00:00Z",
+            actualUTC: actualUtc,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+
+        let expected = DateFormattingHelper.localizedHourMinute(from: actualDate)
+        let state = viewModel.actualStartHeaderState(for: start, now: now)
+        guard case let .started(actualLocalTimeText) = state else {
+            return XCTFail("Expected started state")
+        }
+
+        XCTAssertEqual(actualLocalTimeText, expected)
     }
 
     func testRaceStartLegacyStatusesRemainCompatibleDuringTransition() {
@@ -371,6 +713,57 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertEqual(session.summary.compactRatingText(locale: Locale(identifier: "en_US_POSIX")), "—")
     }
 
+    func testManageAccessStoragePrefersStartThenRaceThenSeries() {
+        let suiteName = "ManageAccessStorageTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let storage = ManageAccessStorage(userDefaults: defaults)
+        storage.saveToken(token: "series-token", startId: nil, raceId: nil, seriesId: "series-1")
+        storage.saveToken(token: "race-token", startId: nil, raceId: "race-1", seriesId: nil)
+        storage.saveToken(token: "start-token", startId: "start-1", raceId: nil, seriesId: nil)
+
+        let record = storage.loadToken(for: "start-1", raceId: "race-1", seriesId: "series-1")
+        XCTAssertEqual(record?.scope, .start)
+        XCTAssertEqual(record?.scopeId, "start-1")
+        XCTAssertEqual(record?.token, "start-token")
+    }
+
+    func testManageAccessStorageFallsBackToRaceThenSeries() {
+        let suiteName = "ManageAccessStorageTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let storage = ManageAccessStorage(userDefaults: defaults)
+        storage.saveToken(token: "series-token", startId: nil, raceId: nil, seriesId: "series-1")
+        storage.saveToken(token: "race-token", startId: nil, raceId: "race-1", seriesId: nil)
+
+        let raceFallback = storage.loadToken(for: "missing-start", raceId: "race-1", seriesId: "series-1")
+        XCTAssertEqual(raceFallback?.scope, .race)
+        XCTAssertEqual(raceFallback?.scopeId, "race-1")
+        XCTAssertEqual(raceFallback?.token, "race-token")
+
+        let seriesFallback = storage.loadToken(for: "missing-start", raceId: "missing-race", seriesId: "series-1")
+        XCTAssertEqual(seriesFallback?.scope, .series)
+        XCTAssertEqual(seriesFallback?.scopeId, "series-1")
+        XCTAssertEqual(seriesFallback?.token, "series-token")
+    }
+
+    func testManageAccessStorageReturnsNilWhenNoMatchingScopeExists() {
+        let suiteName = "ManageAccessStorageTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let storage = ManageAccessStorage(userDefaults: defaults)
+        storage.saveToken(token: "series-token", startId: nil, raceId: nil, seriesId: "series-1")
+
+        let record = storage.loadToken(for: "start-1", raceId: "race-1", seriesId: "series-2")
+        XCTAssertNil(record)
+    }
+
     // MARK: - Helpers
 
     private func makeService() -> RaceService {
@@ -378,6 +771,13 @@ final class Naviari_IOSTests: XCTestCase {
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
         return RaceService(baseURL: URL(string: "https://example.com")!, apiKey: "test-key", session: session)
+    }
+
+    private func makeParticipationService() -> ParticipationService {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [MockURLProtocol.self]
+        let session = URLSession(configuration: config)
+        return ParticipationService(session: session, baseURL: URL(string: "https://example.com")!, apiKey: "test-key")
     }
 }
 

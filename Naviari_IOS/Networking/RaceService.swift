@@ -87,6 +87,62 @@ struct RaceService {
         throw RaceServiceError.decodingFailed
     }
 
+    /// Updates only the start's actual start time through the narrow backend PATCH contract.
+    func updateStartActualTime(
+        startId: String,
+        actualUtc: String,
+        updatedBy: String? = nil,
+        accessToken: String? = nil
+    ) async throws -> RaceStart {
+        var request = try makeRequest(path: "/api/starts/\(startId)/timing", queryItems: [])
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let accessToken, !accessToken.isEmpty {
+            request.setValue(accessToken, forHTTPHeaderField: "X-User-Key")
+        }
+        request.httpBody = try JSONEncoder().encode(
+            StartTimingPatchRequest(actualUtc: actualUtc, updatedBy: updatedBy)
+        )
+
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+
+        guard let payload = try? JSONDecoder().decode(StartMutationEnvelope.self, from: data) else {
+            throw RaceServiceError.decodingFailed
+        }
+
+        return payload.start
+    }
+
+    /// Clears the start's actual_utc by sending null through the narrow backend PATCH contract.
+    func resetStartActualTime(
+        startId: String,
+        accessToken: String? = nil
+    ) async throws -> RaceStart {
+        var request = try makeRequest(path: "/api/starts/\(startId)/timing", queryItems: [])
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let accessToken, !accessToken.isEmpty {
+            request.setValue(accessToken, forHTTPHeaderField: "X-User-Key")
+        }
+        request.httpBody = try JSONEncoder().encode(
+            StartTimingPatchRequest(actualUtc: nil, updatedBy: "start-timing-reset")
+        )
+
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+
+        guard let payload = try? JSONDecoder().decode(StartMutationEnvelope.self, from: data) else {
+            throw RaceServiceError.decodingFailed
+        }
+
+        return payload.start
+    }
+
     private func makeRequest(path: String, queryItems: [URLQueryItem]) throws -> URLRequest {
         guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
             throw RaceServiceError.invalidURL
@@ -200,4 +256,33 @@ private struct RaceSeriesEnvelope: Decodable {
 
 private struct RaceStartEnvelope: Decodable {
     let starts: [RaceStart]
+}
+
+private struct StartMutationEnvelope: Decodable {
+    let start: RaceStart
+}
+
+private struct StartTimingPatchRequest: Encodable {
+    let actualUtc: String?
+    let updatedBy: String?
+    /// When true, explicitly encodes actualUtc even when nil (as JSON null).
+    let includeActualUtc: Bool
+
+    init(actualUtc: String?, updatedBy: String? = nil, includeActualUtc: Bool = true) {
+        self.actualUtc = actualUtc
+        self.updatedBy = updatedBy
+        self.includeActualUtc = includeActualUtc
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case actualUtc, updatedBy
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if includeActualUtc {
+            try container.encode(actualUtc, forKey: .actualUtc)
+        }
+        try container.encodeIfPresent(updatedBy, forKey: .updatedBy)
+    }
 }

@@ -150,6 +150,30 @@ extension RaceStart {
         estimatedStartDate != nil
     }
 
+    func actualStartEditorInitialDate(
+        referenceDate: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date {
+        if let actualStartDate {
+            return actualStartDate
+        }
+        if let estimatedStartDate {
+            return estimatedStartDate
+        }
+        return Self.roundDownToMinute(referenceDate, calendar: calendar)
+    }
+
+    static func actualStartDateFromTimer(
+        minutes: Int,
+        referenceDate: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Date {
+        let clampedMinutes = max(0, minutes)
+        let roundedReferenceDate = roundDownToMinute(referenceDate, calendar: calendar)
+        return calendar.date(byAdding: .minute, value: clampedMinutes, to: roundedReferenceDate)
+            ?? roundedReferenceDate.addingTimeInterval(TimeInterval(clampedMinutes * 60))
+    }
+
     var isCompletedStatus: Bool {
         switch normalizedStatus {
         case "completed", "finished":
@@ -205,6 +229,11 @@ extension RaceStart {
         }
 
         return nil
+    }
+
+    private static func roundDownToMinute(_ date: Date, calendar: Calendar) -> Date {
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        return calendar.date(from: components) ?? date
     }
 }
 

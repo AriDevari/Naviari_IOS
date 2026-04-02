@@ -105,6 +105,11 @@ final class ParticipationService {
         return token
     }
 
+    /// Wrapper with explicit intent for management code validation flows.
+    func exchangeManageCodeForToken(_ code: String) async throws -> String {
+        try await exchangeCodeForToken(code)
+    }
+
     /// Creates or updates a start entry using the provided token and payload.
     func submitStartEntry(token: String, submission: ParticipationSubmission) async throws -> ParticipationResult {
         var request = try makeRequest(path: "/api/start-entries")

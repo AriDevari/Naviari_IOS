@@ -31,11 +31,22 @@ struct ContentView: View {
                             navigationPath.append(.startDetail(summary, start))
                         }
                     case let .startDetail(summary, start):
-                        StartDetailScreen(raceSummary: summary, start: start) {
-                            navigationPath.append(.participate(summary, start))
-                        }
+                        StartDetailScreen(
+                            raceSummary: summary,
+                            start: start,
+                            onParticipate: {
+                                let latest = latestStart(for: start, in: summary)
+                                navigationPath.append(.participate(summary, latest))
+                            },
+                            onSetStartTime: {
+                                let latest = latestStart(for: start, in: summary)
+                                navigationPath.append(.setStartTime(summary, latest))
+                            }
+                        )
                     case let .participate(summary, start):
                         ParticipateView(raceSummary: summary, start: start)
+                    case let .setStartTime(summary, start):
+                        SetStartTimeScreen(raceSummary: summary, start: start)
                     }
                 }
             }
@@ -53,6 +64,16 @@ struct ContentView: View {
         }
         .environmentObject(viewModel)
     }
+
+    private func latestStart(for routeStart: RaceStart, in summary: RaceSummary) -> RaceStart {
+        let routeId = routeStart.rawId ?? routeStart.slug
+        guard let routeId else { return routeStart }
+        let starts = viewModel.starts(for: summary)
+        if let updated = starts.first(where: { ($0.rawId ?? $0.slug) == routeId }) {
+            return updated
+        }
+        return routeStart
+    }
 }
 
 /// Typed routes for the root NavigationStack.
@@ -61,6 +82,7 @@ private enum AppRoute: Hashable {
     case raceDetail(RaceSummary)
     case startDetail(RaceSummary, RaceStart)
     case participate(RaceSummary, RaceStart)
+    case setStartTime(RaceSummary, RaceStart)
 }
 #Preview {
     ContentView()

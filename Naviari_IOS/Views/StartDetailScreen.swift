@@ -21,13 +21,24 @@ struct StartDetailScreen: View {
     let raceSummary: RaceSummary
     let start: RaceStart
     var onParticipate: () -> Void
+    var onSetStartTime: () -> Void
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
     @State private var metadataHeight: CGFloat = 0
     @State private var showStopConfirmation = false
 
+    private var resolvedStart: RaceStart {
+        guard let startId = start.rawId ?? start.slug else {
+            return start
+        }
+        if let updated = viewModel.selectedRaceStarts.first(where: { ($0.rawId ?? $0.slug) == startId }) {
+            return updated
+        }
+        return start
+    }
+
     private var currentStartIdentifier: String? {
-        start.rawId ?? start.slug
+        resolvedStart.rawId ?? resolvedStart.slug
     }
 
     private var rehearsalVerificationURL: URL {
@@ -67,11 +78,11 @@ struct StartDetailScreen: View {
     }
 
     private var isRehearsalWindow: Bool {
-        start.isRehearsalWindow()
+        resolvedStart.isRehearsalWindow()
     }
 
     private var isMissingEstimatedStart: Bool {
-        !start.hasEstimatedStartDate
+        !resolvedStart.hasEstimatedStartDate
     }
 
     private var primaryActionKey: LocalizedStringKey {
@@ -80,7 +91,7 @@ struct StartDetailScreen: View {
 
     private var shouldShowParticipateCTA: Bool {
         !shouldShowActiveBroadcastSection
-            && !start.isCompletedStatus
+            && !resolvedStart.isCompletedStatus
             && !isMissingEstimatedStart
             && !shouldHideParticipateCTAForOtherActiveBroadcast
     }
@@ -88,6 +99,10 @@ struct StartDetailScreen: View {
     private var shouldShowRehearsalAutoStopMessage: Bool {
         metricsUploader.lastStopReason == .rehearsalTimeLimitReached
             && metricsUploader.lastStoppedSession?.startId == currentStartIdentifier
+    }
+
+    private var shouldShowSetStartTimeCTA: Bool {
+        !resolvedStart.isCompletedStatus
     }
 
     var body: some View {
@@ -101,24 +116,19 @@ struct StartDetailScreen: View {
                 VStack(spacing: 24) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            Text(start.name ?? raceSummary.race.nameOrFallback)
+                            Text(resolvedStart.name ?? raceSummary.race.nameOrFallback)
                                 .font(AppFont.textStyle(.title2, weight: .semibold))
 
-                            LabeledContent {
-                                Text(viewModel.formattedStartTime(for: start) ?? "—")
-                            } label: {
-                                Text("race_date_label")
-                                    .foregroundStyle(.secondary)
-                            }
+                            startTimingMetadataRow
 
                             LabeledContent {
-                                Text(LocalizedStringKey(start.localizedStatusKey))
+                                Text(LocalizedStringKey(resolvedStart.localizedStatusKey))
                             } label: {
                                 Text("race_status_label")
                                     .foregroundStyle(.secondary)
                             }
 
-                            if let description = start.description, !description.isEmpty {
+                            if let description = resolvedStart.description, !description.isEmpty {
                                 Text(description)
                                     .padding(.top, 8)
                             }
@@ -143,7 +153,7 @@ struct StartDetailScreen: View {
 
                     if shouldShowActiveBroadcastSection {
                         activeBroadcastSection
-                    } else if start.isCompletedStatus {
+                    } else if resolvedStart.isCompletedStatus {
                         unavailableState(messageKey: "start_detail_completed_message")
                     } else if isMissingEstimatedStart {
                         unavailableState(messageKey: "participate_estimated_start_required_hint")
@@ -167,6 +177,17 @@ struct StartDetailScreen: View {
                         }
                     }
 
+                    if shouldShowSetStartTimeCTA {
+                        Button(action: onSetStartTime) {
+                            Text("set_start_time_title")
+                                .font(AppUI.buttonFont)
+                                .frame(maxWidth: .infinity)
+                                .frame(minHeight: AppUI.primaryButtonHeight)
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.horizontal)
+                    }
+
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -183,7 +204,7 @@ struct StartDetailScreen: View {
         } message: {
             Text("broadcast_stop_confirm_message")
         }
-        .task(id: start.id + (start.status ?? "")) {
+        .task(id: resolvedStart.id + (resolvedStart.status ?? "")) {
             stopBroadcastIfCompletedForCurrentStart()
         }
     }
@@ -314,8 +335,52 @@ struct StartDetailScreen: View {
             .padding(.horizontal)
     }
 
+    @ViewBuilder
+    private var startTimingMetadataRow: some View {
+        if resolvedStart.actualStartDate != nil {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                actualStartMetadataRow(for: viewModel.actualStartHeaderState(for: resolvedStart, now: context.date))
+            }
+        } else {
+            LabeledContent {
+                Text(viewModel.formattedStartTime(for: resolvedStart) ?? "—")
+            } label: {
+                Text("race_date_label")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func actualStartMetadataRow(for state: ActualStartHeaderState) -> some View {
+        switch state {
+        case let .scheduled(timeText):
+            LabeledContent {
+                Text(timeText ?? "—")
+            } label: {
+                Text("race_date_label")
+                    .foregroundStyle(.secondary)
+            }
+        case let .countdown(timeToStartText):
+            LabeledContent {
+                Text(timeToStartText)
+                    .monospacedDigit()
+            } label: {
+                Text("start_detail_time_to_start_label")
+                    .foregroundStyle(.secondary)
+            }
+        case let .started(actualLocalTimeText):
+            LabeledContent {
+                Text(actualLocalTimeText)
+            } label: {
+                Text("start_detail_started_label")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private func stopBroadcastIfCompletedForCurrentStart() {
-        guard start.isCompletedStatus, activeSessionMatchesCurrentStart, metricsUploader.isBroadcasting else {
+        guard resolvedStart.isCompletedStatus, activeSessionMatchesCurrentStart, metricsUploader.isBroadcasting else {
             return
         }
         metricsUploader.stopBroadcast(reason: .completedStart)
