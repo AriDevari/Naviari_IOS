@@ -17,6 +17,7 @@
 "starts_empty" = "No starts published yet.";
 "close_button" = "Close";
 "back_button" = "Back";
+"actions_cancel" = "Cancel";
 "participate_button" = "Start GPS Broadcast";
 "participate_title" = "GPS Broadcast";
 "participate_rehearsal_button" = "Start Test Broadcast";
@@ -137,10 +138,13 @@
 "set_start_time_error_set_failed" = "Failed to set start time.";
 "set_start_time_error_timer_failed" = "Failed to start timer.";
 "set_start_time_error_start_identifier_missing" = "Start identifier is missing.";
-"set_start_time_reset_button" = "Reset";
-"set_start_time_reset_confirm_title" = "Reset start time?";
-"set_start_time_reset_confirm_action" = "Reset";
-"set_start_time_reset_confirm_message" = "This will clear the actual start time. You can set a new one afterwards.";
-"set_start_time_error_reset_failed" = "Failed to reset start time.";
+"set_start_time_reset_button" = "Remove";
+"set_start_time_reset_confirm_title" = "Clear start time?";
+"set_start_time_reset_confirm_action" = "Remove";
+"set_start_time_reset_confirm_message" = "This will clear the actual start time. The start will revert to its indicative estimated time only. Start-time-based calculations will be unavailable until an actual start time is set again. You can set a new one afterwards.";
+"set_start_time_error_reset_failed" = "Failed to remove start time.";
+"set_start_time_info_title" = "Start Time Help";
+"set_start_time_info_body_manual" = "Set the exact start time for the start. System will use this as base for elapsed and corrected sailed time calculations as start time.\n\nRemoving the exact start time will disable all time-based calculations. This is typically used when a start is postponed and the new time is not yet known. Remember to set a new start time once delays are resolved.";
+"set_start_time_info_body_timer" = "Start the starting sequence. System will use this as base for elapsed and sailed time handicapped calculations as start time.\n\nRemoving the exact start time will disable all time-based calculations. This is typically used when a start is postponed and the new time is not yet known. Remember to set a new start time once delays are resolved.";
 "start_detail_time_to_start_label" = "Time to start";
 "start_detail_started_label" = "Started";

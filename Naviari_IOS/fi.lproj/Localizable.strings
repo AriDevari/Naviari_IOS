@@ -17,6 +17,7 @@
 "starts_empty" = "Lähtöjä ei ole vielä julkaistu.";
 "close_button" = "Sulje";
 "back_button" = "Takaisin";
+"actions_cancel" = "Peruuta";
 "participate_button" = "Aloita GPS-lähetys";
 "participate_title" = "GPS-lähetys";
 "participate_rehearsal_button" = "Aloita testilähetys";
@@ -137,10 +138,13 @@
 "set_start_time_error_set_failed" = "Lähtöajan asettaminen epäonnistui.";
 "set_start_time_error_timer_failed" = "Ajastimen käynnistys epäonnistui.";
 "set_start_time_error_start_identifier_missing" = "Lähdön tunniste puuttuu.";
-"set_start_time_reset_button" = "Nollaa";
-"set_start_time_reset_confirm_title" = "Nollaa lähtöaika?";
-"set_start_time_reset_confirm_action" = "Nollaa";
-"set_start_time_reset_confirm_message" = "Tämä poistaa toteutuneen lähtöajan. Voit asettaa uuden sen jälkeen.";
-"set_start_time_error_reset_failed" = "Lähtöajan nollaus epäonnistui.";
+"set_start_time_reset_button" = "Poista";
+"set_start_time_reset_confirm_title" = "Tyhjennä lähtöaika?";
+"set_start_time_reset_confirm_action" = "Poista";
+"set_start_time_reset_confirm_message" = "Tämä poistaa toteutuneen lähtöajan. Lähdöllä on sen jälkeen vain ohjeellinen arvioitu aika. Lähtöaikaan perustuvat laskelmat eivät ole käytössä ennen kuin todellinen lähtöaika asetetaan uudelleen. Voit asettaa uuden ajan myöhemmin.";
+"set_start_time_error_reset_failed" = "Lähtöajan poisto epäonnistui.";
+"set_start_time_info_title" = "Lähtöajan ohje";
+"set_start_time_info_body_manual" = "Aseta tarkka lähtöaika lähdölle. Järjestelmä käyttää tätä purjehdusajan ja korjatun purjehdusajan laskennan perusteena.\n\nTarkan lähtöajan poistaminen estää kaikki aikaan perustuvat laskelmat. Tätä käytetään tyypillisesti kun lähtö on lykätty eikä uutta aikaa vielä tiedetä. Muista asettaa uusi lähtöaika kun viivästykset ovat ohi.";
+"set_start_time_info_body_timer" = "Käynnistä lähtösekvenssi. Järjestelmä käyttää tätä purjehdusajan ja tasoitetun purjehdusajan laskennan perusteena.\n\nTarkan lähtöajan poistaminen estää kaikki aikaan perustuvat laskelmat. Tätä käytetään tyypillisesti kun lähtö on lykätty eikä uutta aikaa vielä tiedetä. Muista asettaa uusi lähtöaika kun viivästykset ovat ohi.";
 "start_detail_time_to_start_label" = "Aikaa lähtöön";
 "start_detail_started_label" = "Lähtenyt";

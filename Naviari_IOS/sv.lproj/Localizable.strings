@@ -17,6 +17,7 @@
 "starts_empty" = "Inga starter publicerade ännu.";
 "close_button" = "Stäng";
 "back_button" = "Tillbaka";
+"actions_cancel" = "Avbryt";
 "participate_button" = "Starta GPS-sändning";
 "participate_title" = "GPS-sändning";
 "participate_rehearsal_button" = "Starta testsändning";
@@ -137,10 +138,13 @@
 "set_start_time_error_set_failed" = "Det gick inte att ställa in starttid.";
 "set_start_time_error_timer_failed" = "Det gick inte att starta timern.";
 "set_start_time_error_start_identifier_missing" = "Startidentifier saknas.";
-"set_start_time_reset_button" = "Återställ";
-"set_start_time_reset_confirm_title" = "Återställ starttid?";
-"set_start_time_reset_confirm_action" = "Återställ";
-"set_start_time_reset_confirm_message" = "Detta rensar den faktiska starttiden. Du kan ställa in en ny efteråt.";
-"set_start_time_error_reset_failed" = "Det gick inte att återställa starttiden.";
+"set_start_time_reset_button" = "Ta bort";
+"set_start_time_reset_confirm_title" = "Rensa starttid?";
+"set_start_time_reset_confirm_action" = "Ta bort";
+"set_start_time_reset_confirm_message" = "Detta rensar den faktiska starttiden. Starten återgår till sin indikativa uppskattade tid. Tidsbaserade beräkningar är inte tillgängliga förrän en ny faktisk starttid ställs in. Du kan ställa in en ny efteråt.";
+"set_start_time_error_reset_failed" = "Det gick inte att ta bort starttiden.";
+"set_start_time_info_title" = "Starttid – hjälp";
+"set_start_time_info_body_manual" = "Ställ in den exakta starttiden för starten. Systemet använder denna som bas för beräkning av seglad tid och korrigerad seglad tid.\n\nAtt ta bort den exakta starttiden inaktiverar alla tidsbaserade beräkningar. Detta används vanligtvis när en start är uppskjuten och den nya tiden ännu inte är känd. Kom ihåg att ställa in en ny starttid när förseningarna är över.";
+"set_start_time_info_body_timer" = "Starta startsekvensen. Systemet använder denna som bas för beräkning av seglad tid och handicapkorrigerad seglad tid.\n\nAtt ta bort den exakta starttiden inaktiverar alla tidsbaserade beräkningar. Detta används vanligtvis när en start är uppskjuten och den nya tiden ännu inte är känd. Kom ihåg att ställa in en ny starttid när förseningarna är över.";
 "start_detail_time_to_start_label" = "Tid till start";
 "start_detail_started_label" = "Startad";

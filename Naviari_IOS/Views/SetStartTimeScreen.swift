@@ -56,6 +56,9 @@ struct SetStartTimeScreen: View {
     @State private var showResetConfirmation = false
     @State private var resetError: String?
 
+    // Info help state
+    @State private var showInfo = false
+
     private let accessService = ParticipationService()
     private let storage = ManageAccessStorage.shared
     private let maxCodeValidationAttempts = 5
@@ -64,12 +67,24 @@ struct SetStartTimeScreen: View {
     // Oversized fonts/targets for harsh-condition usability
     private let largeMetricFont = AppFont.fixed(96, weight: .semibold)
     private let largeButtonTouchSize: CGFloat = 88
+    private let largeButtonVisualHeight: CGFloat = 66
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
 
     var body: some View {
-        ScreenContainer(showBack: true, title: Text("set_start_time_title")) {
+        ScreenContainer(
+            showBack: true,
+            title: Text("set_start_time_title"),
+            trailing: AnyView(
+                Button(action: { showInfo = true }) {
+                    Image(systemName: "info.circle")
+                        .font(Theme.Typography.iconLarge)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            )
+        ) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text(start.name ?? raceSummary.race.nameOrFallback)
@@ -90,6 +105,14 @@ struct SetStartTimeScreen: View {
                 }
                 .padding()
             }
+        }
+        .sheet(isPresented: $showInfo) {
+            SetStartTimeInfoView(
+                titleKey: "set_start_time_info_title",
+                bodyKey: selectedTab == .setTime
+                    ? "set_start_time_info_body_manual"
+                    : "set_start_time_info_body_timer"
+            )
         }
         .sheet(isPresented: $showCodeModal) {
             codeValidationSheet
@@ -199,15 +222,15 @@ struct SetStartTimeScreen: View {
             // Two-column stepper layout: Hours : Minutes
             HStack(alignment: .center, spacing: 4) {
                 // Hours column
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Button(action: { adjustHour(by: 1) }) {
                         Image(systemName: "plus.circle.fill")
                             .font(Theme.Typography.iconLarge)
                             .foregroundStyle(Theme.Colors.textPrimary)
                     }
                     .buttonStyle(.plain)
-                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonTouchSize)
-                    .contentShape(Rectangle())
+                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonVisualHeight)
+                    .contentShape(Rectangle().size(width: largeButtonTouchSize, height: largeButtonTouchSize))
                     .accessibilityLabel(NSLocalizedString("set_start_time_increase_hours", comment: "Increase hours"))
 
                     Text(String(format: "%02d", selectedHour))
@@ -220,8 +243,8 @@ struct SetStartTimeScreen: View {
                             .foregroundStyle(Theme.Colors.textPrimary)
                     }
                     .buttonStyle(.plain)
-                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonTouchSize)
-                    .contentShape(Rectangle())
+                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonVisualHeight)
+                    .contentShape(Rectangle().size(width: largeButtonTouchSize, height: largeButtonTouchSize))
                     .accessibilityLabel(NSLocalizedString("set_start_time_decrease_hours", comment: "Decrease hours"))
                 }
 
@@ -231,15 +254,15 @@ struct SetStartTimeScreen: View {
                     .foregroundStyle(Theme.Colors.textPrimary)
 
                 // Minutes column
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Button(action: { adjustMinute(by: 1) }) {
                         Image(systemName: "plus.circle.fill")
                             .font(Theme.Typography.iconLarge)
                             .foregroundStyle(Theme.Colors.textPrimary)
                     }
                     .buttonStyle(.plain)
-                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonTouchSize)
-                    .contentShape(Rectangle())
+                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonVisualHeight)
+                    .contentShape(Rectangle().size(width: largeButtonTouchSize, height: largeButtonTouchSize))
                     .accessibilityLabel(NSLocalizedString("set_start_time_increase_minutes", comment: "Increase minutes"))
 
                     Text(String(format: "%02d", selectedMinute))
@@ -252,8 +275,8 @@ struct SetStartTimeScreen: View {
                             .foregroundStyle(Theme.Colors.textPrimary)
                     }
                     .buttonStyle(.plain)
-                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonTouchSize)
-                    .contentShape(Rectangle())
+                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonVisualHeight)
+                    .contentShape(Rectangle().size(width: largeButtonTouchSize, height: largeButtonTouchSize))
                     .accessibilityLabel(NSLocalizedString("set_start_time_decrease_minutes", comment: "Decrease minutes"))
                 }
             }
@@ -308,34 +331,43 @@ struct SetStartTimeScreen: View {
     @ViewBuilder
     private var timerTabContent: some View {
         VStack(spacing: 24) {
-            // Single centered duration column
-            VStack(spacing: 16) {
-                Button(action: { adjustTimerDuration(by: 1) }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(Theme.Typography.iconLarge)
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                }
-                .buttonStyle(.plain)
-                .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonTouchSize)
-                .contentShape(Rectangle())
-                .accessibilityLabel(NSLocalizedString("set_start_time_increase_duration", comment: "Increase duration"))
+            // Date context label
+            Text(DateFormattingHelper.localizedTodayDate(from: Date()))
+                .font(AppFont.textStyle(.subheadline))
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .center)
 
-                Text(String(format: "%d:00", timerDurationMinutes))
-                .font(largeMetricFont)
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .accessibilityLabel(String(format: NSLocalizedString("set_start_time_timer_duration_accessibility", comment: ""), timerDurationMinutes))
+            // Single centered duration column – matches manual tab layout
+            HStack(alignment: .center, spacing: 4) {
+                VStack(spacing: 6) {
+                    Button(action: { adjustTimerDuration(by: 1) }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(Theme.Typography.iconLarge)
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonVisualHeight)
+                    .contentShape(Rectangle().size(width: largeButtonTouchSize, height: largeButtonTouchSize))
+                    .accessibilityLabel(NSLocalizedString("set_start_time_increase_duration", comment: "Increase duration"))
 
-                Button(action: { adjustTimerDuration(by: -1) }) {
-                    Image(systemName: "minus.circle.fill")
-                        .font(Theme.Typography.iconLarge)
+                    Text(String(format: "%d:00", timerDurationMinutes))
+                        .font(largeMetricFont)
                         .foregroundStyle(Theme.Colors.textPrimary)
+                        .accessibilityLabel(String(format: NSLocalizedString("set_start_time_timer_duration_accessibility", comment: ""), timerDurationMinutes))
+
+                    Button(action: { adjustTimerDuration(by: -1) }) {
+                        Image(systemName: "minus.circle.fill")
+                            .font(Theme.Typography.iconLarge)
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonVisualHeight)
+                    .contentShape(Rectangle().size(width: largeButtonTouchSize, height: largeButtonTouchSize))
+                    .disabled(timerDurationMinutes <= 1)
+                    .accessibilityLabel(NSLocalizedString("set_start_time_decrease_duration", comment: "Decrease duration"))
                 }
-                .buttonStyle(.plain)
-                .frame(minWidth: largeButtonTouchSize, minHeight: largeButtonTouchSize)
-                .contentShape(Rectangle())
-                .disabled(timerDurationMinutes <= 1)
-                .accessibilityLabel(NSLocalizedString("set_start_time_decrease_duration", comment: "Decrease duration"))
             }
+            .fixedSize(horizontal: true, vertical: false)
             .frame(maxWidth: .infinity)
 
             if let timerSubmitError {
@@ -622,5 +654,31 @@ struct SetStartTimeScreen: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .interactiveDismissDisabled(true)
+    }
+}
+
+private struct SetStartTimeInfoView: View {
+    let titleKey: LocalizedStringKey
+    let bodyKey: LocalizedStringKey
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(bodyKey)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle(titleKey)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("close_button") {
+                        dismiss()
+                    }
+                    .font(AppUI.buttonFont)
+                }
+            }
+        }
+        .presentationDetents([.fraction(0.4), .medium])
     }
 }
