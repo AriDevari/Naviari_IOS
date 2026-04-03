@@ -90,6 +90,8 @@
 "start_status_scheduled" = "Scheduled";
 "start_status_completed" = "Completed";
 "start_status_unknown" = "Unknown";
+"start_status_ready_participating" = "Ready";
+"start_status_live" = "Live";
 "done_button" = "Done";
 "gps_status_title" = "GPS Status";
 "gps_status_latitude" = "Latitude";

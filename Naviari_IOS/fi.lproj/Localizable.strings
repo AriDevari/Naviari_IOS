@@ -90,6 +90,8 @@
 "start_status_scheduled" = "Aikataulutettu";
 "start_status_completed" = "Päättynyt";
 "start_status_unknown" = "Tuntematon";
+"start_status_ready_participating" = "Valmis";
+"start_status_live" = "Käynnissä";
 "done_button" = "Valmis";
 "gps_status_title" = "GPS-tila";
 "gps_status_latitude" = "Leveysaste";

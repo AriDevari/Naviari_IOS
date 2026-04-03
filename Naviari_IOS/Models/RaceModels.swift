@@ -193,11 +193,28 @@ extension RaceStart {
     }
 
     var localizedStatusKey: String {
+        localizedStatusKeyForDate()
+    }
+
+    func localizedStatusKeyForDate(referenceDate: Date = Date()) -> String {
         switch normalizedStatus {
         case "completed", "finished":
             return "start_status_completed"
         case "scheduled", "planned":
-            return "start_status_scheduled"
+            guard let actual = actualStartDate else {
+                return "start_status_scheduled"
+            }
+            let timeUntilStart = actual.timeIntervalSince(referenceDate)
+            if timeUntilStart > 2 * 3600 {
+                // More than 2 hours before actual start
+                return "start_status_scheduled"
+            } else if timeUntilStart > 0 {
+                // Within 2 hours before actual start
+                return "start_status_ready_participating"
+            } else {
+                // Actual start time has passed
+                return "start_status_live"
+            }
         default:
             return "start_status_unknown"
         }

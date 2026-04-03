@@ -90,6 +90,8 @@
 "start_status_scheduled" = "Schemalagd";
 "start_status_completed" = "Avslutad";
 "start_status_unknown" = "Okänd";
+"start_status_ready_participating" = "Redo";
+"start_status_live" = "Live";
 "done_button" = "Klar";
 "gps_status_title" = "GPS-status";
 "gps_status_latitude" = "Latitud";

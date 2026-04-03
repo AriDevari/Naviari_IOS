@@ -68,9 +68,10 @@ final class RaceBrowserViewModel: ObservableObject {
     }
 
     /// Helper for rendering localized start times (date + time).
+    /// Prefers actualUTC when available, falls back to scheduledUTC.
     func formattedStartTime(for start: RaceStart) -> String? {
         DateFormattingHelper.localizedDateString(
-            from: start.scheduledUTC,
+            from: start.actualUTC ?? start.scheduledUTC,
             includeTime: true
         )
     }
