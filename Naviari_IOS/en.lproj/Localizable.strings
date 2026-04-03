@@ -116,7 +116,7 @@
 "start_detail_broadcast_window_message" = "GPS broadcast opens 2 hours before the estimated start time.";
 "start_detail_completed_message" = "This start is completed. GPS broadcast is no longer available.";
 "participate_code_modal_title" = "Participation Code";
-"participate_code_modal_message" = "Enter participation code to unlock start entry.";
+"participate_code_modal_message" = "Enter participation code, given by race organizer, to unlock start entry.";
 "participate_code_verify_button" = "Verify Code";
 "participate_code_attempts_remaining" = "%d attempts remaining";
 "participate_code_attempts_exhausted" = "Maximum code attempts reached.";

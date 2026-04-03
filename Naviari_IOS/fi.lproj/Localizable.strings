@@ -116,7 +116,7 @@
 "start_detail_broadcast_window_message" = "GPS-lähetys avautuu 2 tuntia ennen arvioitua lähtöaikaa.";
 "start_detail_completed_message" = "Tämä lähtö on päättynyt. GPS-lähetys ei ole enää käytettävissä.";
 "participate_code_modal_title" = "Osallistumiskoodi";
-"participate_code_modal_message" = "Anna osallistumiskoodi avataksesi lähtöilmoittautumisen.";
+"participate_code_modal_message" = "Anna kisan järjestäjältä saamasi osallistumiskoodi avataksesi lähtöilmoittautumisen.";
 "participate_code_verify_button" = "Vahvista koodi";
 "participate_code_attempts_remaining" = "%d yritystä jäljellä";
 "participate_code_attempts_exhausted" = "Koodin yritysraja täynnä.";

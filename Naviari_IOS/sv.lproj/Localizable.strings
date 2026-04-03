@@ -116,7 +116,7 @@
 "start_detail_broadcast_window_message" = "GPS-sändningen öppnar 2 timmar före den uppskattade starttiden.";
 "start_detail_completed_message" = "Den här starten är avslutad. GPS-sändning är inte längre tillgänglig.";
 "participate_code_modal_title" = "Deltagarkod";
-"participate_code_modal_message" = "Ange deltagarkod för att öppna startanmälan.";
+"participate_code_modal_message" = "Ange deltagarkoden som tävlingsarrangören har gett dig för att låsa upp startregistreringen.";
 "participate_code_verify_button" = "Verifiera kod";
 "participate_code_attempts_remaining" = "%d försök kvar";
 "participate_code_attempts_exhausted" = "Max antal kodförsök uppnått.";
