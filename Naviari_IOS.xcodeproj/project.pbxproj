@@ -403,6 +403,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Naviari-IOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = NaviariRace;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used to send boat and bouy location for race platfrom";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Location is used to send boat and bouy location for race platfrom";
@@ -443,6 +444,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Naviari-IOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = NaviariRace;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used to send boat and bouy location for race platfrom";
 				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Location is used to send boat and bouy location for race platfrom";
