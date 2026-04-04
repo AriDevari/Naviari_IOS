@@ -52,6 +52,12 @@ enum Theme {
         static let floatingInset: CGFloat = 24
     }
 
+    enum RaceManager {
+        static let primaryColor = Color(red: 255 / 255, green: 0 / 255, blue: 136 / 255)
+        static let primaryColorMuted = primaryColor.opacity(0.15)
+        static let iconName = "gearshape"
+    }
+
     enum Effects {
         static let logoShadowRadius: CGFloat = 4
 

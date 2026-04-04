@@ -179,12 +179,10 @@ struct StartDetailScreen: View {
 
                     if shouldShowSetStartTimeCTA {
                         Button(action: onSetStartTime) {
-                            Text("set_start_time_title")
-                                .font(AppUI.buttonFont)
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: AppUI.primaryButtonHeight)
+                            RaceManagerButtonLabel("set_start_time_title")
                         }
                         .buttonStyle(.bordered)
+                        .tint(Theme.RaceManager.primaryColor)
                         .padding(.horizontal)
                     }
 

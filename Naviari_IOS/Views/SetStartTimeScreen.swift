@@ -298,13 +298,11 @@ struct SetStartTimeScreen: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
                 } else {
-                    Text("set_start_time_set_button")
-                        .font(Theme.Typography.button)
-                        .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
+                    RaceManagerButtonLabel("set_start_time_set_button")
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(Theme.Colors.brandPrimary)
+            .tint(Theme.RaceManager.primaryColor)
             .disabled(isSubmittingManualTime)
 
             if hasExistingActualTime {
@@ -383,13 +381,11 @@ struct SetStartTimeScreen: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
                 } else {
-                    Text("set_start_time_start_button")
-                        .font(Theme.Typography.button)
-                        .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
+                    RaceManagerButtonLabel("set_start_time_start_button")
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(Theme.Colors.brandPrimary)
+            .tint(Theme.RaceManager.primaryColor)
             .disabled(isSubmittingTimerTime)
 
             if hasExistingActualTime {
