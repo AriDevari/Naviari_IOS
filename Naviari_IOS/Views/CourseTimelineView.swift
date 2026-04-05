@@ -165,7 +165,7 @@ private struct CourseStepRow: View {
     }
 
     private var markDetail: some View {
-        HStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 6) {
                 if let description = item.description, !description.isEmpty {
                     detailRow(label: NSLocalizedString("course_desc_label", comment: ""), value: description)
@@ -174,59 +174,124 @@ private struct CourseStepRow: View {
                 if let rounding = item.roundingSide {
                     detailRow(
                         label: NSLocalizedString("course_rounding_label", comment: ""),
-                        value: roundingLabel(for: rounding),
-                        valueColor: roundingColor(for: rounding)
+                        value: roundingLabel(for: rounding)
                     )
                 }
+                detailRow(
+                    label: NSLocalizedString("race_status_label", comment: ""),
+                    value: definitionStatusLabel(for: item.status),
+                    valueColor: definitionStatusValueColor(for: item.status)
+                )
 
-                if let coordinate = item.coordinateLabel {
-                    detailRow(label: NSLocalizedString("course_position_label", comment: ""), value: coordinate, lineLimit: 1)
-                }
+                detailRow(
+                    label: NSLocalizedString("gps_status_latitude", comment: ""),
+                    value: latitudeDmsValue,
+                    valueColor: coordinateValueColor,
+                    lineLimit: 1,
+                    labelWidth: 90
+                )
+                detailRow(
+                    label: NSLocalizedString("gps_status_longitude", comment: ""),
+                    value: longitudeDmsValue,
+                    valueColor: coordinateValueColor,
+                    lineLimit: 1,
+                    labelWidth: 90
+                )
 
-                if item.bearingToNextRad != nil || item.distanceToNextM != nil {
-                    Divider()
-                        .padding(.vertical, 4)
-                }
+                if let bearing = item.bearingToNextDeg, let distance = item.distanceToNextNm {
+                    detailRow(
+                        label: NSLocalizedString("course_to_next_mark_label", comment: ""),
+                        value: "\(bearing) - \(distance)",
+                        lineLimit: 1,
+                        labelWidth: 90
+                    )
+                } else {
+                    if let bearing = item.bearingToNextDeg {
+                        detailRow(label: NSLocalizedString("course_bearing_to_next_label", comment: ""), value: bearing)
+                    }
 
-                if let bearing = item.bearingToNextDeg {
-                    detailRow(label: NSLocalizedString("course_bearing_to_next_label", comment: ""), value: bearing)
-                }
-
-                if let distance = item.distanceToNextNm {
-                    detailRow(label: NSLocalizedString("course_distance_to_next_label", comment: ""), value: distance)
+                    if let distance = item.distanceToNextNm {
+                        detailRow(label: NSLocalizedString("course_distance_to_next_label", comment: ""), value: distance)
+                    }
                 }
 
                 if let updatedAtLabel = item.updatedAtLabel {
-                    Text(updatedAtLabel)
-                        .font(AppFont.textStyle(.caption2))
-                        .foregroundStyle(Theme.Colors.textSecondary)
-                        .padding(.top, 2)
+                    detailRow(
+                        label: NSLocalizedString("course_last_updated_label", comment: ""),
+                        value: updatedAtLabel,
+                        valueColor: Theme.Colors.textSecondary,
+                        lineLimit: 1,
+                        labelWidth: 90
+                    )
                 }
             }
 
-            Spacer(minLength: 0)
-
             Button(action: {}) {
-                Image(systemName: "mappin.and.ellipse.circle.fill")
-                    .font(.system(size: 44))
-                    .modifier(CoordinateIconStyle(status: item.status))
-                    .padding(.top, 4)
+                ZStack {
+                    Text("course_position_label")
+                        .font(Theme.Typography.button)
+
+                    HStack {
+                        Spacer()
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(Theme.Typography.iconMedium)
+                            .padding(.trailing, Theme.Sizing.primaryButtonHeight / 3)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
             }
             .buttonStyle(.plain)
+            .foregroundStyle(Theme.RaceManager.primaryColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
+                    .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
+            )
+            .padding(.horizontal)
         }
+    }
+
+    private var latitudeDmsValue: String {
+        guard let lat = item.markLat else { return "-" }
+        return dmsCoordinate(lat, isLatitude: true)
+    }
+
+    private var longitudeDmsValue: String {
+        guard let lon = item.markLon else { return "-" }
+        return dmsCoordinate(lon, isLatitude: false)
+    }
+
+    private var coordinateValueColor: Color {
+        item.status == .preliminary ? Theme.RaceManager.primaryColor : Theme.Colors.textPrimary
+    }
+
+    private func dmsCoordinate(_ value: Double, isLatitude: Bool) -> String {
+        let hemisphere: String
+        if isLatitude {
+            hemisphere = value >= 0 ? "N" : "S"
+        } else {
+            hemisphere = value >= 0 ? "E" : "W"
+        }
+
+        let absValue = abs(value)
+        let degrees = Int(absValue)
+        let totalMinutes = (absValue - Double(degrees)) * 60.0
+        let minutes = Int(totalMinutes)
+        let seconds = (totalMinutes - Double(minutes)) * 60.0
+        return String(format: "%d° %02d' %04.1f\" %@", degrees, minutes, seconds, hemisphere)
     }
 
     private func detailRow(
         label: String,
         value: String,
         valueColor: Color = Theme.Colors.textPrimary,
-        lineLimit: Int? = nil
+        lineLimit: Int? = nil,
+        labelWidth: CGFloat = 70
     ) -> some View {
         HStack(spacing: 8) {
             Text(label)
                 .font(AppFont.textStyle(.subheadline))
                 .foregroundStyle(Theme.Colors.textSecondary)
-                .frame(width: 70, alignment: .leading)
+                .frame(width: labelWidth, alignment: .leading)
 
             Text(value)
                 .font(AppFont.textStyle(.subheadline, weight: .medium))
@@ -246,15 +311,19 @@ private struct CourseStepRow: View {
         }
     }
 
-    private func roundingColor(for rounding: RoundingSide) -> Color {
-        switch rounding {
-        case .port:
-            return Theme.CourseTimeline.roundingPort
-        case .starboard:
-            return Theme.CourseTimeline.roundingStarboard
-        case .gate:
-            return Theme.CourseTimeline.roundingGate
+    private func definitionStatusLabel(for status: DefinitionStatus) -> String {
+        switch status {
+        case .final_:
+            return NSLocalizedString("course_definition_status_final", comment: "")
+        case .preliminary:
+            return NSLocalizedString("course_definition_status_preliminary", comment: "")
+        case .none:
+            return NSLocalizedString("course_definition_status_not_set", comment: "")
         }
+    }
+
+    private func definitionStatusValueColor(for status: DefinitionStatus) -> Color {
+        status == .preliminary ? Theme.RaceManager.primaryColor : Theme.Colors.textPrimary
     }
 
     private var lineSubStepper: some View {
@@ -263,25 +332,28 @@ private struct CourseStepRow: View {
                 detailRow(label: NSLocalizedString("course_desc_label", comment: ""), value: description)
             }
 
-            if let bearing = item.lineBearingLabel {
-                detailRow(label: NSLocalizedString("course_line_bearing_label", comment: ""), value: bearing)
-            }
-
-            if let length = item.lineLengthLabel {
-                detailRow(label: NSLocalizedString("course_line_length_label", comment: ""), value: length)
+            if item.lineBearingLabel != nil || item.lineLengthLabel != nil {
+                detailRow(
+                    label: NSLocalizedString("course_line_label", comment: ""),
+                    value: lineSummaryValue
+                )
             }
 
             if let updatedAtLabel = item.updatedAtLabel {
-                Text(updatedAtLabel)
-                    .font(AppFont.textStyle(.caption2))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .padding(.top, 2)
+                detailRow(
+                    label: NSLocalizedString("course_last_updated_label", comment: ""),
+                    value: updatedAtLabel,
+                    valueColor: Theme.Colors.textSecondary,
+                    lineLimit: 1,
+                    labelWidth: 90
+                )
             }
 
             VStack(spacing: 0) {
                 LineEndRow(
                     title: NSLocalizedString("course_left_end", comment: ""),
-                    coordinateLabel: item.lineLeftCoordinateLabel,
+                    latitude: item.lineLeftLat,
+                    longitude: item.lineLeftLon,
                     status: item.status,
                     isActive: activeSubIndex == 0,
                     isFirst: true,
@@ -295,7 +367,8 @@ private struct CourseStepRow: View {
 
                 LineEndRow(
                     title: NSLocalizedString("course_right_end", comment: ""),
-                    coordinateLabel: item.lineRightCoordinateLabel,
+                    latitude: item.lineRightLat,
+                    longitude: item.lineRightLon,
                     status: item.status,
                     isActive: activeSubIndex == 1,
                     isFirst: false,
@@ -311,11 +384,18 @@ private struct CourseStepRow: View {
             .padding(.leading, 4)
         }
     }
+
+    private var lineSummaryValue: String {
+        let bearing = item.lineBearingLabel ?? "-"
+        let length = (item.lineLengthLabel ?? "-").replacingOccurrences(of: " ", with: "")
+        return "\(bearing) - \(length)"
+    }
 }
 
 private struct LineEndRow: View {
     let title: String
-    let coordinateLabel: String?
+    let latitude: Double?
+    let longitude: Double?
     let status: DefinitionStatus
     let isActive: Bool
     let isFirst: Bool
@@ -345,32 +425,99 @@ private struct LineEndRow: View {
                 .buttonStyle(.plain)
 
                 if isActive {
-                    HStack(alignment: .top) {
-                        HStack(spacing: 8) {
-                            Text(NSLocalizedString("course_position_label", comment: ""))
-                                .font(AppFont.textStyle(.footnote))
-                                .foregroundStyle(Theme.Colors.textSecondary)
-                                .frame(width: 55, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 8) {
+                        detailRow(
+                            label: NSLocalizedString("gps_status_latitude", comment: ""),
+                            value: latitudeDmsValue,
+                            valueColor: coordinateValueColor,
+                            lineLimit: 1,
+                            labelWidth: 90
+                        )
 
-                            Text(coordinateLabel ?? NSLocalizedString("course_position_not_set", comment: ""))
-                                .font(AppFont.textStyle(.footnote, weight: .medium))
-                                .foregroundStyle(Theme.Colors.textPrimary)
-                                .lineLimit(1)
-                        }
-
-                        Spacer(minLength: 0)
+                        detailRow(
+                            label: NSLocalizedString("gps_status_longitude", comment: ""),
+                            value: longitudeDmsValue,
+                            valueColor: coordinateValueColor,
+                            lineLimit: 1,
+                            labelWidth: 90
+                        )
 
                         Button(action: {}) {
-                            Image(systemName: "mappin.and.ellipse.circle.fill")
-                                .font(.system(size: 36))
-                                .modifier(CoordinateIconStyle(status: status))
+                            ZStack {
+                                Text("course_position_label")
+                                    .font(Theme.Typography.button)
+
+                                HStack {
+                                    Spacer()
+                                    Image(systemName: "mappin.and.ellipse")
+                                        .font(Theme.Typography.iconMedium)
+                                        .padding(.trailing, Theme.Sizing.primaryButtonHeight / 3)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
                         }
                         .buttonStyle(.plain)
+                        .foregroundStyle(Theme.RaceManager.primaryColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
+                                .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
+                        )
+                        .padding(.horizontal)
                     }
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 10)
+        }
+    }
+
+    private var coordinateValueColor: Color {
+        status == .preliminary ? Theme.RaceManager.primaryColor : Theme.Colors.textPrimary
+    }
+
+    private var latitudeDmsValue: String {
+        guard let latitude else { return "-" }
+        return dmsCoordinate(latitude, isLatitude: true)
+    }
+
+    private var longitudeDmsValue: String {
+        guard let longitude else { return "-" }
+        return dmsCoordinate(longitude, isLatitude: false)
+    }
+
+    private func dmsCoordinate(_ value: Double, isLatitude: Bool) -> String {
+        let hemisphere: String
+        if isLatitude {
+            hemisphere = value >= 0 ? "N" : "S"
+        } else {
+            hemisphere = value >= 0 ? "E" : "W"
+        }
+
+        let absValue = abs(value)
+        let degrees = Int(absValue)
+        let totalMinutes = (absValue - Double(degrees)) * 60.0
+        let minutes = Int(totalMinutes)
+        let seconds = (totalMinutes - Double(minutes)) * 60.0
+        return String(format: "%d° %02d' %04.1f\" %@", degrees, minutes, seconds, hemisphere)
+    }
+
+    private func detailRow(
+        label: String,
+        value: String,
+        valueColor: Color = Theme.Colors.textPrimary,
+        lineLimit: Int? = nil,
+        labelWidth: CGFloat = 70
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(AppFont.textStyle(.subheadline))
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .frame(width: labelWidth, alignment: .leading)
+
+            Text(value)
+                .font(AppFont.textStyle(.subheadline, weight: .medium))
+                .foregroundStyle(valueColor)
+                .lineLimit(lineLimit)
         }
     }
 
@@ -378,8 +525,7 @@ private struct LineEndRow: View {
         VStack(spacing: 0) {
             Rectangle()
                 .fill(isFirst ? Color.clear : Theme.Colors.brandPrimary.opacity(0.25))
-                .frame(width: 1.5)
-                .frame(minHeight: 8)
+                .frame(width: 1.5, height: 12)
 
             ZStack {
                 Circle()
@@ -400,24 +546,6 @@ private struct LineEndRow: View {
             }
         }
         .frame(width: 22)
-    }
-}
-
-private struct CoordinateIconStyle: ViewModifier {
-    let status: DefinitionStatus
-
-    func body(content: Content) -> some View {
-        switch status {
-        case .final_:
-            content
-                .foregroundStyle(Theme.RaceManager.primaryColor, Theme.Colors.surfacePrimary)
-                .overlay(
-                    Circle().stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
-                )
-        case .preliminary, .none:
-            content
-                .foregroundStyle(Theme.CourseTimeline.iconForeground, Theme.RaceManager.primaryColor)
-        }
     }
 }
 

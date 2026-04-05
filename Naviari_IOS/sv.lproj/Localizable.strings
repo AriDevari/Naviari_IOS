@@ -155,8 +155,14 @@
 "course_desc_label" = "Beskrivning";
 "course_rounding_label" = "Rundning";
 "course_position_label" = "Position";
+"course_to_next_mark_label" = "Till nästa märke";
+"course_last_updated_label" = "Senast uppdaterad";
+"course_definition_status_final" = "Slutlig";
+"course_definition_status_preliminary" = "Preliminär";
+"course_definition_status_not_set" = "Ej inställd";
 "course_bearing_to_next_label" = "Bäring →";
 "course_distance_to_next_label" = "Distans →";
+"course_line_label" = "Linje";
 "course_line_bearing_label" = "Bäring";
 "course_line_length_label" = "Längd";
 "course_left_end" = "Vänster ände";

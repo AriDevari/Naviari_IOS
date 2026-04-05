@@ -155,8 +155,14 @@
 "course_desc_label" = "Desc";
 "course_rounding_label" = "Rounding";
 "course_position_label" = "Position";
+"course_to_next_mark_label" = "To next mark";
+"course_last_updated_label" = "Last updated";
+"course_definition_status_final" = "Final";
+"course_definition_status_preliminary" = "Preliminary";
+"course_definition_status_not_set" = "Not set";
 "course_bearing_to_next_label" = "Bearing →";
 "course_distance_to_next_label" = "Distance →";
+"course_line_label" = "Line";
 "course_line_bearing_label" = "Bearing";
 "course_line_length_label" = "Length";
 "course_left_end" = "Left end";

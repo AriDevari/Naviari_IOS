@@ -1,5 +1,10 @@
 import Foundation
 
+private struct LatLonCoordinate: Decodable, Equatable {
+    let lat: Double?
+    let lon: Double?
+}
+
 struct RaceCourse: Decodable, Equatable {
     let id: String
     let name: String?
@@ -34,6 +39,54 @@ struct CourseLine: Decodable, Equatable {
     let distance_to_first_mark_m: Double?
     let bearing_to_first_mark_rad: Double?
     let updated_at: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case description
+        case status
+        case mark_left_lat
+        case mark_left_lon
+        case mark_right_lat
+        case mark_right_lon
+        case midpoint_lat
+        case midpoint_lon
+        case length_m
+        case bearing_deg
+        case distance_to_first_mark_m
+        case bearing_to_first_mark_rad
+        case updated_at
+
+        // Newer backend shape: nested coordinate objects.
+        case mark_left
+        case mark_right
+        case midpoint
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        status = try container.decodeIfPresent(String.self, forKey: .status)
+
+        let markLeft = try container.decodeIfPresent(LatLonCoordinate.self, forKey: .mark_left)
+        let markRight = try container.decodeIfPresent(LatLonCoordinate.self, forKey: .mark_right)
+        let midpoint = try container.decodeIfPresent(LatLonCoordinate.self, forKey: .midpoint)
+
+        mark_left_lat = try container.decodeIfPresent(Double.self, forKey: .mark_left_lat) ?? markLeft?.lat
+        mark_left_lon = try container.decodeIfPresent(Double.self, forKey: .mark_left_lon) ?? markLeft?.lon
+        mark_right_lat = try container.decodeIfPresent(Double.self, forKey: .mark_right_lat) ?? markRight?.lat
+        mark_right_lon = try container.decodeIfPresent(Double.self, forKey: .mark_right_lon) ?? markRight?.lon
+        midpoint_lat = try container.decodeIfPresent(Double.self, forKey: .midpoint_lat) ?? midpoint?.lat
+        midpoint_lon = try container.decodeIfPresent(Double.self, forKey: .midpoint_lon) ?? midpoint?.lon
+
+        length_m = try container.decodeIfPresent(Double.self, forKey: .length_m)
+        bearing_deg = try container.decodeIfPresent(Double.self, forKey: .bearing_deg)
+        distance_to_first_mark_m = try container.decodeIfPresent(Double.self, forKey: .distance_to_first_mark_m)
+        bearing_to_first_mark_rad = try container.decodeIfPresent(Double.self, forKey: .bearing_to_first_mark_rad)
+        updated_at = try container.decodeIfPresent(String.self, forKey: .updated_at)
+    }
 }
 
 struct CourseMarkItem: Decodable, Equatable {
@@ -49,6 +102,43 @@ struct CourseMarkItem: Decodable, Equatable {
     let distance_to_next_m: Double?
     let bearing_to_next_rad: Double?
     let updated_at: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sequence
+        case name
+        case description
+        case rounding_side
+        case type
+        case status
+        case mark_lat
+        case mark_lon
+        case distance_to_next_m
+        case bearing_to_next_rad
+        case updated_at
+
+        // Newer backend shape: nested mark coordinate object.
+        case mark
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        sequence = try container.decode(Int.self, forKey: .sequence)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        rounding_side = try container.decodeIfPresent(String.self, forKey: .rounding_side)
+        type = try container.decodeIfPresent(String.self, forKey: .type)
+        status = try container.decodeIfPresent(String.self, forKey: .status)
+
+        let mark = try container.decodeIfPresent(LatLonCoordinate.self, forKey: .mark)
+        mark_lat = try container.decodeIfPresent(Double.self, forKey: .mark_lat) ?? mark?.lat
+        mark_lon = try container.decodeIfPresent(Double.self, forKey: .mark_lon) ?? mark?.lon
+
+        distance_to_next_m = try container.decodeIfPresent(Double.self, forKey: .distance_to_next_m)
+        bearing_to_next_rad = try container.decodeIfPresent(Double.self, forKey: .bearing_to_next_rad)
+        updated_at = try container.decodeIfPresent(String.self, forKey: .updated_at)
+    }
 }
 
 enum CourseMarkType: String, Decodable, Equatable {
@@ -114,6 +204,15 @@ struct CourseTimelineItem: Identifiable, Equatable {
         formatter.locale = Locale.current
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
+        return formatter
+    }()
+
+    private static let decimalOnePlaceFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
         return formatter
     }()
 
@@ -205,7 +304,9 @@ struct CourseTimelineItem: Identifiable, Equatable {
     var distanceToNextNm: String? {
         guard let distanceToNextM else { return nil }
         let nauticalMiles = distanceToNextM / 1852.0
-        return String(format: "%.2f nm", nauticalMiles)
+        let formatted = Self.decimalOnePlaceFormatter.string(from: NSNumber(value: nauticalMiles))
+            ?? String(format: "%.1f", nauticalMiles)
+        return "\(formatted) Nm"
     }
 
     var lineBearingLabel: String? {

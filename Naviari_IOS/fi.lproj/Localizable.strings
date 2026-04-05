@@ -155,8 +155,14 @@
 "course_desc_label" = "Kuvaus";
 "course_rounding_label" = "Kierto";
 "course_position_label" = "Sijainti";
+"course_to_next_mark_label" = "Seuraavalle merkille";
+"course_last_updated_label" = "Päivitetty";
+"course_definition_status_final" = "Lopullinen";
+"course_definition_status_preliminary" = "Alustava";
+"course_definition_status_not_set" = "Ei asetettu";
 "course_bearing_to_next_label" = "Suunta →";
 "course_distance_to_next_label" = "Matka →";
+"course_line_label" = "Linja";
 "course_line_bearing_label" = "Suunta";
 "course_line_length_label" = "Pituus";
 "course_left_end" = "Vasen pää";
