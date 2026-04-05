@@ -24,8 +24,10 @@ struct StartDetailScreen: View {
     var onSetStartTime: () -> Void
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
-    @State private var metadataHeight: CGFloat = 0
     @State private var showStopConfirmation = false
+    @State private var courseItems: [CourseTimelineItem] = []
+    @State private var isCourseLoaded = false
+    @State private var isCourseLoading = false
 
     private var resolvedStart: RaceStart {
         guard let startId = start.rawId ?? start.slug else {
@@ -107,18 +109,15 @@ struct StartDetailScreen: View {
 
     var body: some View {
         ScreenContainer(showBack: true, title: Text("start_title")) {
-            GeometryReader { proxy in
-                let scrollHeight = metadataSectionHeight(for: proxy.size.height)
-                let spacerHeight = (shouldShowActiveBroadcastSection || shouldShowParticipateCTA)
-                    ? 0
-                    : buttonSpacerHeight(for: proxy.size.height, scrollHeight: scrollHeight)
+            VStack(spacing: 0) {
+                Text(resolvedStart.name ?? raceSummary.race.nameOrFallback)
+                    .font(AppFont.textStyle(.title2, weight: .semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
 
-                VStack(spacing: 24) {
-                    ScrollView {
+                ScrollView {
+                    VStack(spacing: 24) {
                         VStack(alignment: .leading, spacing: 16) {
-                            Text(resolvedStart.name ?? raceSummary.race.nameOrFallback)
-                                .font(AppFont.textStyle(.title2, weight: .semibold))
-
                             startTimingMetadataRow
 
                             LabeledContent {
@@ -133,62 +132,68 @@ struct StartDetailScreen: View {
                                     .padding(.top, 8)
                             }
                         }
-                        .padding()
-                        .background(
-                            GeometryReader { contentProxy in
-                                Color.clear
-                                    .preference(
-                                        key: StartDetailContentHeightKey.self,
-                                        value: contentProxy.size.height
-                                    )
+                        .padding(.horizontal)
+
+                        if shouldShowActiveBroadcastSection {
+                            activeBroadcastSection
+                        } else if resolvedStart.isCompletedStatus {
+                            unavailableState(messageKey: "start_detail_completed_message")
+                        } else if isMissingEstimatedStart {
+                            unavailableState(messageKey: "participate_estimated_start_required_hint")
+                        } else if shouldHideParticipateCTAForOtherActiveBroadcast {
+                            EmptyView()
+                        } else {
+                            Button(action: onParticipate) {
+                                Text(primaryActionKey)
+                                    .font(AppUI.buttonFont)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(minHeight: AppUI.primaryButtonHeight)
                             }
-                        )
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: scrollHeight, alignment: .top)
-                    .onPreferenceChange(StartDetailContentHeightKey.self) { metadataHeight = $0 }
+                            .buttonStyle(.borderedProminent)
+                            .tint(AppUI.brandPrimary)
+                            .padding(.horizontal)
 
-                    Spacer()
-                        .frame(height: spacerHeight)
-
-                    if shouldShowActiveBroadcastSection {
-                        activeBroadcastSection
-                    } else if resolvedStart.isCompletedStatus {
-                        unavailableState(messageKey: "start_detail_completed_message")
-                    } else if isMissingEstimatedStart {
-                        unavailableState(messageKey: "participate_estimated_start_required_hint")
-                    } else if shouldHideParticipateCTAForOtherActiveBroadcast {
-                        EmptyView()
-                    } else {
-                        Button(action: onParticipate) {
-                            Text(primaryActionKey)
-                                .font(AppUI.buttonFont)
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: AppUI.primaryButtonHeight)
+                            if isRehearsalWindow {
+                                rehearsalInactiveGuidance
+                            } else if shouldShowRehearsalAutoStopMessage {
+                                unavailableState(messageKey: "start_detail_rehearsal_autostop_message")
+                            }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppUI.brandPrimary)
-                        .padding(.horizontal)
 
-                        if isRehearsalWindow {
-                            rehearsalInactiveGuidance
-                        } else if shouldShowRehearsalAutoStopMessage {
-                            unavailableState(messageKey: "start_detail_rehearsal_autostop_message")
+                        if shouldShowSetStartTimeCTA {
+                            Button(action: onSetStartTime) {
+                                RaceManagerButtonLabel("set_start_time_title")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Theme.RaceManager.primaryColor)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
+                                    .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
+                            )
+                            .padding(.horizontal)
                         }
-                    }
 
-                    if shouldShowSetStartTimeCTA {
-                        Button(action: onSetStartTime) {
-                            RaceManagerButtonLabel("set_start_time_title")
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("race_course_header")
+                                .font(AppFont.textStyle(.headline))
+                                .padding(.horizontal)
+
+                            if isCourseLoading {
+                                ProgressView()
+                                    .padding()
+                            } else if !courseItems.isEmpty {
+                                CourseTimelineView(items: courseItems)
+                            } else if isCourseLoaded {
+                                Text("race_course_empty")
+                                    .font(AppFont.textStyle(.subheadline))
+                                    .foregroundStyle(Theme.Colors.textSecondary)
+                                    .padding(.horizontal)
+                            }
                         }
-                        .buttonStyle(.bordered)
-                        .tint(Theme.RaceManager.primaryColor)
-                        .padding(.horizontal)
+                        .padding(.top, 16)
                     }
-
-                    Spacer()
+                    .padding(.bottom, 24)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .alert(
@@ -204,6 +209,23 @@ struct StartDetailScreen: View {
         }
         .task(id: resolvedStart.id + (resolvedStart.status ?? "")) {
             stopBroadcastIfCompletedForCurrentStart()
+        }
+        .task(id: resolvedStart.id) {
+            guard let startId = resolvedStart.rawId else { return }
+            isCourseLoading = true
+            isCourseLoaded = false
+            do {
+                let response = try await RaceService().fetchStartDetail(startId: startId)
+                if let course = response.course {
+                    courseItems = CourseTimelineItem.buildTimeline(from: course)
+                } else {
+                    courseItems = []
+                }
+            } catch {
+                courseItems = []
+            }
+            isCourseLoading = false
+            isCourseLoaded = true
         }
     }
 
@@ -384,23 +406,4 @@ struct StartDetailScreen: View {
         metricsUploader.stopBroadcast(reason: .completedStart)
     }
 
-    private func metadataSectionHeight(for containerHeight: CGFloat) -> CGFloat {
-        let defaultHeight = containerHeight * 0.4
-        guard metadataHeight > 0 else { return defaultHeight }
-        return min(metadataHeight, defaultHeight)
-    }
-
-    private func buttonSpacerHeight(for containerHeight: CGFloat, scrollHeight: CGFloat) -> CGFloat {
-        let targetCenter = containerHeight / 2
-        let offset = targetCenter - scrollHeight - (AppUI.primaryButtonHeight / 2)
-        return max(0, offset)
-    }
-}
-
-private struct StartDetailContentHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
 }

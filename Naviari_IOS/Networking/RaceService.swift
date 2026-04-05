@@ -87,6 +87,19 @@ struct RaceService {
         throw RaceServiceError.decodingFailed
     }
 
+    /// Loads full start detail payload including optional course.
+    func fetchStartDetail(startId: String) async throws -> StartDetailResponse {
+        let request = try makeRequest(path: "/api/starts/id/\(startId)", queryItems: [])
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+        guard let payload = try? JSONDecoder().decode(StartDetailResponse.self, from: data) else {
+            throw RaceServiceError.decodingFailed
+        }
+        return payload
+    }
+
     /// Updates only the start's actual start time through the narrow backend PATCH contract.
     func updateStartActualTime(
         startId: String,
@@ -256,6 +269,12 @@ private struct RaceSeriesEnvelope: Decodable {
 
 private struct RaceStartEnvelope: Decodable {
     let starts: [RaceStart]
+}
+
+struct StartDetailResponse: Decodable {
+    let ok: Bool
+    let start: RaceStart
+    let course: RaceCourse?
 }
 
 private struct StartMutationEnvelope: Decodable {

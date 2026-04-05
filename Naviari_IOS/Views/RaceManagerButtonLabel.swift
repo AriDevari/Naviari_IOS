@@ -17,6 +17,7 @@ struct RaceManagerButtonLabel: View {
                 Spacer()
                 Image(systemName: Theme.RaceManager.iconName)
                     .font(Theme.Typography.iconMedium)
+                    .padding(.trailing, Theme.Sizing.primaryButtonHeight / 3)
             }
         }
         .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)

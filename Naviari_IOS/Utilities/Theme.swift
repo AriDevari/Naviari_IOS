@@ -58,6 +58,13 @@ enum Theme {
         static let iconName = "gearshape"
     }
 
+    enum CourseTimeline {
+        static let roundingPort = Color.red
+        static let roundingStarboard = Color.green
+        static let roundingGate = Color.orange
+        static let iconForeground = Color.white
+    }
+
     enum Effects {
         static let logoShadowRadius: CGFloat = 4
 
