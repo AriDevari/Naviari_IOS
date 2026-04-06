@@ -171,3 +171,16 @@
 "course_rounding_port" = "Babord";
 "course_rounding_starboard" = "Styrbord";
 "course_rounding_gate" = "Port";
+"set_position_title" = "Ställ in position";
+"set_position_button" = "Ställ in position";
+"set_position_guide_text" = "Ställ in märkes-/bojkoordinaterna på den här platsen. För banmärken rekommenderas att positionen sätts 5-10 meter \"innanför\" banan. Det hjälper båtar att runda märkena även om GPS har små fel. För start- och mållinjer, sätt den exakta punkten eller utsidan, men håll den i linje.";
+"set_position_target_mark" = "Banmärke";
+"set_position_target_start_left" = "Startlinjens vänstra ände";
+"set_position_target_start_right" = "Startlinjens högra ände";
+"set_position_target_finish_left" = "Mållinjens vänstra ände";
+"set_position_target_finish_right" = "Mållinjens högra ände";
+"set_position_error_manage_token_required" = "Administrationskod krävs.";
+"set_position_error_location_permission_required" = "Platsbehörighet krävs.";
+"set_position_error_location_unavailable" = "Nuvarande position är inte tillgänglig ännu.";
+"set_position_error_line_endpoint_missing" = "Den andra linjeänden saknas. Uppdatera bankursdata och försök igen.";
+"set_position_error_save_failed" = "Det gick inte att ställa in position.";

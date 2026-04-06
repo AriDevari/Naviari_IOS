@@ -20,6 +20,7 @@ final class RaceBrowserViewModel: ObservableObject {
     @Published private(set) var selectedRaceStarts: [RaceStart] = []
     @Published private(set) var isSubmittingActualStart = false
     @Published private(set) var actualStartSubmitError: String?
+    @Published private var courseRefreshTicks: [String: Int] = [:]
 
     private let service: RaceService
 
@@ -231,6 +232,14 @@ final class RaceBrowserViewModel: ObservableObject {
 
     func isLoadingStarts(for summary: RaceSummary) -> Bool {
         selectedRace?.id == summary.id && isLoadingStarts
+    }
+
+    func requestCourseRefresh(for startId: String) {
+        courseRefreshTicks[startId, default: 0] += 1
+    }
+
+    func courseRefreshToken(for startId: String) -> Int {
+        courseRefreshTicks[startId] ?? 0
     }
 
     private func patchSelectedRaceStart(with updatedStart: RaceStart) {

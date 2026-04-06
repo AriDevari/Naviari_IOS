@@ -41,12 +41,22 @@ struct ContentView: View {
                             onSetStartTime: {
                                 let latest = latestStart(for: start, in: summary)
                                 navigationPath.append(.setStartTime(summary, latest))
+                            },
+                            onSetPositionTarget: { target in
+                                let latest = latestStart(for: start, in: summary)
+                                navigationPath.append(.setPosition(summary, latest, target))
                             }
                         )
                     case let .participate(summary, start):
                         ParticipateView(raceSummary: summary, start: start)
                     case let .setStartTime(summary, start):
                         SetStartTimeScreen(raceSummary: summary, start: start)
+                    case let .setPosition(summary, start, target):
+                        SetPositionScreen(
+                            raceSummary: summary,
+                            start: start,
+                            target: target
+                        )
                     }
                 }
             }
@@ -83,6 +93,7 @@ private enum AppRoute: Hashable {
     case startDetail(RaceSummary, RaceStart)
     case participate(RaceSummary, RaceStart)
     case setStartTime(RaceSummary, RaceStart)
+    case setPosition(RaceSummary, RaceStart, SetPositionTarget)
 }
 #Preview {
     ContentView()

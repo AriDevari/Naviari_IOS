@@ -22,10 +22,12 @@ struct StartDetailScreen: View {
     let start: RaceStart
     var onParticipate: () -> Void
     var onSetStartTime: () -> Void
+    var onSetPositionTarget: (SetPositionTarget) -> Void
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
     @State private var showStopConfirmation = false
     @State private var courseItems: [CourseTimelineItem] = []
+    @State private var loadedCourse: RaceCourse?
     @State private var isCourseLoaded = false
     @State private var isCourseLoading = false
 
@@ -41,6 +43,13 @@ struct StartDetailScreen: View {
 
     private var currentStartIdentifier: String? {
         resolvedStart.rawId ?? resolvedStart.slug
+    }
+
+    private var courseReloadTaskKey: String {
+        guard let startId = resolvedStart.rawId else {
+            return resolvedStart.id
+        }
+        return "\(startId)|\(viewModel.courseRefreshToken(for: startId))"
     }
 
     private var rehearsalVerificationURL: URL {
@@ -182,7 +191,9 @@ struct StartDetailScreen: View {
                                 ProgressView()
                                     .padding()
                             } else if !courseItems.isEmpty {
-                                CourseTimelineView(items: courseItems)
+                                CourseTimelineView(items: courseItems) { selection in
+                                    handleCoursePositionSelection(selection)
+                                }
                             } else if isCourseLoaded {
                                 Text("race_course_empty")
                                     .font(AppFont.textStyle(.subheadline))
@@ -210,22 +221,8 @@ struct StartDetailScreen: View {
         .task(id: resolvedStart.id + (resolvedStart.status ?? "")) {
             stopBroadcastIfCompletedForCurrentStart()
         }
-        .task(id: resolvedStart.id) {
-            guard let startId = resolvedStart.rawId else { return }
-            isCourseLoading = true
-            isCourseLoaded = false
-            do {
-                let response = try await RaceService().fetchStartDetail(startId: startId)
-                if let course = response.course {
-                    courseItems = CourseTimelineItem.buildTimeline(from: course)
-                } else {
-                    courseItems = []
-                }
-            } catch {
-                courseItems = []
-            }
-            isCourseLoading = false
-            isCourseLoaded = true
+        .task(id: courseReloadTaskKey) {
+            await loadCourse()
         }
     }
 
@@ -316,6 +313,80 @@ struct StartDetailScreen: View {
             NSLocalizedString("start_detail_rehearsal_active_message_countdown", comment: "")
         )
         return String.localizedStringWithFormat(countdownFormat, secondsRemaining)
+    }
+
+    private func loadCourse() async {
+        guard let startId = resolvedStart.rawId else { return }
+        isCourseLoading = true
+        isCourseLoaded = false
+        do {
+            let response = try await RaceService().fetchStartDetail(startId: startId)
+            if let course = response.course {
+                loadedCourse = course
+                courseItems = CourseTimelineItem.buildTimeline(from: course)
+            } else {
+                loadedCourse = nil
+                courseItems = []
+            }
+        } catch {
+            loadedCourse = nil
+            courseItems = []
+        }
+        isCourseLoading = false
+        isCourseLoaded = true
+    }
+
+    private func handleCoursePositionSelection(_ selection: CoursePositionSelection) {
+        guard let course = loadedCourse else { return }
+        guard let target = setPositionTarget(from: selection, in: course) else { return }
+        onSetPositionTarget(target)
+    }
+
+    private func setPositionTarget(from selection: CoursePositionSelection, in course: RaceCourse) -> SetPositionTarget? {
+        switch selection {
+        case let .mark(markId):
+            guard let mark = course.course_marks.first(where: { $0.id == markId }) else {
+                return nil
+            }
+            return .mark(
+                CourseMarkPositionTarget(
+                    markId: mark.id,
+                    name: mark.name ?? "",
+                    description: mark.description,
+                    roundingSide: mark.rounding_side,
+                    type: mark.type,
+                    status: mark.status
+                )
+            )
+
+        case let .startLineEndpoint(lineId, side):
+            guard let line = course.start_line, line.id == lineId else {
+                return nil
+            }
+            return .startLine(lineTarget(from: line), side: side)
+
+        case let .finishLineEndpoint(lineId, side):
+            guard let line = course.finish_line, line.id == lineId else {
+                return nil
+            }
+            return .finishLine(lineTarget(from: line), side: side)
+        }
+    }
+
+    private func lineTarget(from line: CourseLine) -> CourseLinePositionTarget {
+        CourseLinePositionTarget(
+            lineId: line.id,
+            name: line.name ?? "",
+            description: line.description,
+            status: line.status,
+            markLeft: coordinatePoint(lat: line.mark_left_lat, lon: line.mark_left_lon),
+            markRight: coordinatePoint(lat: line.mark_right_lat, lon: line.mark_right_lon)
+        )
+    }
+
+    private func coordinatePoint(lat: Double?, lon: Double?) -> CoordinatePoint? {
+        guard let lat, let lon else { return nil }
+        return CoordinatePoint(lat: lat, lon: lon)
     }
 
     private func rehearsalDeepLinkedMarkdown(_ localizedMarkdown: String) -> String {

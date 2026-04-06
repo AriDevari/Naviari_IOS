@@ -162,6 +162,8 @@ enum DefinitionStatus: Equatable {
         switch rawStatus?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "final":
             self = .final_
+        case "leftset", "rightset":
+            self = .preliminary
         case "preliminary":
             self = .preliminary
         default:
@@ -176,6 +178,7 @@ struct CourseTimelineItem: Identifiable, Equatable {
     let description: String?
     let type: CourseMarkType
     let status: DefinitionStatus
+    let rawStatus: String?
     let markLat: Double?
     let markLon: Double?
     let roundingSide: RoundingSide?
@@ -188,6 +191,46 @@ struct CourseTimelineItem: Identifiable, Equatable {
     let lineRightLat: Double?
     let lineRightLon: Double?
     let updatedAt: Date?
+
+    init(
+        id: String,
+        name: String,
+        description: String?,
+        type: CourseMarkType,
+        status: DefinitionStatus,
+        rawStatus: String? = nil,
+        markLat: Double?,
+        markLon: Double?,
+        roundingSide: RoundingSide?,
+        bearingToNextRad: Double?,
+        distanceToNextM: Double?,
+        lineLengthM: Double?,
+        lineBearingDeg: Double?,
+        lineLeftLat: Double?,
+        lineLeftLon: Double?,
+        lineRightLat: Double?,
+        lineRightLon: Double?,
+        updatedAt: Date?
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.type = type
+        self.status = status
+        self.rawStatus = rawStatus
+        self.markLat = markLat
+        self.markLon = markLon
+        self.roundingSide = roundingSide
+        self.bearingToNextRad = bearingToNextRad
+        self.distanceToNextM = distanceToNextM
+        self.lineLengthM = lineLengthM
+        self.lineBearingDeg = lineBearingDeg
+        self.lineLeftLat = lineLeftLat
+        self.lineLeftLon = lineLeftLon
+        self.lineRightLat = lineRightLat
+        self.lineRightLon = lineRightLon
+        self.updatedAt = updatedAt
+    }
 
     private static let iso8601Parsers: [ISO8601DateFormatter] = {
         let withFractional = ISO8601DateFormatter()
@@ -227,6 +270,7 @@ struct CourseTimelineItem: Identifiable, Equatable {
                     description: startLine.description,
                     type: .start,
                     status: DefinitionStatus(from: startLine.status),
+                    rawStatus: startLine.status,
                     markLat: nil,
                     markLon: nil,
                     roundingSide: nil,
@@ -252,6 +296,7 @@ struct CourseTimelineItem: Identifiable, Equatable {
                     description: mark.description,
                     type: .mark,
                     status: DefinitionStatus(from: mark.status),
+                    rawStatus: mark.status,
                     markLat: mark.mark_lat,
                     markLon: mark.mark_lon,
                     roundingSide: mark.rounding_side.flatMap { RoundingSide(rawValue: $0.lowercased()) },
@@ -276,6 +321,7 @@ struct CourseTimelineItem: Identifiable, Equatable {
                     description: finishLine.description,
                     type: .finish,
                     status: DefinitionStatus(from: finishLine.status),
+                    rawStatus: finishLine.status,
                     markLat: nil,
                     markLon: nil,
                     roundingSide: nil,
@@ -379,5 +425,93 @@ struct CourseTimelineItem: Identifiable, Equatable {
         let minutes = Int(minutesTotal)
         let seconds = (minutesTotal - Double(minutes)) * 60.0
         return (degrees, minutes, seconds)
+    }
+}
+
+enum CourseEndpointSide: String, Hashable {
+    case left
+    case right
+}
+
+enum CoursePositionSelection: Hashable {
+    case mark(markId: String)
+    case startLineEndpoint(lineId: String, side: CourseEndpointSide)
+    case finishLineEndpoint(lineId: String, side: CourseEndpointSide)
+}
+
+struct CoordinatePoint: Hashable, Codable {
+    let lat: Double
+    let lon: Double
+}
+
+struct CourseMarkPositionTarget: Hashable {
+    let markId: String
+    let name: String
+    let description: String?
+    let roundingSide: String?
+    let type: String?
+    let status: String?
+}
+
+struct CourseLinePositionTarget: Hashable {
+    let lineId: String
+    let name: String
+    let description: String?
+    let status: String?
+    let markLeft: CoordinatePoint?
+    let markRight: CoordinatePoint?
+}
+
+enum SetPositionTarget: Hashable {
+    case mark(CourseMarkPositionTarget)
+    case startLine(CourseLinePositionTarget, side: CourseEndpointSide)
+    case finishLine(CourseLinePositionTarget, side: CourseEndpointSide)
+
+    var localizedTargetKey: String {
+        switch self {
+        case .mark:
+            return "set_position_target_mark"
+        case let .startLine(_, side):
+            return side == .left ? "set_position_target_start_left" : "set_position_target_start_right"
+        case let .finishLine(_, side):
+            return side == .left ? "set_position_target_finish_left" : "set_position_target_finish_right"
+        }
+    }
+
+    var guideImageAssetName: String {
+        switch self {
+        case .mark:
+            return "SetPositionMarkGuide"
+        case .startLine, .finishLine:
+            return "SetPositionLineGuide"
+        }
+    }
+
+    func nextLineStatus() -> String {
+        let normalizedStatus: String
+        let rawStatus: String
+        let side: CourseEndpointSide
+
+        switch self {
+        case .mark:
+            return "final"
+        case let .startLine(target, selectedSide), let .finishLine(target, selectedSide):
+            rawStatus = target.status?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "preliminary"
+            normalizedStatus = rawStatus.lowercased()
+            side = selectedSide
+        }
+
+        switch normalizedStatus {
+        case "preliminary":
+            return side == .left ? "leftSet" : "rightSet"
+        case "leftset":
+            return side == .right ? "final" : "leftSet"
+        case "rightset":
+            return side == .left ? "final" : "rightSet"
+        case "final":
+            return "final"
+        default:
+            return rawStatus
+        }
     }
 }

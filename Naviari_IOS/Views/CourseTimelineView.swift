@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CourseTimelineView: View {
     let items: [CourseTimelineItem]
+    var onPositionSelected: (CoursePositionSelection) -> Void = { _ in }
 
     @State private var activeIndex: Int? = nil
 
@@ -18,6 +19,7 @@ struct CourseTimelineView: View {
                                 isFirst: index == 0,
                                 isLast: index == items.count - 1,
                                 isActive: activeIndex == index,
+                                onPositionSelected: onPositionSelected,
                                 onTap: {
                                     withAnimation(.easeInOut(duration: 0.25)) {
                                         activeIndex = index
@@ -45,6 +47,7 @@ private struct CourseStepRow: View {
     let isFirst: Bool
     let isLast: Bool
     let isActive: Bool
+    let onPositionSelected: (CoursePositionSelection) -> Void
     let onTap: () -> Void
 
     @State private var activeSubIndex: Int?
@@ -226,27 +229,9 @@ private struct CourseStepRow: View {
                 }
             }
 
-            Button(action: {}) {
-                ZStack {
-                    Text("course_position_label")
-                        .font(Theme.Typography.button)
-
-                    HStack {
-                        Spacer()
-                        Image(systemName: "mappin.and.ellipse")
-                            .font(Theme.Typography.iconMedium)
-                            .padding(.trailing, Theme.Sizing.primaryButtonHeight / 3)
-                    }
-                }
-                .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
+            CoursePositionButton {
+                onPositionSelected(.mark(markId: item.id))
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(Theme.RaceManager.primaryColor)
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
-                    .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
-            )
-            .padding(.horizontal)
         }
     }
 
@@ -362,6 +347,11 @@ private struct CourseStepRow: View {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             activeSubIndex = activeSubIndex == 0 ? nil : 0
                         }
+                    },
+                    onPositionTap: {
+                        if let selection = lineEndpointSelection(for: .left) {
+                            onPositionSelected(selection)
+                        }
                     }
                 )
 
@@ -377,11 +367,27 @@ private struct CourseStepRow: View {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             activeSubIndex = activeSubIndex == 1 ? nil : 1
                         }
+                    },
+                    onPositionTap: {
+                        if let selection = lineEndpointSelection(for: .right) {
+                            onPositionSelected(selection)
+                        }
                     }
                 )
             }
             .padding(.top, 10)
             .padding(.leading, 4)
+        }
+    }
+
+    private func lineEndpointSelection(for side: CourseEndpointSide) -> CoursePositionSelection? {
+        switch item.type {
+        case .start:
+            return .startLineEndpoint(lineId: item.id, side: side)
+        case .finish:
+            return .finishLineEndpoint(lineId: item.id, side: side)
+        case .mark:
+            return nil
         }
     }
 
@@ -401,6 +407,7 @@ private struct LineEndRow: View {
     let isFirst: Bool
     let isLast: Bool
     let onTap: () -> Void
+    let onPositionTap: () -> Void
 
     private var nodeSize: CGFloat {
         isActive ? 22 : 18
@@ -442,27 +449,7 @@ private struct LineEndRow: View {
                             labelWidth: 90
                         )
 
-                        Button(action: {}) {
-                            ZStack {
-                                Text("course_position_label")
-                                    .font(Theme.Typography.button)
-
-                                HStack {
-                                    Spacer()
-                                    Image(systemName: "mappin.and.ellipse")
-                                        .font(Theme.Typography.iconMedium)
-                                        .padding(.trailing, Theme.Sizing.primaryButtonHeight / 3)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(Theme.RaceManager.primaryColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
-                                .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
-                        )
-                        .padding(.horizontal)
+                        CoursePositionButton(action: onPositionTap)
                     }
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
@@ -546,6 +533,34 @@ private struct LineEndRow: View {
             }
         }
         .frame(width: 22)
+    }
+}
+
+private struct CoursePositionButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Text("course_position_label")
+                    .font(Theme.Typography.button)
+
+                HStack {
+                    Spacer()
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(Theme.Typography.iconMedium)
+                        .padding(.trailing, Theme.Sizing.primaryButtonHeight / 3)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.RaceManager.primaryColor)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
+                .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
+        )
+        .padding(.horizontal)
     }
 }
 

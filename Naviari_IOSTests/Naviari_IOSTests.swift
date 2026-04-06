@@ -764,6 +764,305 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertNil(record)
     }
 
+    func testDefinitionStatusMapsLinePartialStatesToPreliminary() {
+        XCTAssertEqual(DefinitionStatus(from: "leftSet"), .preliminary)
+        XCTAssertEqual(DefinitionStatus(from: "rightSet"), .preliminary)
+        XCTAssertEqual(DefinitionStatus(from: " RIGHTSET "), .preliminary)
+    }
+
+    func testDefinitionStatusKeepsUnknownValuesAsNone() {
+        XCTAssertEqual(DefinitionStatus(from: "unexpected"), .none)
+    }
+
+    func testRaceCourseDecoderSupportsNestedCoordinateShape() throws {
+        let payload = """
+        {
+          "id": "course-1",
+          "name": "Sample Course",
+          "start_line": {
+            "id": "start-line-1",
+            "status": "leftSet",
+            "mark_left": { "lat": 60.111, "lon": 24.111 },
+            "mark_right": { "lat": 60.222, "lon": 24.222 }
+          },
+          "finish_line": {
+            "id": "finish-line-1",
+            "status": "rightSet",
+            "mark_left": { "lat": 60.333, "lon": 24.333 },
+            "mark_right": { "lat": 60.444, "lon": 24.444 }
+          },
+          "course_marks": [
+            {
+              "id": "mark-1",
+              "sequence": 1,
+              "status": "preliminary",
+              "mark": { "lat": 60.555, "lon": 24.555 }
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let course = try JSONDecoder().decode(RaceCourse.self, from: payload)
+        XCTAssertEqual(course.start_line?.mark_left_lat, 60.111, accuracy: 0.000_001)
+        XCTAssertEqual(course.start_line?.mark_right_lon, 24.222, accuracy: 0.000_001)
+        XCTAssertEqual(course.finish_line?.mark_left_lon, 24.333, accuracy: 0.000_001)
+        XCTAssertEqual(course.course_marks.first?.mark_lat, 60.555, accuracy: 0.000_001)
+        XCTAssertEqual(course.course_marks.first?.mark_lon, 24.555, accuracy: 0.000_001)
+
+        let timeline = CourseTimelineItem.buildTimeline(from: course)
+        XCTAssertEqual(timeline.first(where: { $0.type == .start })?.status, .preliminary)
+        XCTAssertEqual(timeline.first(where: { $0.type == .finish })?.status, .preliminary)
+    }
+
+    func testRaceCourseDecoderSupportsLegacyFlatCoordinateShape() throws {
+        let payload = """
+        {
+          "id": "course-legacy",
+          "start_line": {
+            "id": "start-line-legacy",
+            "status": "preliminary",
+            "mark_left_lat": 61.001,
+            "mark_left_lon": 25.001,
+            "mark_right_lat": 61.002,
+            "mark_right_lon": 25.002
+          },
+          "course_marks": [
+            {
+              "id": "mark-legacy-1",
+              "sequence": 1,
+              "status": "final",
+              "mark_lat": 61.101,
+              "mark_lon": 25.101
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let course = try JSONDecoder().decode(RaceCourse.self, from: payload)
+        XCTAssertEqual(course.start_line?.mark_left_lat, 61.001, accuracy: 0.000_001)
+        XCTAssertEqual(course.start_line?.mark_right_lon, 25.002, accuracy: 0.000_001)
+        XCTAssertEqual(course.course_marks.first?.mark_lat, 61.101, accuracy: 0.000_001)
+        XCTAssertEqual(course.course_marks.first?.mark_lon, 25.101, accuracy: 0.000_001)
+    }
+
+    func testSetPositionTargetLineStatusTransitions() {
+        let lineTarget = CourseLinePositionTarget(
+            lineId: "line-1",
+            name: "Start line",
+            description: nil,
+            status: "preliminary",
+            markLeft: CoordinatePoint(lat: 60.1, lon: 24.1),
+            markRight: CoordinatePoint(lat: 60.2, lon: 24.2)
+        )
+
+        XCTAssertEqual(
+            SetPositionTarget.startLine(lineTarget, side: .left).nextLineStatus(),
+            "leftSet"
+        )
+        XCTAssertEqual(
+            SetPositionTarget.startLine(lineTarget, side: .right).nextLineStatus(),
+            "rightSet"
+        )
+    }
+
+    func testSetPositionTargetLineStatusTransitionsReachFinalFromPartialStates() {
+        let leftSet = CourseLinePositionTarget(
+            lineId: "line-1",
+            name: "Start line",
+            description: nil,
+            status: "leftSet",
+            markLeft: CoordinatePoint(lat: 60.1, lon: 24.1),
+            markRight: CoordinatePoint(lat: 60.2, lon: 24.2)
+        )
+        let rightSet = CourseLinePositionTarget(
+            lineId: "line-1",
+            name: "Start line",
+            description: nil,
+            status: "rightSet",
+            markLeft: CoordinatePoint(lat: 60.1, lon: 24.1),
+            markRight: CoordinatePoint(lat: 60.2, lon: 24.2)
+        )
+
+        XCTAssertEqual(
+            SetPositionTarget.startLine(leftSet, side: .right).nextLineStatus(),
+            "final"
+        )
+        XCTAssertEqual(
+            SetPositionTarget.finishLine(rightSet, side: .left).nextLineStatus(),
+            "final"
+        )
+    }
+
+    func testSetPositionTargetLineStatusKeepsCurrentStateWhenReSettingSameSide() {
+        let leftSet = CourseLinePositionTarget(
+            lineId: "line-1",
+            name: "Finish line",
+            description: nil,
+            status: "leftSet",
+            markLeft: CoordinatePoint(lat: 60.1, lon: 24.1),
+            markRight: CoordinatePoint(lat: 60.2, lon: 24.2)
+        )
+        let finalStatus = CourseLinePositionTarget(
+            lineId: "line-2",
+            name: "Finish line",
+            description: nil,
+            status: "final",
+            markLeft: CoordinatePoint(lat: 60.1, lon: 24.1),
+            markRight: CoordinatePoint(lat: 60.2, lon: 24.2)
+        )
+        let testData = CourseLinePositionTarget(
+            lineId: "line-3",
+            name: "Finish line",
+            description: nil,
+            status: "testData",
+            markLeft: CoordinatePoint(lat: 60.1, lon: 24.1),
+            markRight: CoordinatePoint(lat: 60.2, lon: 24.2)
+        )
+
+        XCTAssertEqual(
+            SetPositionTarget.finishLine(leftSet, side: .left).nextLineStatus(),
+            "leftSet"
+        )
+        XCTAssertEqual(
+            SetPositionTarget.finishLine(finalStatus, side: .left).nextLineStatus(),
+            "final"
+        )
+        XCTAssertEqual(
+            SetPositionTarget.finishLine(testData, side: .left).nextLineStatus(),
+            "testData"
+        )
+    }
+
+    func testSetCoursePositionForMarkUsesCourseMarksEndpointAndFinalStatus() async throws {
+        let inspectedRequest = expectation(description: "course mark upsert request inspected")
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(request.url?.path, "/api/course-marks")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-User-Key"), "manage-token-1")
+
+            let json = try XCTUnwrap(
+                try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any]
+            )
+            XCTAssertEqual(json["id"] as? String, "mark-1")
+            XCTAssertEqual(json["name"] as? String, "M1")
+            XCTAssertEqual(json["status"] as? String, "final")
+            let mark = try XCTUnwrap(json["mark"] as? [String: Any])
+            XCTAssertEqual(mark["lat"] as? Double, 60.123)
+            XCTAssertEqual(mark["lon"] as? Double, 24.456)
+            inspectedRequest.fulfill()
+
+            let payload = """
+            {"ok":true,"mark":{"id":"mark-1"}}
+            """.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, payload)
+        }
+
+        let service = makeService()
+        let target = SetPositionTarget.mark(
+            CourseMarkPositionTarget(
+                markId: "mark-1",
+                name: "M1",
+                description: "Mark 1",
+                roundingSide: "port",
+                type: "race_point",
+                status: "preliminary"
+            )
+        )
+
+        try await service.setCoursePosition(
+            target: target,
+            coordinate: CoordinatePoint(lat: 60.123, lon: 24.456),
+            accessToken: "manage-token-1"
+        )
+
+        wait(for: [inspectedRequest], timeout: 1.0)
+    }
+
+    func testSetCoursePositionForStartLinePreservesUntouchedEndpoint() async throws {
+        let inspectedRequest = expectation(description: "start line upsert request inspected")
+
+        MockURLProtocol.requestHandler = { request in
+            XCTAssertEqual(request.httpMethod, "PUT")
+            XCTAssertEqual(request.url?.path, "/api/start-lines")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "X-User-Key"), "manage-token-1")
+
+            let json = try XCTUnwrap(
+                try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any]
+            )
+            XCTAssertEqual(json["id"] as? String, "line-1")
+            XCTAssertEqual(json["status"] as? String, "leftSet")
+
+            let markLeft = try XCTUnwrap(json["markLeft"] as? [String: Any])
+            XCTAssertEqual(markLeft["lat"] as? Double, 60.5)
+            XCTAssertEqual(markLeft["lon"] as? Double, 24.5)
+
+            let markRight = try XCTUnwrap(json["markRight"] as? [String: Any])
+            XCTAssertEqual(markRight["lat"] as? Double, 60.2)
+            XCTAssertEqual(markRight["lon"] as? Double, 24.2)
+            inspectedRequest.fulfill()
+
+            let payload = """
+            {"ok":true,"startLine":{"id":"line-1"}}
+            """.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, payload)
+        }
+
+        let service = makeService()
+        let target = SetPositionTarget.startLine(
+            CourseLinePositionTarget(
+                lineId: "line-1",
+                name: "Start line",
+                description: "desc",
+                status: "preliminary",
+                markLeft: CoordinatePoint(lat: 60.1, lon: 24.1),
+                markRight: CoordinatePoint(lat: 60.2, lon: 24.2)
+            ),
+            side: .left
+        )
+
+        try await service.setCoursePosition(
+            target: target,
+            coordinate: CoordinatePoint(lat: 60.5, lon: 24.5),
+            accessToken: "manage-token-1"
+        )
+
+        wait(for: [inspectedRequest], timeout: 1.0)
+    }
+
+    func testSetCoursePositionThrowsWhenUntouchedLineEndpointIsMissing() async throws {
+        let service = makeService()
+        let target = SetPositionTarget.finishLine(
+            CourseLinePositionTarget(
+                lineId: "line-1",
+                name: "Finish line",
+                description: nil,
+                status: "preliminary",
+                markLeft: nil,
+                markRight: nil
+            ),
+            side: .left
+        )
+
+        do {
+            try await service.setCoursePosition(
+                target: target,
+                coordinate: CoordinatePoint(lat: 60.1, lon: 24.1),
+                accessToken: "manage-token-1"
+            )
+            XCTFail("Expected invalid request error")
+        } catch let error as RaceServiceError {
+            switch error {
+            case .invalidRequest:
+                break
+            default:
+                XCTFail("Unexpected RaceServiceError: \(error)")
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeService() -> RaceService {

@@ -171,3 +171,16 @@
 "course_rounding_port" = "Paapuuri";
 "course_rounding_starboard" = "Tyyrpuuri";
 "course_rounding_gate" = "Portti";
+"set_position_title" = "Aseta sijainti";
+"set_position_button" = "Aseta sijainti";
+"set_position_guide_text" = "Aseta merkin / poijun koordinaatit tähän sijaintiin. Radan merkeille suositellaan asettamaan sijainti 5-10 metriä radan \"sisäpuolelle\". Tämä auttaa veneitä kiertämään merkit, vaikka GPS:ssä olisi pieniä epätarkkuuksia. Lähtö- ja maalilinjoille aseta tarkka piste tai ulkopuoli, mutta pidä se linjassa.";
+"set_position_target_mark" = "Radan merkki";
+"set_position_target_start_left" = "Lähtölinjan vasen pää";
+"set_position_target_start_right" = "Lähtölinjan oikea pää";
+"set_position_target_finish_left" = "Maalilinjan vasen pää";
+"set_position_target_finish_right" = "Maalilinjan oikea pää";
+"set_position_error_manage_token_required" = "Hallintakoodi vaaditaan.";
+"set_position_error_location_permission_required" = "Sijaintilupa vaaditaan.";
+"set_position_error_location_unavailable" = "Nykyinen sijainti ei ole vielä saatavilla.";
+"set_position_error_line_endpoint_missing" = "Toinen linjan päätepiste puuttuu. Päivitä ratatiedot ja yritä uudelleen.";
+"set_position_error_save_failed" = "Sijainnin asettaminen epäonnistui.";

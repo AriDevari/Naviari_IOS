@@ -6,6 +6,7 @@ enum RaceServiceError: LocalizedError {
     case invalidURL
     case invalidResponse
     case decodingFailed
+    case invalidRequest(message: String)
     case missingRaceIdentifier
     case serverError(statusCode: Int, message: String?)
 
@@ -17,6 +18,8 @@ enum RaceServiceError: LocalizedError {
             return NSLocalizedString("error_invalid_response", comment: "Invalid server response")
         case .decodingFailed:
             return NSLocalizedString("error_decoding_failed", comment: "Failed to parse response")
+        case let .invalidRequest(message):
+            return message
         case .missingRaceIdentifier:
             return NSLocalizedString("error_missing_race_id", comment: "Missing race identifier")
         case let .serverError(statusCode, message):
@@ -154,6 +157,106 @@ struct RaceService {
         }
 
         return payload.start
+    }
+
+    /// Writes one course-position target using the current coordinate.
+    func setCoursePosition(
+        target: SetPositionTarget,
+        coordinate: CoordinatePoint,
+        accessToken: String,
+        updatedBy: String? = "ios-set-position"
+    ) async throws {
+        switch target {
+        case let .mark(markTarget):
+            let payload = CourseMarkPositionRequest(
+                id: markTarget.markId,
+                name: markTarget.name,
+                description: markTarget.description,
+                roundingSide: markTarget.roundingSide,
+                type: markTarget.type,
+                status: "final",
+                mark: coordinate,
+                updatedBy: updatedBy
+            )
+            _ = try await performCourseWrite(
+                path: "/api/course-marks",
+                accessToken: accessToken,
+                payload: payload
+            )
+
+        case let .startLine(lineTarget, side):
+            let request = try linePositionRequest(
+                lineTarget: lineTarget,
+                selectedSide: side,
+                coordinate: coordinate,
+                status: target.nextLineStatus(),
+                updatedBy: updatedBy
+            )
+            _ = try await performCourseWrite(
+                path: "/api/start-lines",
+                accessToken: accessToken,
+                payload: request
+            )
+
+        case let .finishLine(lineTarget, side):
+            let request = try linePositionRequest(
+                lineTarget: lineTarget,
+                selectedSide: side,
+                coordinate: coordinate,
+                status: target.nextLineStatus(),
+                updatedBy: updatedBy
+            )
+            _ = try await performCourseWrite(
+                path: "/api/finish-lines",
+                accessToken: accessToken,
+                payload: request
+            )
+        }
+    }
+
+    private func linePositionRequest(
+        lineTarget: CourseLinePositionTarget,
+        selectedSide: CourseEndpointSide,
+        coordinate: CoordinatePoint,
+        status: String,
+        updatedBy: String?
+    ) throws -> CourseLinePositionRequest {
+        let left = selectedSide == .left ? coordinate : lineTarget.markLeft
+        let right = selectedSide == .right ? coordinate : lineTarget.markRight
+
+        guard let markLeft = left, let markRight = right else {
+            throw RaceServiceError.invalidRequest(
+                message: NSLocalizedString("set_position_error_line_endpoint_missing", comment: "Line endpoint missing")
+            )
+        }
+
+        return CourseLinePositionRequest(
+            id: lineTarget.lineId,
+            name: lineTarget.name,
+            description: lineTarget.description,
+            status: status,
+            markLeft: markLeft,
+            markRight: markRight,
+            updatedBy: updatedBy
+        )
+    }
+
+    private func performCourseWrite<Payload: Encodable>(
+        path: String,
+        accessToken: String,
+        payload: Payload
+    ) async throws -> Data {
+        var request = try makeRequest(path: path, queryItems: [])
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(accessToken, forHTTPHeaderField: "X-User-Key")
+        request.httpBody = try JSONEncoder().encode(payload)
+
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+        return data
     }
 
     private func makeRequest(path: String, queryItems: [URLQueryItem]) throws -> URLRequest {
@@ -304,4 +407,25 @@ private struct StartTimingPatchRequest: Encodable {
         }
         try container.encodeIfPresent(updatedBy, forKey: .updatedBy)
     }
+}
+
+private struct CourseMarkPositionRequest: Encodable {
+    let id: String
+    let name: String
+    let description: String?
+    let roundingSide: String?
+    let type: String?
+    let status: String
+    let mark: CoordinatePoint
+    let updatedBy: String?
+}
+
+private struct CourseLinePositionRequest: Encodable {
+    let id: String
+    let name: String
+    let description: String?
+    let status: String
+    let markLeft: CoordinatePoint
+    let markRight: CoordinatePoint
+    let updatedBy: String?
 }

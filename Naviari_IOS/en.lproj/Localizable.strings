@@ -171,3 +171,16 @@
 "course_rounding_port" = "Port";
 "course_rounding_starboard" = "Starboard";
 "course_rounding_gate" = "Gate";
+"set_position_title" = "Set Position";
+"set_position_button" = "Set Position";
+"set_position_guide_text" = "Set the mark / buoy coordinates to this location. For course marks it is recommended to set the position 5-10 meters \"inside\" the course. This helps boats round the marks even if there are small GPS inaccuracies. For start and finish lines, set the exact spot or the outer side, but keep it on the line.";
+"set_position_target_mark" = "Course mark";
+"set_position_target_start_left" = "Start line left end";
+"set_position_target_start_right" = "Start line right end";
+"set_position_target_finish_left" = "Finish line left end";
+"set_position_target_finish_right" = "Finish line right end";
+"set_position_error_manage_token_required" = "Management code is required.";
+"set_position_error_location_permission_required" = "Location permission is required.";
+"set_position_error_location_unavailable" = "Current location is not available yet.";
+"set_position_error_line_endpoint_missing" = "The other line endpoint is missing. Refresh course data and try again.";
+"set_position_error_save_failed" = "Failed to set position.";
