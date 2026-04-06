@@ -159,6 +159,8 @@
 "course_last_updated_label" = "Päivitetty";
 "course_definition_status_final" = "Lopullinen";
 "course_definition_status_preliminary" = "Alustava";
+"course_definition_status_left_set" = "Vasen asetettu";
+"course_definition_status_right_set" = "Oikea asetettu";
 "course_definition_status_not_set" = "Ei asetettu";
 "course_bearing_to_next_label" = "Suunta →";
 "course_distance_to_next_label" = "Matka →";
@@ -174,6 +176,8 @@
 "set_position_title" = "Aseta sijainti";
 "set_position_button" = "Aseta sijainti";
 "set_position_guide_text" = "Aseta merkin / poijun koordinaatit tähän sijaintiin. Radan merkeille suositellaan asettamaan sijainti 5-10 metriä radan \"sisäpuolelle\". Tämä auttaa veneitä kiertämään merkit, vaikka GPS:ssä olisi pieniä epätarkkuuksia. Lähtö- ja maalilinjoille aseta tarkka piste tai ulkopuoli, mutta pidä se linjassa.";
+"set_position_guide_text_mark" = "Set the course mark coordinates to this device location.\n\nFor course marks it is recommended to set the position 5-10 meters \"inside\" the course. This helps to regocnice boats mark roundings even if there are small GPS inaccuracies on boat's data.";
+"set_position_guide_text_line" = "Set the line end coordinates to this device location.\n\nFor line ends it is recommended to set the position on outside of end, as extension on the line. This keeps start end finish times accurate.";
 "set_position_target_mark" = "Radan merkki";
 "set_position_target_start_left" = "Lähtölinjan vasen pää";
 "set_position_target_start_right" = "Lähtölinjan oikea pää";

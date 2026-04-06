@@ -27,6 +27,8 @@ struct StartDetailScreen: View {
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
     @State private var showStopConfirmation = false
     @State private var courseItems: [CourseTimelineItem] = []
+    @State private var activeCourseItemId: String?
+    @State private var activeLineSubIndexByItemId: [String: Int] = [:]
     @State private var loadedCourse: RaceCourse?
     @State private var isCourseLoaded = false
     @State private var isCourseLoading = false
@@ -187,13 +189,17 @@ struct StartDetailScreen: View {
                                 .font(AppFont.textStyle(.headline))
                                 .padding(.horizontal)
 
-                            if isCourseLoading {
-                                ProgressView()
-                                    .padding()
-                            } else if !courseItems.isEmpty {
-                                CourseTimelineView(items: courseItems) { selection in
+                            if !courseItems.isEmpty {
+                                CourseTimelineView(
+                                    items: courseItems,
+                                    activeItemId: $activeCourseItemId,
+                                    activeSubIndexByItemId: $activeLineSubIndexByItemId
+                                ) { selection in
                                     handleCoursePositionSelection(selection)
                                 }
+                            } else if isCourseLoading {
+                                ProgressView()
+                                    .padding()
                             } else if isCourseLoaded {
                                 Text("race_course_empty")
                                     .font(AppFont.textStyle(.subheadline))
@@ -324,13 +330,18 @@ struct StartDetailScreen: View {
             if let course = response.course {
                 loadedCourse = course
                 courseItems = CourseTimelineItem.buildTimeline(from: course)
+                pruneCourseTimelineUIState()
             } else {
                 loadedCourse = nil
                 courseItems = []
+                activeCourseItemId = nil
+                activeLineSubIndexByItemId = [:]
             }
         } catch {
             loadedCourse = nil
             courseItems = []
+            activeCourseItemId = nil
+            activeLineSubIndexByItemId = [:]
         }
         isCourseLoading = false
         isCourseLoaded = true
@@ -387,6 +398,14 @@ struct StartDetailScreen: View {
     private func coordinatePoint(lat: Double?, lon: Double?) -> CoordinatePoint? {
         guard let lat, let lon else { return nil }
         return CoordinatePoint(lat: lat, lon: lon)
+    }
+
+    private func pruneCourseTimelineUIState() {
+        let validIds = Set(courseItems.map(\.id))
+        if let activeCourseItemId, !validIds.contains(activeCourseItemId) {
+            self.activeCourseItemId = nil
+        }
+        activeLineSubIndexByItemId = activeLineSubIndexByItemId.filter { validIds.contains($0.key) }
     }
 
     private func rehearsalDeepLinkedMarkdown(_ localizedMarkdown: String) -> String {

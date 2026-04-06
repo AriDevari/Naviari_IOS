@@ -2,9 +2,9 @@ import SwiftUI
 
 struct CourseTimelineView: View {
     let items: [CourseTimelineItem]
+    @Binding var activeItemId: String?
+    @Binding var activeSubIndexByItemId: [String: Int]
     var onPositionSelected: (CoursePositionSelection) -> Void = { _ in }
-
-    @State private var activeIndex: Int? = nil
 
     var body: some View {
         Group {
@@ -13,22 +13,19 @@ struct CourseTimelineView: View {
             } else {
                 ScrollViewReader { proxy in
                     VStack(spacing: 0) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        ForEach(Array(items.enumerated()), id: \.element.id) { _, item in
                             CourseStepRow(
                                 item: item,
-                                isFirst: index == 0,
-                                isLast: index == items.count - 1,
-                                isActive: activeIndex == index,
+                                isFirst: item.id == items.first?.id,
+                                isLast: item.id == items.last?.id,
+                                isActive: activeItemId == item.id,
+                                activeSubIndex: subIndexBinding(for: item.id),
                                 onPositionSelected: onPositionSelected,
                                 onTap: {
                                     withAnimation(.easeInOut(duration: 0.25)) {
-                                        activeIndex = index
+                                        activeItemId = item.id
                                     }
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                        withAnimation {
-                                            proxy.scrollTo(item.id, anchor: .center)
-                                        }
-                                    }
+                                    scrollToActiveItem(using: proxy)
                                 }
                             )
                             .id(item.id)
@@ -36,7 +33,38 @@ struct CourseTimelineView: View {
                     }
                     .padding(.vertical, 16)
                     .padding(.horizontal, 20)
+                    .onAppear {
+                        scrollToActiveItem(using: proxy)
+                    }
+                    .onChange(of: activeItemId) { _, _ in
+                        scrollToActiveItem(using: proxy)
+                    }
+                    .onChange(of: items.map(\.id)) { _, _ in
+                        scrollToActiveItem(using: proxy)
+                    }
                 }
+            }
+        }
+    }
+
+    private func subIndexBinding(for itemId: String) -> Binding<Int?> {
+        Binding<Int?>(
+            get: { activeSubIndexByItemId[itemId] },
+            set: { newValue in
+                if let newValue {
+                    activeSubIndexByItemId[itemId] = newValue
+                } else {
+                    activeSubIndexByItemId.removeValue(forKey: itemId)
+                }
+            }
+        )
+    }
+
+    private func scrollToActiveItem(using proxy: ScrollViewProxy) {
+        guard let activeItemId else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            withAnimation {
+                proxy.scrollTo(activeItemId, anchor: .center)
             }
         }
     }
@@ -47,10 +75,9 @@ private struct CourseStepRow: View {
     let isFirst: Bool
     let isLast: Bool
     let isActive: Bool
+    @Binding var activeSubIndex: Int?
     let onPositionSelected: (CoursePositionSelection) -> Void
     let onTap: () -> Void
-
-    @State private var activeSubIndex: Int?
 
     private var iconSize: CGFloat {
         isActive ? 30 : 24
@@ -311,11 +338,45 @@ private struct CourseStepRow: View {
         status == .preliminary ? Theme.RaceManager.primaryColor : Theme.Colors.textPrimary
     }
 
+    private func lineStatusLabel(rawStatus: String?) -> String {
+        switch normalizedLineStatus(rawStatus) {
+        case "leftset":
+            return NSLocalizedString("course_definition_status_left_set", comment: "")
+        case "rightset":
+            return NSLocalizedString("course_definition_status_right_set", comment: "")
+        default:
+            return definitionStatusLabel(for: item.status)
+        }
+    }
+
+    private func normalizedLineStatus(_ rawStatus: String?) -> String {
+        rawStatus?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? ""
+    }
+
+    private func endpointStatus(for side: CourseEndpointSide) -> DefinitionStatus {
+        switch normalizedLineStatus(item.rawStatus) {
+        case "leftset":
+            return side == .left ? .final_ : .preliminary
+        case "rightset":
+            return side == .right ? .final_ : .preliminary
+        default:
+            return item.status
+        }
+    }
+
     private var lineSubStepper: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let description = item.description, !description.isEmpty {
                 detailRow(label: NSLocalizedString("course_desc_label", comment: ""), value: description)
             }
+
+            detailRow(
+                label: NSLocalizedString("race_status_label", comment: ""),
+                value: lineStatusLabel(rawStatus: item.rawStatus),
+                valueColor: definitionStatusValueColor(for: item.status)
+            )
 
             if item.lineBearingLabel != nil || item.lineLengthLabel != nil {
                 detailRow(
@@ -339,7 +400,7 @@ private struct CourseStepRow: View {
                     title: NSLocalizedString("course_left_end", comment: ""),
                     latitude: item.lineLeftLat,
                     longitude: item.lineLeftLon,
-                    status: item.status,
+                    status: endpointStatus(for: .left),
                     isActive: activeSubIndex == 0,
                     isFirst: true,
                     isLast: false,
@@ -359,7 +420,7 @@ private struct CourseStepRow: View {
                     title: NSLocalizedString("course_right_end", comment: ""),
                     latitude: item.lineRightLat,
                     longitude: item.lineRightLon,
-                    status: item.status,
+                    status: endpointStatus(for: .right),
                     isActive: activeSubIndex == 1,
                     isFirst: false,
                     isLast: true,
@@ -413,8 +474,8 @@ private struct LineEndRow: View {
         isActive ? 22 : 18
     }
 
-    private var dotSize: CGFloat {
-        isActive ? 7 : 5
+    private var symbolSize: CGFloat {
+        isActive ? 9 : 8
     }
 
     var body: some View {
@@ -459,7 +520,10 @@ private struct LineEndRow: View {
     }
 
     private var coordinateValueColor: Color {
-        status == .preliminary ? Theme.RaceManager.primaryColor : Theme.Colors.textPrimary
+        if latitude == nil || longitude == nil {
+            return Theme.RaceManager.primaryColor
+        }
+        return status == .preliminary ? Theme.RaceManager.primaryColor : Theme.Colors.textPrimary
     }
 
     private var latitudeDmsValue: String {
@@ -514,15 +578,7 @@ private struct LineEndRow: View {
                 .fill(isFirst ? Color.clear : Theme.Colors.brandPrimary.opacity(0.25))
                 .frame(width: 1.5, height: 12)
 
-            ZStack {
-                Circle()
-                    .fill(Theme.Colors.surfacePrimary)
-                Circle()
-                    .stroke(Theme.Colors.brandPrimary, lineWidth: 1.5)
-                Circle()
-                    .fill(Theme.Colors.brandPrimary)
-                    .frame(width: dotSize, height: dotSize)
-            }
+            endpointStepIcon
             .frame(width: nodeSize, height: nodeSize)
 
             if !isLast {
@@ -533,6 +589,38 @@ private struct LineEndRow: View {
             }
         }
         .frame(width: 22)
+    }
+
+    @ViewBuilder
+    private var endpointStepIcon: some View {
+        switch status {
+        case .final_:
+            ZStack {
+                Circle()
+                    .fill(Theme.Colors.brandPrimary)
+                Image(systemName: "checkmark")
+                    .font(.system(size: symbolSize, weight: .bold))
+                    .foregroundStyle(Theme.Colors.surfacePrimary)
+            }
+        case .preliminary:
+            ZStack {
+                Circle()
+                    .fill(Theme.RaceManager.primaryColor)
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: symbolSize, weight: .bold))
+                    .foregroundStyle(Theme.Colors.surfacePrimary)
+            }
+        case .none:
+            ZStack {
+                Circle()
+                    .fill(Theme.Colors.surfacePrimary)
+                Circle()
+                    .stroke(Theme.Colors.brandPrimary, lineWidth: 1.5)
+                Circle()
+                    .fill(Theme.Colors.brandPrimary)
+                    .frame(width: 5, height: 5)
+            }
+        }
     }
 }
 
@@ -564,85 +652,96 @@ private struct CoursePositionButton: View {
     }
 }
 
+private struct CourseTimelinePreviewHost: View {
+    @State private var activeItemId: String? = nil
+    @State private var activeSubIndexByItemId: [String: Int] = [:]
+
+    var body: some View {
+        CourseTimelineView(
+            items: [
+                CourseTimelineItem(
+                    id: "start",
+                    name: "Start Line",
+                    description: "",
+                    type: .start,
+                    status: .none,
+                    markLat: nil,
+                    markLon: nil,
+                    roundingSide: nil,
+                    bearingToNextRad: nil,
+                    distanceToNextM: nil,
+                    lineLengthM: 120,
+                    lineBearingDeg: 270,
+                    lineLeftLat: 60.17,
+                    lineLeftLon: 24.94,
+                    lineRightLat: 60.16,
+                    lineRightLon: 24.95,
+                    updatedAt: Date()
+                ),
+                CourseTimelineItem(
+                    id: "mark-1",
+                    name: "Mark 1",
+                    description: "Windward",
+                    type: .mark,
+                    status: .none,
+                    markLat: 60.175,
+                    markLon: 24.97,
+                    roundingSide: .port,
+                    bearingToNextRad: 1.2,
+                    distanceToNextM: 1852,
+                    lineLengthM: nil,
+                    lineBearingDeg: nil,
+                    lineLeftLat: nil,
+                    lineLeftLon: nil,
+                    lineRightLat: nil,
+                    lineRightLon: nil,
+                    updatedAt: Date()
+                ),
+                CourseTimelineItem(
+                    id: "finish",
+                    name: "Finish Line",
+                    description: "",
+                    type: .finish,
+                    status: .final_,
+                    markLat: nil,
+                    markLon: nil,
+                    roundingSide: nil,
+                    bearingToNextRad: nil,
+                    distanceToNextM: nil,
+                    lineLengthM: 100,
+                    lineBearingDeg: 90,
+                    lineLeftLat: 60.18,
+                    lineLeftLon: 24.98,
+                    lineRightLat: 60.19,
+                    lineRightLon: 24.99,
+                    updatedAt: Date()
+                ),
+                CourseTimelineItem(
+                    id: "mark-2",
+                    name: "Mark 2",
+                    description: "Leeward",
+                    type: .mark,
+                    status: .preliminary,
+                    markLat: 60.165,
+                    markLon: 24.99,
+                    roundingSide: .starboard,
+                    bearingToNextRad: 0.4,
+                    distanceToNextM: 926,
+                    lineLengthM: nil,
+                    lineBearingDeg: nil,
+                    lineLeftLat: nil,
+                    lineLeftLon: nil,
+                    lineRightLat: nil,
+                    lineRightLon: nil,
+                    updatedAt: Date()
+                )
+            ],
+            activeItemId: $activeItemId,
+            activeSubIndexByItemId: $activeSubIndexByItemId
+        )
+    }
+}
+
 #Preview {
-    CourseTimelineView(
-        items: [
-            CourseTimelineItem(
-                id: "start",
-                name: "Start Line",
-                description: "",
-                type: .start,
-                status: .none,
-                markLat: nil,
-                markLon: nil,
-                roundingSide: nil,
-                bearingToNextRad: nil,
-                distanceToNextM: nil,
-                lineLengthM: 120,
-                lineBearingDeg: 270,
-                lineLeftLat: 60.17,
-                lineLeftLon: 24.94,
-                lineRightLat: 60.16,
-                lineRightLon: 24.95,
-                updatedAt: Date()
-            ),
-            CourseTimelineItem(
-                id: "mark-1",
-                name: "Mark 1",
-                description: "Windward",
-                type: .mark,
-                status: .none,
-                markLat: 60.175,
-                markLon: 24.97,
-                roundingSide: .port,
-                bearingToNextRad: 1.2,
-                distanceToNextM: 1852,
-                lineLengthM: nil,
-                lineBearingDeg: nil,
-                lineLeftLat: nil,
-                lineLeftLon: nil,
-                lineRightLat: nil,
-                lineRightLon: nil,
-                updatedAt: Date()
-            ),
-            CourseTimelineItem(
-                id: "finish",
-                name: "Finish Line",
-                description: "",
-                type: .finish,
-                status: .final_,
-                markLat: nil,
-                markLon: nil,
-                roundingSide: nil,
-                bearingToNextRad: nil,
-                distanceToNextM: nil,
-                lineLengthM: 100,
-                lineBearingDeg: 90,
-                lineLeftLat: 60.18,
-                lineLeftLon: 24.98,
-                lineRightLat: 60.19,
-                lineRightLon: 24.99,
-                updatedAt: Date()
-            ),
-            CourseTimelineItem(
-                id: "mark-2",
-                name: "Mark 2",
-                description: "Leeward",
-                type: .mark,
-                status: .preliminary,
-                markLat: 60.165,
-                markLon: 24.99,
-                roundingSide: .starboard,
-                bearingToNextRad: 0.4,
-                distanceToNextM: 926,
-                lineLengthM: nil,
-                lineBearingDeg: nil,
-                lineLeftLat: nil,
-                lineLeftLon: nil,
-                lineRightLat: nil,
-                lineRightLon: nil,
-                updatedAt: Date()
-            )
-        ]
-    )
+    CourseTimelinePreviewHost()
 }

@@ -53,7 +53,7 @@ struct Naviari_IOSApp: App {
                 }
         }
         .modelContainer(sharedModelContainer)
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 BoatMetricsBackgroundScheduler.shared.scheduleIfNeeded()
             }

@@ -39,7 +39,7 @@ struct SetPositionScreen: View {
                     Text(LocalizedStringKey(target.localizedTargetKey))
                         .font(AppFont.textStyle(.title3, weight: .semibold))
 
-                    Text("set_position_guide_text")
+                    Text(LocalizedStringKey(target.guideTextKey))
                         .font(AppFont.textStyle(.subheadline))
                         .foregroundStyle(Theme.Colors.textSecondary)
 
@@ -64,7 +64,7 @@ struct SetPositionScreen: View {
                             ProgressView()
                                 .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
                         } else {
-                            RaceManagerButtonLabel("set_position_button")
+                            SetPositionPrimaryButtonLabel()
                         }
                     }
                     .buttonStyle(.borderedProminent)
@@ -336,3 +336,18 @@ struct SetPositionScreen: View {
     }
 }
 
+private struct SetPositionPrimaryButtonLabel: View {
+    var body: some View {
+        ZStack {
+            Text("set_position_button")
+                .font(Theme.Typography.button)
+            HStack {
+                Spacer()
+                Image(systemName: "mappin.and.ellipse")
+                    .font(Theme.Typography.iconMedium)
+                    .padding(.trailing, Theme.Sizing.primaryButtonHeight / 3)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
+    }
+}

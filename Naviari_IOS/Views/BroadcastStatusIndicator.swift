@@ -45,7 +45,7 @@ struct BroadcastStatusButton: View {
             lastAttemptCount = uploader.sendAttemptCount
             breathing = true
         }
-        .onChange(of: uploader.sendAttemptCount) { newCount in
+        .onChange(of: uploader.sendAttemptCount) { _, newCount in
             if newCount > lastAttemptCount {
                 lastAttemptCount = newCount
                 triggerPlink()
@@ -136,7 +136,7 @@ private struct BroadcastStatusDetailView: View {
             lastAttemptCount = uploader.sendAttemptCount
             breathing = true
         }
-        .onChange(of: uploader.sendAttemptCount) { newCount in
+        .onChange(of: uploader.sendAttemptCount) { _, newCount in
             if newCount > lastAttemptCount {
                 lastAttemptCount = newCount
                 triggerPlink()

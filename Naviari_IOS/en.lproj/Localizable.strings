@@ -159,6 +159,8 @@
 "course_last_updated_label" = "Last updated";
 "course_definition_status_final" = "Final";
 "course_definition_status_preliminary" = "Preliminary";
+"course_definition_status_left_set" = "Left set";
+"course_definition_status_right_set" = "Right set";
 "course_definition_status_not_set" = "Not set";
 "course_bearing_to_next_label" = "Bearing →";
 "course_distance_to_next_label" = "Distance →";
@@ -174,6 +176,8 @@
 "set_position_title" = "Set Position";
 "set_position_button" = "Set Position";
 "set_position_guide_text" = "Set the mark / buoy coordinates to this location. For course marks it is recommended to set the position 5-10 meters \"inside\" the course. This helps boats round the marks even if there are small GPS inaccuracies. For start and finish lines, set the exact spot or the outer side, but keep it on the line.";
+"set_position_guide_text_mark" = "Set the course mark coordinates to this device location.\n\nFor course marks it is recommended to set the position 5-10 meters \"inside\" the course. This helps to regocnice boats mark roundings even if there are small GPS inaccuracies on boat's data.";
+"set_position_guide_text_line" = "Set the line end coordinates to this device location.\n\nFor line ends it is recommended to set the position on outside of end, as extension on the line. This keeps start end finish times accurate.";
 "set_position_target_mark" = "Course mark";
 "set_position_target_start_left" = "Start line left end";
 "set_position_target_start_right" = "Start line right end";

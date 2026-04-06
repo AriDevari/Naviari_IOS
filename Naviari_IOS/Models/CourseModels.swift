@@ -487,6 +487,15 @@ enum SetPositionTarget: Hashable {
         }
     }
 
+    var guideTextKey: String {
+        switch self {
+        case .mark:
+            return "set_position_guide_text_mark"
+        case .startLine, .finishLine:
+            return "set_position_guide_text_line"
+        }
+    }
+
     func nextLineStatus() -> String {
         let normalizedStatus: String
         let rawStatus: String
