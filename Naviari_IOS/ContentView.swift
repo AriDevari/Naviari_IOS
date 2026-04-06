@@ -10,6 +10,7 @@ import SwiftUI
 /// Root navigation stack for the iOS app (welcome → races → starts → participate).
 struct ContentView: View {
     @StateObject private var viewModel = RaceBrowserViewModel()
+    @StateObject private var userNotifications = UserNotifications()
     @State private var navigationPath: [AppRoute] = []
     @EnvironmentObject private var locationManager: LocationDataManager
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
@@ -60,6 +61,9 @@ struct ContentView: View {
                     }
                 }
             }
+
+            UserNotificationsOverlay()
+
             if metricsUploader.isBroadcasting {
                 BroadcastStatusButton(uploader: metricsUploader)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
@@ -73,6 +77,7 @@ struct ContentView: View {
                 .padding(.bottom, Theme.Spacing.floatingInset)
         }
         .environmentObject(viewModel)
+        .environmentObject(userNotifications)
     }
 
     private func latestStart(for routeStart: RaceStart, in summary: RaceSummary) -> RaceStart {

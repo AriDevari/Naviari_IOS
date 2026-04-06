@@ -139,6 +139,9 @@
 "set_start_time_error_invalid_selection" = "Valinnasta ei voitu muodostaa kelvollista aikaa.";
 "set_start_time_error_set_failed" = "Lähtöajan asettaminen epäonnistui.";
 "set_start_time_error_timer_failed" = "Ajastimen käynnistys epäonnistui.";
+"set_start_time_success_manual" = "Lähtöaika päivitetty.";
+"set_start_time_success_timer" = "Lähtöajastin käynnistetty.";
+"set_start_time_success_reset" = "Lähtöaika poistettu.";
 "set_start_time_error_start_identifier_missing" = "Lähdön tunniste puuttuu.";
 "set_start_time_reset_button" = "Poista";
 "set_start_time_reset_confirm_title" = "Tyhjennä lähtöaika?";
@@ -188,3 +191,9 @@
 "set_position_error_location_unavailable" = "Nykyinen sijainti ei ole vielä saatavilla.";
 "set_position_error_line_endpoint_missing" = "Toinen linjan päätepiste puuttuu. Päivitä ratatiedot ja yritä uudelleen.";
 "set_position_error_save_failed" = "Sijainnin asettaminen epäonnistui.";
+"set_position_success_mark" = "Sijainti päivitetty.";
+"set_position_success_start_left" = "Lähtölinjan vasen pää päivitetty.";
+"set_position_success_start_right" = "Lähtölinjan oikea pää päivitetty.";
+"set_position_success_finish_left" = "Maalilinjan vasen pää päivitetty.";
+"set_position_success_finish_right" = "Maalilinjan oikea pää päivitetty.";
+"user_notifications_close" = "Sulje ilmoitus";

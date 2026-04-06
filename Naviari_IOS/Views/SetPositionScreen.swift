@@ -21,6 +21,7 @@ struct SetPositionScreen: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var locationManager: LocationDataManager
+    @EnvironmentObject private var userNotifications: UserNotifications
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
 
     private let accessService = ParticipationService()
@@ -251,11 +252,26 @@ struct SetPositionScreen: View {
                 viewModel.requestCourseRefresh(for: startId)
             }
 
+            userNotifications.show(
+                message: NSLocalizedString(successMessageKey, comment: ""),
+                severity: .success
+            )
             dismiss()
         } catch {
             submissionError = error.localizedDescription.isEmpty
                 ? NSLocalizedString("set_position_error_save_failed", comment: "")
                 : error.localizedDescription
+        }
+    }
+
+    private var successMessageKey: String {
+        switch target {
+        case .mark:
+            return "set_position_success_mark"
+        case let .startLine(_, side):
+            return side == .left ? "set_position_success_start_left" : "set_position_success_start_right"
+        case let .finishLine(_, side):
+            return side == .left ? "set_position_success_finish_left" : "set_position_success_finish_right"
         }
     }
 

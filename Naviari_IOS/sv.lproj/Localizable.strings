@@ -139,6 +139,9 @@
 "set_start_time_error_invalid_selection" = "Det gick inte att skapa en giltig tid från valet.";
 "set_start_time_error_set_failed" = "Det gick inte att ställa in starttid.";
 "set_start_time_error_timer_failed" = "Det gick inte att starta timern.";
+"set_start_time_success_manual" = "Starttid uppdaterad.";
+"set_start_time_success_timer" = "Starttimer startad.";
+"set_start_time_success_reset" = "Starttid borttagen.";
 "set_start_time_error_start_identifier_missing" = "Startidentifier saknas.";
 "set_start_time_reset_button" = "Ta bort";
 "set_start_time_reset_confirm_title" = "Rensa starttid?";
@@ -188,3 +191,9 @@
 "set_position_error_location_unavailable" = "Nuvarande position är inte tillgänglig ännu.";
 "set_position_error_line_endpoint_missing" = "Den andra linjeänden saknas. Uppdatera bankursdata och försök igen.";
 "set_position_error_save_failed" = "Det gick inte att ställa in position.";
+"set_position_success_mark" = "Position uppdaterad.";
+"set_position_success_start_left" = "Startlinjens vänstra ände uppdaterad.";
+"set_position_success_start_right" = "Startlinjens högra ände uppdaterad.";
+"set_position_success_finish_left" = "Mållinjens vänstra ände uppdaterad.";
+"set_position_success_finish_right" = "Mållinjens högra ände uppdaterad.";
+"user_notifications_close" = "Stäng avisering";

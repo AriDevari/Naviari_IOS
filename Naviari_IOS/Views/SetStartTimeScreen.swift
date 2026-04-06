@@ -70,6 +70,7 @@ struct SetStartTimeScreen: View {
     private let largeButtonVisualHeight: CGFloat = 66
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var userNotifications: UserNotifications
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
 
     var body: some View {
@@ -516,6 +517,10 @@ struct SetStartTimeScreen: View {
         )
 
         if updated != nil {
+            userNotifications.show(
+                message: NSLocalizedString("set_start_time_success_manual", comment: ""),
+                severity: .success
+            )
             dismiss()
             return
         }
@@ -544,6 +549,10 @@ struct SetStartTimeScreen: View {
         )
 
         if updated != nil {
+            userNotifications.show(
+                message: NSLocalizedString("set_start_time_success_timer", comment: ""),
+                severity: .success
+            )
             dismiss()
             return
         }
@@ -568,6 +577,10 @@ struct SetStartTimeScreen: View {
         )
 
         if updated != nil {
+            userNotifications.show(
+                message: NSLocalizedString("set_start_time_success_reset", comment: ""),
+                severity: .success
+            )
             dismiss()
             return
         }

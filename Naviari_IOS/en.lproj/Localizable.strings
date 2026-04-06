@@ -139,6 +139,9 @@
 "set_start_time_error_invalid_selection" = "Unable to create a valid time from selection.";
 "set_start_time_error_set_failed" = "Failed to set start time.";
 "set_start_time_error_timer_failed" = "Failed to start timer.";
+"set_start_time_success_manual" = "Start time updated.";
+"set_start_time_success_timer" = "Start timer started.";
+"set_start_time_success_reset" = "Start time removed.";
 "set_start_time_error_start_identifier_missing" = "Start identifier is missing.";
 "set_start_time_reset_button" = "Remove";
 "set_start_time_reset_confirm_title" = "Clear start time?";
@@ -188,3 +191,9 @@
 "set_position_error_location_unavailable" = "Current location is not available yet.";
 "set_position_error_line_endpoint_missing" = "The other line endpoint is missing. Refresh course data and try again.";
 "set_position_error_save_failed" = "Failed to set position.";
+"set_position_success_mark" = "Position updated.";
+"set_position_success_start_left" = "Start line left end updated.";
+"set_position_success_start_right" = "Start line right end updated.";
+"set_position_success_finish_left" = "Finish line left end updated.";
+"set_position_success_finish_right" = "Finish line right end updated.";
+"user_notifications_close" = "Close notification";
