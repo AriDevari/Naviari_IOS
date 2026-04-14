@@ -200,6 +200,88 @@ final class Naviari_IOSTests: XCTestCase {
         wait(for: [inspectedRequest], timeout: 1.0)
     }
 
+        func testFetchCourseTemplatesUsesTemplateScopeAndDecodesSummaryList() async throws {
+                let inspectedRequest = expectation(description: "course templates request inspected")
+
+                MockURLProtocol.requestHandler = { request in
+                        XCTAssertEqual(request.httpMethod, "GET")
+                        XCTAssertEqual(request.url?.path, "/api/courses")
+                        let components = try XCTUnwrap(URLComponents(url: try XCTUnwrap(request.url), resolvingAgainstBaseURL: false))
+                        let queryItems = components.queryItems ?? []
+                        XCTAssertTrue(queryItems.contains(URLQueryItem(name: "seriesId", value: "series-1")))
+                        XCTAssertTrue(queryItems.contains(URLQueryItem(name: "scope", value: "template")))
+                        inspectedRequest.fulfill()
+
+                        let payload = """
+                        {
+                            "courses": [
+                                {
+                                    "id": "template-1",
+                                    "name": "Windward",
+                                    "series_id": "series-1",
+                                    "is_template": true,
+                                    "total_length_nm": 12.4
+                                }
+                            ]
+                        }
+                        """.data(using: .utf8)!
+                        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                        return (response, payload)
+                }
+
+                let service = makeService()
+                let templates = try await service.fetchCourseTemplates(seriesId: "series-1")
+
+                wait(for: [inspectedRequest], timeout: 1.0)
+                XCTAssertEqual(templates.count, 1)
+                XCTAssertEqual(templates.first?.id, "template-1")
+                XCTAssertEqual(templates.first?.total_length_nm, 12.4, accuracy: 0.000_001)
+        }
+
+        func testCopyCourseTemplateToStartUsesStartCopyEndpointAndManageToken() async throws {
+                let inspectedRequest = expectation(description: "course template copy request inspected")
+
+                MockURLProtocol.requestHandler = { request in
+                        XCTAssertEqual(request.httpMethod, "POST")
+                        XCTAssertEqual(request.url?.path, "/api/starts/start-1/course-copy")
+                        XCTAssertEqual(request.value(forHTTPHeaderField: "X-User-Key"), "manage-token-1")
+
+                        let json = try XCTUnwrap(
+                                try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any]
+                        )
+                        XCTAssertEqual(json["templateCourseId"] as? String, "template-1")
+                        XCTAssertEqual(json["name"] as? String, "Windward")
+                        XCTAssertEqual(json["updatedBy"] as? String, "ios-start-detail")
+                        inspectedRequest.fulfill()
+
+                        let payload = """
+                        {
+                            "ok": true,
+                            "startId": "start-1",
+                            "course": {
+                                "id": "course-1",
+                                "name": "Windward",
+                                "course_marks": []
+                            }
+                        }
+                        """.data(using: .utf8)!
+                        let response = HTTPURLResponse(url: request.url!, statusCode: 201, httpVersion: nil, headerFields: nil)!
+                        return (response, payload)
+                }
+
+                let service = makeService()
+                let copiedCourse = try await service.copyCourseTemplateToStart(
+                        startId: "start-1",
+                        templateCourseId: "template-1",
+                        accessToken: "manage-token-1",
+                        name: "Windward"
+                )
+
+                wait(for: [inspectedRequest], timeout: 1.0)
+                XCTAssertEqual(copiedCourse.id, "course-1")
+                XCTAssertEqual(copiedCourse.name, "Windward")
+        }
+
     func testExchangeManageCodeForTokenUsesAccessLoginContract() async throws {
         let inspectedRequest = expectation(description: "manage login request inspected")
 
@@ -843,6 +925,28 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertEqual(course.start_line?.mark_right_lon, 25.002, accuracy: 0.000_001)
         XCTAssertEqual(course.course_marks.first?.mark_lat, 61.101, accuracy: 0.000_001)
         XCTAssertEqual(course.course_marks.first?.mark_lon, 25.101, accuracy: 0.000_001)
+    }
+
+    func testRaceCourseDecoderDefaultsMissingCourseItemsForTemplateSummary() throws {
+        let payload = """
+        {
+          "id": "template-1",
+          "name": "Windward",
+          "series_id": "series-1",
+          "is_template": true,
+          "total_length_nm": 12.4
+        }
+        """.data(using: .utf8)!
+
+        let course = try JSONDecoder().decode(RaceCourse.self, from: payload)
+        XCTAssertEqual(course.id, "template-1")
+        XCTAssertEqual(course.name, "Windward")
+        XCTAssertEqual(course.series_id, "series-1")
+        XCTAssertEqual(course.is_template, true)
+        XCTAssertEqual(course.total_length_nm, 12.4, accuracy: 0.000_001)
+        XCTAssertEqual(course.course_marks, [])
+        XCTAssertNil(course.start_line)
+        XCTAssertNil(course.finish_line)
     }
 
     func testSetPositionTargetLineStatusTransitions() {

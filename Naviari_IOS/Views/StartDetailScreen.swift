@@ -9,6 +9,7 @@ import SwiftUI
 
 /// Shows start-specific metadata and the entry point into the participation flow.
 struct StartDetailScreen: View {
+    private static let templatePickerCoordinateSpace = "start-detail-template-picker-space"
     private static let rehearsalVisibilityDelay: TimeInterval = 30
     private static let rehearsalUploadCadence: TimeInterval = 10
     private static let uploadBoundaryTolerance: TimeInterval = 0.001
@@ -32,6 +33,31 @@ struct StartDetailScreen: View {
     @State private var loadedCourse: RaceCourse?
     @State private var isCourseLoaded = false
     @State private var isCourseLoading = false
+    @State private var courseTemplates: [RaceCourse] = []
+    @State private var isTemplateLoading = false
+    @State private var templateLoadError: String?
+    @State private var templateCopyError: String?
+    @State private var isTemplateCopying = false
+    @State private var showTemplatePicker = false
+    @State private var templateButtonFrame: CGRect = .zero
+    @State private var codePrefix = ""
+    @State private var codeSuffix = ""
+    @State private var showCodeModal = false
+    @State private var isValidatingCode = false
+    @State private var codeValidationError: String?
+    @State private var codeValidationAttempts = 0
+    @State private var storedToken: String?
+    @State private var storedScope: ManageAccessScope?
+    @State private var storedScopeId: String?
+    @State private var pendingTemplateSelection: RaceCourse?
+
+    @EnvironmentObject private var userNotifications: UserNotifications
+
+    private let accessService = ParticipationService()
+    private let storage = ManageAccessStorage.shared
+    private let maxCodeValidationAttempts = 5
+    private let inputContentFont = AppFont.fixed(21)
+    private let raceService = RaceService()
 
     private var resolvedStart: RaceStart {
         guard let startId = start.rawId ?? start.slug else {
@@ -45,6 +71,55 @@ struct StartDetailScreen: View {
 
     private var currentStartIdentifier: String? {
         resolvedStart.rawId ?? resolvedStart.slug
+    }
+
+    private var raceIdentifier: String? {
+        raceSummary.race.rawId ?? raceSummary.race.slug
+    }
+
+    private var seriesIdentifier: String? {
+        raceSummary.seriesId
+    }
+
+    private var storageScopeKey: String {
+        [currentStartIdentifier ?? "", raceIdentifier ?? "", seriesIdentifier ?? ""].joined(separator: "|")
+    }
+
+    private var manageCode: String? {
+        let trimmedPrefix = codePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedSuffix = codeSuffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPrefix.isEmpty, !trimmedSuffix.isEmpty else {
+            return nil
+        }
+        return "\(trimmedPrefix)-\(trimmedSuffix)"
+    }
+
+    private var storedTokenIsValid: Bool {
+        guard let scope = storedScope, let scopeId = storedScopeId else { return false }
+        switch scope {
+        case .start:
+            return scopeId == currentStartIdentifier
+        case .race:
+            return scopeId == raceIdentifier
+        case .series:
+            return scopeId == seriesIdentifier
+        }
+    }
+
+    private var hasReusableToken: Bool {
+        storedToken != nil && storedTokenIsValid
+    }
+
+    private var codeAttemptsRemaining: Int {
+        max(0, maxCodeValidationAttempts - codeValidationAttempts)
+    }
+
+    private var hasCodeAttemptsRemaining: Bool {
+        codeAttemptsRemaining > 0
+    }
+
+    private var canShowTemplateSelection: Bool {
+        currentStartIdentifier != nil && seriesIdentifier != nil
     }
 
     private var courseReloadTaskKey: String {
@@ -120,96 +195,112 @@ struct StartDetailScreen: View {
 
     var body: some View {
         ScreenContainer(showBack: true, title: Text("start_title")) {
-            VStack(spacing: 0) {
-                Text(resolvedStart.name ?? raceSummary.race.nameOrFallback)
-                    .font(AppFont.textStyle(.title2, weight: .semibold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
+            GeometryReader { geometry in
+                ZStack(alignment: .topLeading) {
+                    VStack(spacing: 0) {
+                        Text(resolvedStart.name ?? raceSummary.race.nameOrFallback)
+                            .font(AppFont.textStyle(.title2, weight: .semibold))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            startTimingMetadataRow
+                        ScrollView {
+                            VStack(spacing: 24) {
+                                VStack(alignment: .leading, spacing: 16) {
+                                    startTimingMetadataRow
 
-                            LabeledContent {
-                                Text(LocalizedStringKey(resolvedStart.localizedStatusKey))
-                            } label: {
-                                Text("race_status_label")
-                                    .foregroundStyle(.secondary)
-                            }
+                                    LabeledContent {
+                                        Text(LocalizedStringKey(resolvedStart.localizedStatusKey))
+                                    } label: {
+                                        Text("race_status_label")
+                                            .foregroundStyle(.secondary)
+                                    }
 
-                            if let description = resolvedStart.description, !description.isEmpty {
-                                Text(description)
-                                    .padding(.top, 8)
-                            }
-                        }
-                        .padding(.horizontal)
-
-                        if shouldShowActiveBroadcastSection {
-                            activeBroadcastSection
-                        } else if resolvedStart.isCompletedStatus {
-                            unavailableState(messageKey: "start_detail_completed_message")
-                        } else if isMissingEstimatedStart {
-                            unavailableState(messageKey: "participate_estimated_start_required_hint")
-                        } else if shouldHideParticipateCTAForOtherActiveBroadcast {
-                            EmptyView()
-                        } else {
-                            Button(action: onParticipate) {
-                                Text(primaryActionKey)
-                                    .font(AppUI.buttonFont)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(minHeight: AppUI.primaryButtonHeight)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(AppUI.brandPrimary)
-                            .padding(.horizontal)
-
-                            if isRehearsalWindow {
-                                rehearsalInactiveGuidance
-                            } else if shouldShowRehearsalAutoStopMessage {
-                                unavailableState(messageKey: "start_detail_rehearsal_autostop_message")
-                            }
-                        }
-
-                        if shouldShowSetStartTimeCTA {
-                            Button(action: onSetStartTime) {
-                                RaceManagerButtonLabel("set_start_time_title")
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(Theme.RaceManager.primaryColor)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
-                                    .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
-                            )
-                            .padding(.horizontal)
-                        }
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("race_course_header")
-                                .font(AppFont.textStyle(.headline))
+                                    if let description = resolvedStart.description, !description.isEmpty {
+                                        Text(description)
+                                            .padding(.top, 8)
+                                    }
+                                }
                                 .padding(.horizontal)
 
-                            if !courseItems.isEmpty {
-                                CourseTimelineView(
-                                    items: courseItems,
-                                    activeItemId: $activeCourseItemId,
-                                    activeSubIndexByItemId: $activeLineSubIndexByItemId
-                                ) { selection in
-                                    handleCoursePositionSelection(selection)
-                                }
-                            } else if isCourseLoading {
-                                ProgressView()
-                                    .padding()
-                            } else if isCourseLoaded {
-                                Text("race_course_empty")
-                                    .font(AppFont.textStyle(.subheadline))
-                                    .foregroundStyle(Theme.Colors.textSecondary)
+                                if shouldShowActiveBroadcastSection {
+                                    activeBroadcastSection
+                                } else if resolvedStart.isCompletedStatus {
+                                    unavailableState(messageKey: "start_detail_completed_message")
+                                } else if isMissingEstimatedStart {
+                                    unavailableState(messageKey: "participate_estimated_start_required_hint")
+                                } else if shouldHideParticipateCTAForOtherActiveBroadcast {
+                                    EmptyView()
+                                } else {
+                                    Button(action: onParticipate) {
+                                        Text(primaryActionKey)
+                                            .font(AppUI.buttonFont)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(minHeight: AppUI.primaryButtonHeight)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(AppUI.brandPrimary)
                                     .padding(.horizontal)
+
+                                    if isRehearsalWindow {
+                                        rehearsalInactiveGuidance
+                                    } else if shouldShowRehearsalAutoStopMessage {
+                                        unavailableState(messageKey: "start_detail_rehearsal_autostop_message")
+                                    }
+                                }
+
+                                if shouldShowSetStartTimeCTA {
+                                    Button(action: onSetStartTime) {
+                                        RaceManagerButtonLabel("set_start_time_title")
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(Theme.RaceManager.primaryColor)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
+                                            .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
+                                    )
+                                    .padding(.horizontal)
+                                }
+
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("race_course_header")
+                                        .font(AppFont.textStyle(.headline))
+                                        .padding(.horizontal)
+
+                                    if !courseItems.isEmpty {
+                                        CourseTimelineView(
+                                            items: courseItems,
+                                            activeItemId: $activeCourseItemId,
+                                            activeSubIndexByItemId: $activeLineSubIndexByItemId
+                                        ) { selection in
+                                            handleCoursePositionSelection(selection)
+                                        }
+                                    } else if isCourseLoading {
+                                        ProgressView()
+                                            .padding()
+                                    } else if isCourseLoaded {
+                                        emptyCourseState
+                                    }
+                                }
+                                .padding(.top, 16)
                             }
+                            .padding(.bottom, 24)
                         }
-                        .padding(.top, 16)
                     }
-                    .padding(.bottom, 24)
+
+                    if showTemplatePicker {
+                        Color.black.opacity(0.001)
+                            .contentShape(Rectangle())
+                            .onTapGesture { dismissTemplatePicker() }
+
+                        templatePickerOverlay(in: geometry)
+                            .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+                            .zIndex(1)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .coordinateSpace(name: Self.templatePickerCoordinateSpace)
+                .onPreferenceChange(TemplatePickerButtonFramePreferenceKey.self) { frame in
+                    templateButtonFrame = frame
                 }
             }
         }
@@ -227,9 +318,66 @@ struct StartDetailScreen: View {
         .task(id: resolvedStart.id + (resolvedStart.status ?? "")) {
             stopBroadcastIfCompletedForCurrentStart()
         }
+        .task(id: storageScopeKey) {
+            await loadStoredManageAccess()
+        }
         .task(id: courseReloadTaskKey) {
             await loadCourse()
         }
+        .sheet(isPresented: $showCodeModal) {
+            codeValidationSheet
+        }
+    }
+
+    @ViewBuilder
+    private func templatePickerOverlay(in geometry: GeometryProxy) -> some View {
+        let layout = templatePickerLayout(in: geometry)
+
+        VStack(spacing: 0) {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(courseTemplates.enumerated()), id: \.element.id) { index, template in
+                        Button {
+                            dismissTemplatePicker()
+                            Task { await copyTemplateToStart(template) }
+                        } label: {
+                            HStack(alignment: .center, spacing: 12) {
+                                Text(templateSelectionTitle(for: template))
+                                    .font(AppFont.textStyle(.body))
+                                    .foregroundStyle(Theme.Colors.textPrimary)
+                                    .multilineTextAlignment(.leading)
+                                    .lineLimit(2)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight, alignment: .leading)
+                            .background(Theme.Colors.surfacePrimary)
+                        }
+                        .buttonStyle(.plain)
+
+                        if index < courseTemplates.count - 1 {
+                            Divider()
+                                .padding(.leading, 16)
+                        }
+                    }
+                }
+            }
+            .frame(height: layout.height)
+        }
+        .frame(width: layout.width, alignment: .leading)
+        .background(Theme.Colors.surfacePrimary)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous)
+                .stroke(Theme.RaceManager.primaryColor.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(
+            color: Color.black.opacity(Theme.Effects.floatingStatusShadowOpacity * 0.35),
+            radius: Theme.Effects.floatingStatusShadowRadius,
+            x: 0,
+            y: Theme.Effects.floatingStatusShadowYOffset
+        )
+        .offset(x: layout.origin.x, y: layout.origin.y)
     }
 
     @ViewBuilder
@@ -307,6 +455,74 @@ struct StartDetailScreen: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous))
     }
 
+    @ViewBuilder
+    private var emptyCourseState: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if isTemplateLoading {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("start_detail_course_template_loading")
+                        .font(AppFont.textStyle(.footnote))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+            }
+
+            if let templateLoadError, !templateLoadError.isEmpty {
+                Text(templateLoadError)
+                    .font(AppFont.textStyle(.footnote))
+                    .foregroundStyle(Theme.Colors.error)
+            }
+
+            if let templateCopyError, !templateCopyError.isEmpty {
+                Text(templateCopyError)
+                    .font(AppFont.textStyle(.footnote))
+                    .foregroundStyle(Theme.Colors.error)
+            }
+
+            if !isTemplateLoading && courseTemplates.isEmpty {
+                Text("start_detail_course_template_empty")
+                    .font(AppFont.textStyle(.footnote))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+
+            if canShowTemplateSelection && !courseTemplates.isEmpty {
+                SplitActionButton(
+                    variant: .outlined(accentColor: Theme.RaceManager.primaryColor),
+                    isEnabled: !isTemplateCopying,
+                    isExpanded: showTemplatePicker,
+                    onPrimaryTap: {
+                        toggleTemplatePicker()
+                    },
+                    onSecondaryTap: {
+                        toggleTemplatePicker()
+                    }
+                ) {
+                    HStack {
+                        Spacer()
+                        if isTemplateCopying {
+                            ProgressView()
+                                .tint(Theme.RaceManager.primaryColor)
+                        } else {
+                            Text("start_detail_course_template_button")
+                                .font(Theme.Typography.button)
+                                .multilineTextAlignment(.center)
+                        }
+                        Spacer()
+                    }
+                }
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: TemplatePickerButtonFramePreferenceKey.self,
+                            value: geometry.frame(in: .named(Self.templatePickerCoordinateSpace))
+                        )
+                    }
+                )
+            }
+        }
+        .padding(.horizontal)
+    }
+
     private func rehearsalActiveMessage(at referenceDate: Date) -> String {
         let baseText = rehearsalDeepLinkedMarkdown(
             NSLocalizedString("start_detail_rehearsal_active_message", comment: "")
@@ -325,26 +541,153 @@ struct StartDetailScreen: View {
         guard let startId = resolvedStart.rawId else { return }
         isCourseLoading = true
         isCourseLoaded = false
+        templateCopyError = nil
         do {
-            let response = try await RaceService().fetchStartDetail(startId: startId)
+            let response = try await raceService.fetchStartDetail(startId: startId)
             if let course = response.course {
                 loadedCourse = course
                 courseItems = CourseTimelineItem.buildTimeline(from: course)
+                courseTemplates = []
+                templateLoadError = nil
                 pruneCourseTimelineUIState()
             } else {
                 loadedCourse = nil
                 courseItems = []
                 activeCourseItemId = nil
                 activeLineSubIndexByItemId = [:]
+                await loadCourseTemplatesIfNeeded(force: true)
             }
         } catch {
             loadedCourse = nil
             courseItems = []
             activeCourseItemId = nil
             activeLineSubIndexByItemId = [:]
+            courseTemplates = []
+            templateLoadError = nil
         }
         isCourseLoading = false
         isCourseLoaded = true
+    }
+
+    private func loadCourseTemplatesIfNeeded(force: Bool) async {
+        guard let seriesIdentifier, !seriesIdentifier.isEmpty else {
+            courseTemplates = []
+            templateLoadError = NSLocalizedString("start_detail_course_template_empty", comment: "")
+            return
+        }
+        if isTemplateLoading {
+            return
+        }
+        if !force && !courseTemplates.isEmpty {
+            return
+        }
+
+        isTemplateLoading = true
+        templateLoadError = nil
+        defer { isTemplateLoading = false }
+
+        do {
+            let templates = try await raceService.fetchCourseTemplates(seriesId: seriesIdentifier)
+            courseTemplates = templates.sorted { lhs, rhs in
+                courseTemplateDisplayName(lhs).localizedCaseInsensitiveCompare(courseTemplateDisplayName(rhs)) == .orderedAscending
+            }
+        } catch {
+            courseTemplates = []
+            templateLoadError = error.localizedDescription.isEmpty
+                ? NSLocalizedString("start_detail_course_template_error", comment: "")
+                : error.localizedDescription
+        }
+    }
+
+    private func loadStoredManageAccess() async {
+        guard let tokenRecord = storage.loadToken(for: currentStartIdentifier, raceId: raceIdentifier, seriesId: seriesIdentifier) else {
+            storedToken = nil
+            storedScope = nil
+            storedScopeId = nil
+            return
+        }
+
+        storedToken = tokenRecord.token
+        storedScope = tokenRecord.scope
+        storedScopeId = tokenRecord.scopeId
+    }
+
+    private func verifyManageCode() async {
+        guard hasCodeAttemptsRemaining else { return }
+        guard !isValidatingCode else { return }
+        guard let code = manageCode else {
+            codeValidationError = NSLocalizedString("set_position_error_manage_token_required", comment: "")
+            return
+        }
+
+        isValidatingCode = true
+        codeValidationError = nil
+        defer { isValidatingCode = false }
+
+        do {
+            let token = try await accessService.exchangeManageCodeForToken(code)
+            storage.saveToken(
+                token: token,
+                startId: currentStartIdentifier,
+                raceId: raceIdentifier,
+                seriesId: seriesIdentifier
+            )
+            await loadStoredManageAccess()
+            codePrefix = ""
+            codeSuffix = ""
+            showCodeModal = false
+            if let pendingTemplateSelection {
+                self.pendingTemplateSelection = nil
+                await copyTemplateToStart(pendingTemplateSelection)
+            }
+        } catch {
+            codeValidationAttempts += 1
+            codeValidationError = error.localizedDescription
+        }
+    }
+
+    private func copyTemplateToStart(_ template: RaceCourse) async {
+        guard let startId = resolvedStart.rawId else {
+            templateCopyError = NSLocalizedString("start_detail_course_template_copy_error", comment: "")
+            return
+        }
+        guard hasReusableToken, let storedToken else {
+            pendingTemplateSelection = template
+            codeValidationError = nil
+            showCodeModal = true
+            return
+        }
+
+        isTemplateCopying = true
+        templateCopyError = nil
+        defer { isTemplateCopying = false }
+
+        do {
+            let copiedCourse = try await raceService.copyCourseTemplateToStart(
+                startId: startId,
+                templateCourseId: template.id,
+                accessToken: storedToken,
+                name: normalizedOptionalText(template.name),
+                description: normalizedOptionalText(template.description)
+            )
+            loadedCourse = copiedCourse
+            courseItems = CourseTimelineItem.buildTimeline(from: copiedCourse)
+            isCourseLoaded = true
+            dismissTemplatePicker()
+            activeCourseItemId = nil
+            activeLineSubIndexByItemId = [:]
+            courseTemplates = []
+            templateLoadError = nil
+            viewModel.requestCourseRefresh(for: startId)
+            userNotifications.show(
+                message: NSLocalizedString("start_detail_course_template_copy_success", comment: ""),
+                severity: .success
+            )
+        } catch {
+            templateCopyError = error.localizedDescription.isEmpty
+                ? NSLocalizedString("start_detail_course_template_copy_error", comment: "")
+                : error.localizedDescription
+        }
     }
 
     private func handleCoursePositionSelection(_ selection: CoursePositionSelection) {
@@ -398,6 +741,82 @@ struct StartDetailScreen: View {
     private func coordinatePoint(lat: Double?, lon: Double?) -> CoordinatePoint? {
         guard let lat, let lon else { return nil }
         return CoordinatePoint(lat: lat, lon: lon)
+    }
+
+    private func courseTemplateDisplayName(_ template: RaceCourse) -> String {
+        let trimmed = template.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty
+            ? NSLocalizedString("start_detail_course_template_unnamed", comment: "")
+            : trimmed
+    }
+
+    private func templateSelectionTitle(for template: RaceCourse) -> String {
+        let name = courseTemplateDisplayName(template)
+        guard let lengthLabel = templateLengthLabel(for: template) else {
+            return name
+        }
+        return "\(name) · \(lengthLabel)"
+    }
+
+    private func templateLengthLabel(for template: RaceCourse) -> String? {
+        if let nauticalMiles = template.total_length_nm, nauticalMiles.isFinite {
+            return String(
+                format: NSLocalizedString("start_detail_course_template_length_nm_format", comment: ""),
+                nauticalMiles
+            )
+        }
+        if let meters = template.total_length_m, meters.isFinite {
+            if meters >= 1000 {
+                return String(
+                    format: NSLocalizedString("start_detail_course_template_length_km_format", comment: ""),
+                    meters / 1000
+                )
+            }
+            return String(
+                format: NSLocalizedString("start_detail_course_template_length_m_format", comment: ""),
+                meters
+            )
+        }
+        return nil
+    }
+
+    private func normalizedOptionalText(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private func toggleTemplatePicker() {
+        guard !courseTemplates.isEmpty else { return }
+        withAnimation(.easeInOut(duration: 0.18)) {
+            showTemplatePicker.toggle()
+        }
+    }
+
+    private func dismissTemplatePicker() {
+        guard showTemplatePicker else { return }
+        withAnimation(.easeInOut(duration: 0.18)) {
+            showTemplatePicker = false
+        }
+    }
+
+    private func templatePickerLayout(in geometry: GeometryProxy) -> TemplatePickerLayout {
+        let horizontalInset: CGFloat = 16
+        let topInset: CGFloat = 8
+        let bottomInset = max(12, geometry.safeAreaInsets.bottom + 8)
+        let preferredSpacing: CGFloat = 8
+        let rowHeight = Theme.Sizing.primaryButtonHeight
+        let contentHeight = CGFloat(courseTemplates.count) * rowHeight
+        let maxHeight = max(120, geometry.size.height - topInset - bottomInset)
+        let height = min(contentHeight, maxHeight)
+        let width = max(220, templateButtonFrame.width > 0 ? templateButtonFrame.width : geometry.size.width - (horizontalInset * 2))
+        let maxOriginX = max(horizontalInset, geometry.size.width - horizontalInset - width)
+        let originX = min(max(horizontalInset, templateButtonFrame.minX), maxOriginX)
+        let preferredOriginY = templateButtonFrame.maxY + preferredSpacing
+        let maximumOriginY = geometry.size.height - bottomInset - height
+        let originY = max(topInset, min(preferredOriginY, maximumOriginY))
+        return TemplatePickerLayout(origin: CGPoint(x: originX, y: originY), width: width, height: height)
     }
 
     private func pruneCourseTimelineUIState() {
@@ -496,4 +915,97 @@ struct StartDetailScreen: View {
         metricsUploader.stopBroadcast(reason: .completedStart)
     }
 
+    @ViewBuilder
+    private var codeValidationSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("set_start_time_manage_code_message")
+                    .font(AppFont.textStyle(.subheadline))
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    TextField("participate_code_prefix", text: $codePrefix)
+                        .font(inputContentFont)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Text("-")
+                        .font(AppFont.textStyle(.title2))
+                        .foregroundStyle(.secondary)
+                    TextField("participate_code_suffix", text: $codeSuffix)
+                        .font(inputContentFont)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+
+                if let codeValidationError {
+                    Text(codeValidationError)
+                        .foregroundStyle(Theme.Colors.error)
+                        .font(AppFont.textStyle(.footnote))
+                }
+
+                if hasCodeAttemptsRemaining {
+                    Text(
+                        String(
+                            format: NSLocalizedString("participate_code_attempts_remaining", comment: ""),
+                            codeAttemptsRemaining
+                        )
+                    )
+                    .font(AppFont.textStyle(.footnote))
+                    .foregroundStyle(.secondary)
+                } else {
+                    Text("participate_code_attempts_exhausted")
+                        .font(AppFont.textStyle(.footnote))
+                        .foregroundStyle(Theme.Colors.error)
+                }
+
+                Button {
+                    Task { await verifyManageCode() }
+                } label: {
+                    if isValidatingCode {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("set_start_time_manage_code_verify_button")
+                            .font(AppUI.buttonFont)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.RaceManager.primaryColor)
+                .disabled(isValidatingCode || !hasCodeAttemptsRemaining || manageCode == nil)
+
+                Button("actions_cancel") {
+                    showCodeModal = false
+                }
+                .font(AppUI.buttonFont)
+                .frame(maxWidth: .infinity)
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("set_start_time_manage_code_title")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .interactiveDismissDisabled(true)
+    }
+
+}
+
+private struct TemplatePickerLayout {
+    let origin: CGPoint
+    let width: CGFloat
+    let height: CGFloat
+}
+
+private struct TemplatePickerButtonFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if next != .zero {
+            value = next
+        }
+    }
 }

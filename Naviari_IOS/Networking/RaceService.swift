@@ -103,6 +103,62 @@ struct RaceService {
         return payload
     }
 
+    /// Loads course templates available for one race series.
+    func fetchCourseTemplates(seriesId: String) async throws -> [RaceCourse] {
+        let request = try makeRequest(
+            path: "/api/courses",
+            queryItems: [
+                URLQueryItem(name: "seriesId", value: seriesId),
+                URLQueryItem(name: "scope", value: "template"),
+            ]
+        )
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+        if let payload = try? JSONDecoder().decode(CourseListEnvelope.self, from: data) {
+            return payload.courses
+        }
+        if let arrayPayload = try? JSONDecoder().decode([RaceCourse].self, from: data) {
+            return arrayPayload
+        }
+        throw RaceServiceError.decodingFailed
+    }
+
+    /// Copies one selected course template into the given start and returns the hydrated course.
+    func copyCourseTemplateToStart(
+        startId: String,
+        templateCourseId: String,
+        accessToken: String,
+        name: String? = nil,
+        description: String? = nil,
+        updatedBy: String? = "ios-start-detail"
+    ) async throws -> RaceCourse {
+        var request = try makeRequest(path: "/api/starts/\(startId)/course-copy", queryItems: [])
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(accessToken, forHTTPHeaderField: "X-User-Key")
+        request.httpBody = try JSONEncoder().encode(
+            CourseTemplateCopyRequest(
+                templateCourseId: templateCourseId,
+                name: name,
+                description: description,
+                updatedBy: updatedBy
+            )
+        )
+
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+
+        guard let payload = try? JSONDecoder().decode(CourseTemplateCopyEnvelope.self, from: data) else {
+            throw RaceServiceError.decodingFailed
+        }
+
+        return payload.course
+    }
+
     /// Updates only the start's actual start time through the narrow backend PATCH contract.
     func updateStartActualTime(
         startId: String,
@@ -374,14 +430,37 @@ private struct RaceStartEnvelope: Decodable {
     let starts: [RaceStart]
 }
 
+private struct CourseListEnvelope: Decodable {
+    let courses: [RaceCourse]
+}
+
 struct StartDetailResponse: Decodable {
     let ok: Bool
     let start: RaceStart
     let course: RaceCourse?
 }
 
+private struct CourseTemplateCopyEnvelope: Decodable {
+    let ok: Bool
+    let startId: String?
+    let course: RaceCourse
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case startId
+        case course
+    }
+}
+
 private struct StartMutationEnvelope: Decodable {
     let start: RaceStart
+}
+
+private struct CourseTemplateCopyRequest: Encodable {
+    let templateCourseId: String
+    let name: String?
+    let description: String?
+    let updatedBy: String?
 }
 
 private struct StartTimingPatchRequest: Encodable {

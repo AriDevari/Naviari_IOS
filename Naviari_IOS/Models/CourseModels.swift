@@ -9,6 +9,11 @@ struct RaceCourse: Decodable, Equatable {
     let id: String
     let name: String?
     let description: String?
+    let series_id: String?
+    let total_length_m: Double?
+    let total_length_nm: Double?
+    let is_template: Bool?
+    let template_source_id: String?
     let start_line: CourseLine?
     let finish_line: CourseLine?
     let course_marks: [CourseMarkItem]
@@ -17,9 +22,29 @@ struct RaceCourse: Decodable, Equatable {
         case id
         case name
         case description
+        case series_id
+        case total_length_m
+        case total_length_nm
+        case is_template
+        case template_source_id
         case start_line
         case finish_line
         case course_marks
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        series_id = try container.decodeIfPresent(String.self, forKey: .series_id)
+        total_length_m = try container.decodeIfPresent(Double.self, forKey: .total_length_m)
+        total_length_nm = try container.decodeIfPresent(Double.self, forKey: .total_length_nm)
+        is_template = try container.decodeIfPresent(Bool.self, forKey: .is_template)
+        template_source_id = try container.decodeIfPresent(String.self, forKey: .template_source_id)
+        start_line = try container.decodeIfPresent(CourseLine.self, forKey: .start_line)
+        finish_line = try container.decodeIfPresent(CourseLine.self, forKey: .finish_line)
+        course_marks = try container.decodeIfPresent([CourseMarkItem].self, forKey: .course_marks) ?? []
     }
 }
 
