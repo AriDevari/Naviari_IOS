@@ -20,7 +20,7 @@
 "actions_cancel" = "Cancel";
 "participate_button" = "Start GPS Broadcast";
 "participate_title" = "GPS Broadcast";
-"participate_rehearsal_button" = "Start Test Broadcast";
+"participate_rehearsal_button" = "Test Broadcast";
 "participate_rehearsal_title" = "Test GPS Broadcast";
 "participate_name_label" = "Name";
 "participate_name_placeholder" = "Boat or skipper name";
@@ -44,6 +44,7 @@
 "participate_rehearsal_delay_reminder" = "Note that information on Naviari.org is delayed by 30 seconds.";
 "participate_rehearsal_autostop" = "This test broadcast stops automatically after 5 minutes.";
 "participate_rehearsal_verify_link" = "Open naviari.org to verify the boat";
+"participate_live_started_notification" = "You are now sending your location data for this start. You can follow the race at [naviari.org](https://naviari.org), please note the data there is delayed by 30 seconds.\n\nHave a good race!";
 "participate_info_title" = "GPS Broadcast Help";
 "participate_info_body" = "Provide boat and contact details plus the code from the race office, then start the GPS broadcast so spectators and race management can see your live position.";
 "participate_rehearsal_info_title" = "Test Broadcast Help";

@@ -50,6 +50,7 @@ struct StartDetailScreen: View {
     @State private var storedScope: ManageAccessScope?
     @State private var storedScopeId: String?
     @State private var pendingTemplateSelection: RaceCourse?
+    @State private var rehearsalNotificationId: UUID?
 
     @EnvironmentObject private var userNotifications: UserNotifications
 
@@ -193,6 +194,17 @@ struct StartDetailScreen: View {
         !resolvedStart.isCompletedStatus
     }
 
+    private var activeRehearsalNotificationKey: String {
+        guard let session = activeRehearsalSession else {
+            return "inactive"
+        }
+        return [
+            session.startEntryId,
+            session.startId ?? "",
+            String(session.startedAt.timeIntervalSince1970)
+        ].joined(separator: "|")
+    }
+
     var body: some View {
         ScreenContainer(showBack: true, title: Text("start_title")) {
             GeometryReader { geometry in
@@ -241,9 +253,7 @@ struct StartDetailScreen: View {
                                     .tint(AppUI.brandPrimary)
                                     .padding(.horizontal)
 
-                                    if isRehearsalWindow {
-                                        rehearsalInactiveGuidance
-                                    } else if shouldShowRehearsalAutoStopMessage {
+                                    if shouldShowRehearsalAutoStopMessage {
                                         unavailableState(messageKey: "start_detail_rehearsal_autostop_message")
                                     }
                                 }
@@ -324,8 +334,14 @@ struct StartDetailScreen: View {
         .task(id: courseReloadTaskKey) {
             await loadCourse()
         }
+        .task(id: activeRehearsalNotificationKey) {
+            syncRehearsalNotification()
+        }
         .sheet(isPresented: $showCodeModal) {
             codeValidationSheet
+        }
+        .onDisappear {
+            dismissRehearsalNotificationIfNeeded()
         }
     }
 
@@ -383,21 +399,6 @@ struct StartDetailScreen: View {
     @ViewBuilder
     private var activeBroadcastSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(activeBroadcastHeaderKey)
-                .font(Theme.Typography.headline)
-
-            if let summary = metricsUploader.activeSession?.summary {
-                ParticipationSummaryView(summary: summary)
-            } else {
-                Text("broadcast_status_active_subtitle")
-                    .font(Theme.Typography.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            if metricsUploader.activeSession?.isRehearsal == true {
-                rehearsalActiveGuidance
-            }
-
             Button {
                 showStopConfirmation = true
             } label: {
@@ -409,50 +410,6 @@ struct StartDetailScreen: View {
             .tint(Theme.Colors.destructive)
         }
         .padding(.horizontal)
-    }
-
-    private var activeBroadcastHeaderKey: LocalizedStringKey {
-        metricsUploader.activeSession?.isRehearsal == true
-            ? "start_detail_rehearsal_active_header"
-            : "start_detail_broadcasting_header"
-    }
-
-    private var rehearsalInactiveGuidance: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("start_detail_rehearsal_message")
-                .font(AppFont.textStyle(.subheadline))
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal)
-    }
-
-    private var rehearsalActiveGuidance: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text(.init(rehearsalActiveMessage(at: context.date)))
-                    .font(AppFont.textStyle(.subheadline))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.leading)
-            }
-            Text("participate_rehearsal_delay_reminder")
-                .font(AppFont.textStyle(.subheadline))
-                .foregroundStyle(.secondary)
-                .lineLimit(nil)
-                .fixedSize(horizontal: false, vertical: true)
-                .multilineTextAlignment(.leading)
-            Text("participate_rehearsal_autostop")
-                .font(AppFont.textStyle(.subheadline))
-                .foregroundStyle(.secondary)
-                .lineLimit(nil)
-                .fixedSize(horizontal: false, vertical: true)
-                .multilineTextAlignment(.leading)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous))
     }
 
     @ViewBuilder
@@ -527,14 +484,38 @@ struct StartDetailScreen: View {
         let baseText = rehearsalDeepLinkedMarkdown(
             NSLocalizedString("start_detail_rehearsal_active_message", comment: "")
         )
+        let delayReminder = NSLocalizedString("participate_rehearsal_delay_reminder", comment: "")
+        let autoStopReminder = NSLocalizedString("participate_rehearsal_autostop", comment: "")
         guard let secondsRemaining = rehearsalDelaySecondsRemaining(at: referenceDate) else {
-            return baseText
+            return [baseText, delayReminder, autoStopReminder].joined(separator: "\n\n")
         }
 
         let countdownFormat = rehearsalDeepLinkedMarkdown(
             NSLocalizedString("start_detail_rehearsal_active_message_countdown", comment: "")
         )
-        return String.localizedStringWithFormat(countdownFormat, secondsRemaining)
+        let countdownMessage = String.localizedStringWithFormat(countdownFormat, secondsRemaining)
+        return [countdownMessage, delayReminder, autoStopReminder].joined(separator: "\n\n")
+    }
+
+    private func syncRehearsalNotification() {
+        guard activeRehearsalSession != nil else {
+            dismissRehearsalNotificationIfNeeded()
+            return
+        }
+
+        rehearsalNotificationId = userNotifications.showLiveMarkdown(
+            severity: .info,
+            autoHideDuration: 35,
+            messageBuilder: { referenceDate in
+                rehearsalActiveMessage(at: referenceDate)
+            }
+        )
+    }
+
+    private func dismissRehearsalNotificationIfNeeded() {
+        guard let rehearsalNotificationId else { return }
+        userNotifications.dismiss(id: rehearsalNotificationId)
+        self.rehearsalNotificationId = nil
     }
 
     private func loadCourse() async {

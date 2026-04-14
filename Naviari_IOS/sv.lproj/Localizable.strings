@@ -20,7 +20,7 @@
 "actions_cancel" = "Avbryt";
 "participate_button" = "Starta GPS-sändning";
 "participate_title" = "GPS-sändning";
-"participate_rehearsal_button" = "Starta testsändning";
+"participate_rehearsal_button" = "Testsändning";
 "participate_rehearsal_title" = "GPS-testsändning";
 "participate_name_label" = "Namn";
 "participate_name_placeholder" = "Båtens eller skepparens namn";
@@ -44,6 +44,7 @@
 "participate_rehearsal_delay_reminder" = "Observera att uppgifterna på Naviari.org är fördröjda med 30 sekunder.";
 "participate_rehearsal_autostop" = "Den här testsändningen stoppas automatiskt efter 5 minuter.";
 "participate_rehearsal_verify_link" = "Öppna naviari.org och kontrollera båten";
+"participate_live_started_notification" = "Du skickar nu din positionsdata för denna start. Du kan följa tävlingen på [naviari.org](https://naviari.org), observera att uppgifterna där är fördröjda med 30 sekunder.\n\nHa en bra tävling!";
 "participate_info_title" = "GPS-sändning – hjälp";
 "participate_info_body" = "Fyll i båtuppgifterna och koden från tävlingskontoret och starta sedan GPS-sändningen så att publik och arrangör kan följa din position i realtid.";
 "participate_rehearsal_info_title" = "Testsändning – hjälp";

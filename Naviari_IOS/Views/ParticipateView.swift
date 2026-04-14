@@ -38,6 +38,7 @@ struct ParticipateView: View {
     private let storage = ParticipationStorage.shared
     @FocusState private var focusedField: ParticipationField?
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
+    @EnvironmentObject private var userNotifications: UserNotifications
     @Environment(\.dismiss) private var dismiss
     private let maxCodeValidationAttempts = 5
     private let inputContentFont = AppFont.fixed(21)
@@ -669,6 +670,12 @@ struct ParticipateView: View {
             startedAt: Date()
         )
         metricsUploader.startBroadcast(session: session)
+        if !isRehearsalMode {
+            userNotifications.show(
+                markdownMessage: NSLocalizedString("participate_live_started_notification", comment: ""),
+                severity: .info
+            )
+        }
         return true
     }
 

@@ -270,6 +270,10 @@ private struct BroadcastDrawerContextCard: View {
                     value: session.summary.compactBoatName
                 )
                 BroadcastDiagnosticsRow(
+                    titleKey: "participate_sail_label",
+                    value: session.summary.compactSailNumber
+                )
+                BroadcastDiagnosticsRow(
                     titleKey: "participate_rating_label",
                     value: session.summary.compactRatingText()
                 )

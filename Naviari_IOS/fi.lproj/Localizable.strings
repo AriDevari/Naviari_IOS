@@ -20,7 +20,7 @@
 "actions_cancel" = "Peruuta";
 "participate_button" = "Aloita GPS-lähetys";
 "participate_title" = "GPS-lähetys";
-"participate_rehearsal_button" = "Aloita testilähetys";
+"participate_rehearsal_button" = "Testilähetys";
 "participate_rehearsal_title" = "GPS-testilähetys";
 "participate_name_label" = "Nimi";
 "participate_name_placeholder" = "Veneen tai kipparin nimi";
@@ -44,6 +44,7 @@
 "participate_rehearsal_delay_reminder" = "Huomaa että Naviari.org:ssa tiedot ovat 30 sekuntia viivästettyjä.";
 "participate_rehearsal_autostop" = "Tämä testilähetys pysähtyy automaattisesti 5 minuutin jälkeen.";
 "participate_rehearsal_verify_link" = "Avaa naviari.org ja tarkista vene";
+"participate_live_started_notification" = "Sijaintitietosi lähetetään nyt tähän lähtöön. Voit seurata kilpailua osoitteessa [naviari.org](https://naviari.org), huomaa että tiedot siellä ovat 30 sekuntia viivästettyjä.\n\nHyvää kilpailua!";
 "participate_info_title" = "GPS-lähetyksen ohje";
 "participate_info_body" = "Anna veneen tiedot sekä kilpailutoimistolta saatu koodi ja käynnistä GPS-lähetys, jotta yleisö ja kilpailunjohto näkevät sijaintisi reaaliajassa.";
 "participate_rehearsal_info_title" = "Testilähetyksen ohje";

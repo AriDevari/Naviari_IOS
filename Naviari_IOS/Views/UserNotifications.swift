@@ -46,10 +46,17 @@ enum UserNotificationSeverity: Equatable {
     }
 }
 
-struct UserNotificationItem: Identifiable, Equatable {
+enum UserNotificationContent {
+    case plain(String)
+    case markdown(String)
+    case liveMarkdown((Date) -> String)
+}
+
+struct UserNotificationItem: Identifiable {
     let id = UUID()
-    let message: String
+    let content: UserNotificationContent
     let severity: UserNotificationSeverity
+    let autoHideDuration: TimeInterval?
 }
 
 @MainActor
@@ -58,16 +65,58 @@ final class UserNotifications: ObservableObject {
 
     private var dismissTask: Task<Void, Never>?
 
-    func show(message: String, severity: UserNotificationSeverity = .info) {
+    @discardableResult
+    func show(message: String, severity: UserNotificationSeverity = .info) -> UUID {
+        show(
+            item: UserNotificationItem(
+                content: .plain(message),
+                severity: severity,
+                autoHideDuration: severity.autoHideDuration
+            )
+        )
+    }
+
+    @discardableResult
+    func show(markdownMessage: String, severity: UserNotificationSeverity = .info) -> UUID {
+        show(
+            item: UserNotificationItem(
+                content: .markdown(markdownMessage),
+                severity: severity,
+                autoHideDuration: severity.autoHideDuration
+            )
+        )
+    }
+
+    @discardableResult
+    func showLiveMarkdown(
+        severity: UserNotificationSeverity = .info,
+        autoHideDuration: TimeInterval? = nil,
+        messageBuilder: @escaping (Date) -> String
+    ) -> UUID {
+        show(
+            item: UserNotificationItem(
+                content: .liveMarkdown(messageBuilder),
+                severity: severity,
+                autoHideDuration: autoHideDuration ?? severity.autoHideDuration
+            )
+        )
+    }
+
+    func dismiss(id: UUID) {
+        guard current?.id == id else { return }
+        dismiss()
+    }
+
+    @discardableResult
+    private func show(item: UserNotificationItem) -> UUID {
         dismissTask?.cancel()
 
-        let item = UserNotificationItem(message: message, severity: severity)
         withAnimation(.easeInOut(duration: 0.2)) {
             current = item
         }
 
-        guard let autoHideDuration = severity.autoHideDuration else {
-            return
+        guard let autoHideDuration = item.autoHideDuration else {
+            return item.id
         }
 
         dismissTask = Task { [weak self] in
@@ -75,6 +124,8 @@ final class UserNotifications: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.dismiss(id: item.id)
         }
+
+        return item.id
     }
 
     func dismiss() {
@@ -83,11 +134,6 @@ final class UserNotifications: ObservableObject {
         withAnimation(.easeInOut(duration: 0.2)) {
             current = nil
         }
-    }
-
-    private func dismiss(id: UUID) {
-        guard current?.id == id else { return }
-        dismiss()
     }
 }
 
@@ -113,10 +159,7 @@ struct UserNotificationsOverlay: View {
             Image(systemName: notification.severity.iconName)
                 .font(.system(size: 18, weight: .semibold))
 
-            Text(notification.message)
-                .font(AppFont.textStyle(.subheadline, weight: .semibold))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .multilineTextAlignment(.leading)
+            notificationMessageView(for: notification)
 
             Button(action: userNotifications.dismiss) {
                 Image(systemName: "xmark")
@@ -128,6 +171,7 @@ struct UserNotificationsOverlay: View {
             .accessibilityLabel(Text("user_notifications_close"))
         }
         .foregroundStyle(Color.white)
+        .tint(Color.white)
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: 560, alignment: .leading)
@@ -139,5 +183,34 @@ struct UserNotificationsOverlay: View {
             x: 0,
             y: Theme.Effects.floatingStatusShadowYOffset
         )
+    }
+
+    @ViewBuilder
+    private func notificationMessageView(for notification: UserNotificationItem) -> some View {
+        switch notification.content {
+        case let .plain(message):
+            Text(message)
+                .font(AppFont.textStyle(.subheadline, weight: .semibold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+
+        case let .markdown(message):
+            Text(markdownAttributedString(from: message))
+                .font(AppFont.textStyle(.subheadline, weight: .semibold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+
+        case let .liveMarkdown(messageBuilder):
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(markdownAttributedString(from: messageBuilder(context.date)))
+                    .font(AppFont.textStyle(.subheadline, weight: .semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+            }
+        }
+    }
+
+    private func markdownAttributedString(from markdown: String) -> AttributedString {
+        (try? AttributedString(markdown: markdown)) ?? AttributedString(markdown)
     }
 }

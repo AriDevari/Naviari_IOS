@@ -28,6 +28,13 @@ extension ParticipationSummary {
             : NSLocalizedString("broadcast_drawer_value_missing", comment: "")
     }
 
+    var compactSailNumber: String {
+        let trimmed = sailNumber?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (trimmed?.isEmpty == false)
+            ? trimmed!
+            : NSLocalizedString("broadcast_drawer_value_missing", comment: "")
+    }
+
     func compactRatingText(locale: Locale = .current) -> String {
         guard let rating else {
             return NSLocalizedString("broadcast_drawer_value_missing", comment: "")
