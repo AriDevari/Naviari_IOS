@@ -9,6 +9,8 @@
 "races_error" = "Det gick inte att hämta tävlingar.";
 "races_retry_button" = "Försök igen";
 "races_empty" = "Inga tävlingar tillgängliga.";
+"races_empty_current_upcoming" = "Inga aktuella eller kommande tävlingar.";
+"races_finished_footer" = "Redan avslutade tävlingar hittar du och kan spela upp på [naviari.org](https://naviari.org).";
 "race_selection_placeholder" = "Välj en tävling för att se dess starter.";
 "race_date_label" = "Datum";
 "race_status_label" = "Status";

@@ -64,6 +64,8 @@ struct Race: Decodable, Identifiable, Equatable, Hashable {
     let scheduledUTC: String?
     let actualUTC: String?
     let date: String?
+    let startDate: String?
+    let endDate: String?
     let slug: String?
     let parentSeriesId: String?
     let starts: [RaceStart]?
@@ -81,10 +83,42 @@ struct Race: Decodable, Identifiable, Equatable, Hashable {
         case scheduledUTC = "scheduled_utc"
         case actualUTC = "actual_utc"
         case date
+        case startDate = "start_date"
+        case endDate = "end_date"
         case slug
         case parentSeriesId
         case starts
         case imageId = "image_id"
+    }
+
+    init(
+        rawId: String?,
+        name: String?,
+        description: String?,
+        status: String?,
+        scheduledUTC: String?,
+        actualUTC: String?,
+        date: String?,
+        startDate: String? = nil,
+        endDate: String? = nil,
+        slug: String?,
+        parentSeriesId: String?,
+        starts: [RaceStart]?,
+        imageId: String?
+    ) {
+        self.rawId = rawId
+        self.name = name
+        self.description = description
+        self.status = status
+        self.scheduledUTC = scheduledUTC
+        self.actualUTC = actualUTC
+        self.date = date
+        self.startDate = startDate
+        self.endDate = endDate
+        self.slug = slug
+        self.parentSeriesId = parentSeriesId
+        self.starts = starts
+        self.imageId = imageId
     }
 }
 

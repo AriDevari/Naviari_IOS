@@ -12,6 +12,11 @@ struct RaceListScreen: View {
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
     var onSelectRace: (RaceSummary) -> Void
 
+    private let footerMarkdown = NSLocalizedString(
+        "races_finished_footer",
+        comment: "Guidance for users looking for finished races"
+    )
+
     var body: some View {
         ScreenContainer(showBack: true, title: Text("races_title")) {
             ScrollView {
@@ -30,7 +35,7 @@ struct RaceListScreen: View {
                             }
                         )
                     } else if viewModel.raceItems.isEmpty {
-                        Text("races_empty")
+                        Text("races_empty_current_upcoming")
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
@@ -49,6 +54,13 @@ struct RaceListScreen: View {
                                 }
                                 .buttonStyle(.plain)
                             }
+
+                            Text(markdownAttributedString(from: footerMarkdown))
+                                .font(AppFont.textStyle(.footnote))
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 4)
                         }
                     }
                 }
@@ -58,5 +70,9 @@ struct RaceListScreen: View {
         .task {
             await viewModel.loadRacesIfNeeded()
         }
+    }
+
+    private func markdownAttributedString(from markdown: String) -> AttributedString {
+        (try? AttributedString(markdown: markdown)) ?? AttributedString(markdown)
     }
 }

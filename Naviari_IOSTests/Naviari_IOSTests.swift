@@ -13,7 +13,7 @@ final class Naviari_IOSTests: XCTestCase {
             XCTAssertEqual(request.httpMethod, "GET")
             expectation.fulfill()
             let payload = """
-            {"series":[{"id":"series-1","name":"Spring Series","races":[{"id":"race-1","name":"Opener","status":"scheduled"}]}]}
+            {"series":[{"id":"series-1","name":"Spring Series","races":[{"id":"race-1","name":"Opener","status":"scheduled","start_date":"2026-04-18","end_date":"2026-04-20"}]}]}
             """.data(using: .utf8)!
             let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             return (response, payload)
@@ -23,6 +23,8 @@ final class Naviari_IOSTests: XCTestCase {
         wait(for: [expectation], timeout: 1.0)
         XCTAssertEqual(series.count, 1)
         XCTAssertEqual(series.first?.races.first?.name, "Opener")
+        XCTAssertEqual(series.first?.races.first?.startDate, "2026-04-18")
+        XCTAssertEqual(series.first?.races.first?.endDate, "2026-04-20")
     }
 
     func testFetchStartsIncludesRaceIdQuery() async throws {

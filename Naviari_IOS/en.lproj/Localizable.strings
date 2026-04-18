@@ -9,6 +9,8 @@
 "races_error" = "Couldn't load races.";
 "races_retry_button" = "Try again";
 "races_empty" = "No races available.";
+"races_empty_current_upcoming" = "No current or upcoming races.";
+"races_finished_footer" = "Already finished races you can find and replay on [naviari.org](https://naviari.org).";
 "race_selection_placeholder" = "Select a race to see its starts.";
 "race_date_label" = "Date";
 "race_status_label" = "Status";

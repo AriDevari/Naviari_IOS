@@ -63,7 +63,7 @@ final class RaceBrowserViewModel: ObservableObject {
     /// Helper for rendering localized race dates.
     func formattedDate(for race: Race) -> String? {
         DateFormattingHelper.localizedDateString(
-            from: race.scheduledUTC ?? race.actualUTC ?? race.date,
+            from: race.startDate ?? race.scheduledUTC ?? race.actualUTC ?? race.date,
             includeTime: false
         )
     }
@@ -183,13 +183,14 @@ final class RaceBrowserViewModel: ObservableObject {
                     )
                 }
             }
-            let sorted = summaries.sorted(by: { lhs, rhs in
-                lhs.race.nameOrFallback.localizedCaseInsensitiveCompare(rhs.race.nameOrFallback) == .orderedAscending
-            })
-            raceItems = sorted
-            if let previousId = selectedRace?.id, let matched = sorted.first(where: { $0.id == previousId }) {
+            let filtered = RaceListFilter.filterCurrentAndUpcoming(summaries: summaries)
+            raceItems = filtered
+            if let previousId = selectedRace?.id, let matched = filtered.first(where: { $0.id == previousId }) {
                 selectedRace = matched
             } else if force {
+                selectedRace = nil
+                selectedRaceStarts = []
+            } else if selectedRace != nil {
                 selectedRace = nil
                 selectedRaceStarts = []
             }

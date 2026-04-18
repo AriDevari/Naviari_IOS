@@ -9,6 +9,8 @@
 "races_error" = "Kilpailujen lataus epäonnistui.";
 "races_retry_button" = "Yritä uudelleen";
 "races_empty" = "Ei kilpailuja saatavilla.";
+"races_empty_current_upcoming" = "Ei nykyisiä tai tulevia kilpailuja.";
+"races_finished_footer" = "Jo päättyneet kilpailut löydät ja voit toistaa osoitteesta [naviari.org](https://naviari.org).";
 "race_selection_placeholder" = "Valitse kilpailu nähdäksesi sen lähdöt.";
 "race_date_label" = "Päivä";
 "race_status_label" = "Tila";
