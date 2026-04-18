@@ -29,6 +29,21 @@ final class RaceListFilterTests: XCTestCase {
         XCTAssertTrue(filtered.isEmpty)
     }
 
+    func testCurrentAndUpcomingExcludesHistoricalRaceWhenBackendSendsIsoTimestampDates() {
+        let filtered = RaceListFilter.filterCurrentAndUpcoming(
+            summaries: [
+                summary(
+                    id: "past-iso",
+                    startDate: "2025-06-03T00:00:00.000Z",
+                    endDate: "2025-06-03T00:00:00.000Z"
+                )
+            ],
+            referenceDate: utcDate("2026-04-18T12:00:00Z")
+        )
+
+        XCTAssertTrue(filtered.isEmpty)
+    }
+
     func testCurrentAndUpcomingIncludesFutureRaceWhenEndDateMissing() {
         let filtered = RaceListFilter.filterCurrentAndUpcoming(
             summaries: [summary(id: "future", startDate: "2026-04-20", endDate: nil)],
@@ -36,6 +51,15 @@ final class RaceListFilterTests: XCTestCase {
         )
 
         XCTAssertEqual(filtered.map(\.race.rawId), ["future"])
+    }
+
+    func testCurrentAndUpcomingIncludesFutureRaceWhenBackendSendsIsoTimestampDates() {
+        let filtered = RaceListFilter.filterCurrentAndUpcoming(
+            summaries: [summary(id: "future-iso", startDate: "2026-05-19T00:00:00.000Z", endDate: nil)],
+            referenceDate: utcDate("2026-04-18T12:00:00Z")
+        )
+
+        XCTAssertEqual(filtered.map(\.race.rawId), ["future-iso"])
     }
 
     func testUnresolvedRaceStaysVisibleAtEndOfList() {

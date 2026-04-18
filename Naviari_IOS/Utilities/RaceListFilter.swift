@@ -1,6 +1,8 @@
 import Foundation
 
 enum RaceListFilter {
+    private static let isoDatePrefixLength = 10
+
     private static let dateOnlyFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -53,10 +55,21 @@ enum RaceListFilter {
         guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
             return nil
         }
-        guard let parsed = dateOnlyFormatter.date(from: value) else {
+        let normalizedValue = normalizeDateOnlyValue(value)
+        guard let parsed = dateOnlyFormatter.date(from: normalizedValue) else {
             return nil
         }
         return calendar.startOfDay(for: parsed)
+    }
+
+    private static func normalizeDateOnlyValue(_ value: String) -> String {
+        if value.count >= isoDatePrefixLength {
+            let prefix = String(value.prefix(isoDatePrefixLength))
+            if dateOnlyFormatter.date(from: prefix) != nil {
+                return prefix
+            }
+        }
+        return value
     }
 
     private struct RaceInterval {

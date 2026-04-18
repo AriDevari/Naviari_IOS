@@ -37,11 +37,11 @@ struct RaceDetailScreen: View {
                     }
 
                     if let description = summary.race.description, !description.isEmpty {
-                        LabeledContent {
-                            Text(description)
-                        } label: {
+                        VStack(alignment: .leading, spacing: 6) {
                             Text("race_description_label")
                                 .foregroundStyle(.secondary)
+                            Text(description)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
 
