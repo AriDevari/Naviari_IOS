@@ -5,6 +5,16 @@ description: "Use when: editing SwiftUI or UIKit code in Naviari_IOS, including 
 
 Naviari iOS implementation rules:
 
+## Pre-implementation gates (enforce before writing any code)
+
+- **Branch check**: Verify you are on the feature branch, not `main`. If on `main`, stop, create the feature branch using the feature name as the slug, switch to it, and only then proceed.
+- **Skill load**: For any UI implementation slice, load the `ios-ui-implementation` skill by reading `.github/skills/ios-ui-implementation/SKILL.md` before writing code. For visually sensitive slices, also load `ios-testing-validation`.
+- **Full spec read**: Read the complete design handoff or UX spec document — all sections, to the end — before writing the first line of implementation code. Do not start coding after reading only part of the spec.
+- **Slice boundary**: Implement one ordered task slice at a time. Do not combine multiple slice IDs from `ordered-tasks.md` into a single changeset. Each slice needs its own build check and validation evidence before the next slice starts.
+- **Orchestrator first**: If the active feature package has more than one planned slice, do not begin implementation without first dispatching the `Orchestrator` agent to sequence and gate the work.
+
+## Styling rules
+
 - Styling must come from shared native theme sources such as `Naviari_IOS/Utilities/Theme.swift` and `Naviari_IOS/Utilities/AppFont.swift`.
 - If a visual value is needed and not available, add a reusable semantic token to `Theme.swift` first and then use that token from the view.
 - Do not introduce component-local hardcoded colors, spacing, radii, shadows, or typography when the value belongs in the shared theme.

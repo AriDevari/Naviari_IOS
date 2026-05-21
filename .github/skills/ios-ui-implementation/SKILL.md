@@ -61,13 +61,13 @@ This skill exists to keep iOS UI implementation consistent with:
 
 ## Procedure
 
-1. Read the relevant feature package and the nearest native implementation anchor.
+1. Read the relevant feature package (`ordered-tasks.md`, the active `task-XX-*.md` context doc, and any linked UX spec or design handoff). **Read the design/handoff document completely — all sections to the end — before writing any code. Do not start implementation after reading only part of the spec.**
 2. Identify the reusable view boundary that should own the rendering.
 3. Reuse existing `Theme` and shared native primitives before creating new styling.
 4. Add missing semantic tokens to `Theme.swift` only when needed.
-5. Implement the smallest useful UI slice.
+5. **Implement one ordered slice at a time.** Do not combine multiple slice IDs from `ordered-tasks.md` into a single changeset. Each slice is a separate bounded unit.
 6. Run a narrow build or check for the touched area.
-7. Perform a targeted manual or screenshot-based verification for visible behavior.
+7. Perform a targeted manual or screenshot-based verification for visible behavior. For visually sensitive work, load `ios-testing-validation` to confirm the required evidence before marking the slice done.
 
 ## Notes
 

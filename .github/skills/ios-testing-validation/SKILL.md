@@ -45,16 +45,36 @@ This skill exists to make iOS validation explicit and cheap:
 - expand scope before validating the current slice
 - claim parity or UI completion without direct visual evidence
 
+## Test-First Rule
+
+Before writing any implementation code for a slice:
+
+1. Read the slice acceptance criteria from the task context doc.
+2. Translate every acceptance criterion into a named `XCUITest` function. Examples:
+   - `testMarkExpandedRendersEditButton` — `app.buttons["course_edit_button"].exists` is true
+   - `testAddMarkButtonAbsentOnFinishLine` — `app.buttons["course_add_mark_button"].exists` is false
+   - `testCollapsedCardShowsNoStatusChip` — no chip element exists when card is collapsed
+3. Add those test stubs to the `Naviari_IOSUITests` target and confirm they **fail** (because nothing is implemented yet). A failing test is the correct starting state.
+4. Write the implementation until the tests pass.
+5. The slice is not done until every named test is green. Attach the test run output to the slice report.
+
+If an acceptance criterion cannot be expressed as an executable assertion, the criterion is too vague — refine it before starting.
+
+For each test, add an `accessibilityIdentifier` to the SwiftUI element being tested. Use the key string from the localization bundle (e.g. `"course_edit_button"`) as the identifier so it stays consistent.
+
 ## Procedure
 
-1. Identify the narrowest build, test, or runtime check for the touched slice.
-2. Run it immediately after the first substantive edit.
-3. For visible UI work, perform a targeted simulator or screenshot check.
-4. Confirm theme-token use, localization, and reusable-view ownership where relevant.
-5. Record the result in the slice report or task notes.
+1. Read the slice acceptance criteria and write all XCUITest stubs before touching implementation code.
+2. Run the stubs to confirm they fail.
+3. Implement the slice.
+4. Run the tests until they all pass.
+5. For visible UI work, also perform a targeted simulator or screenshot check.
+6. Confirm theme-token use, localization, and reusable-view ownership where relevant.
+7. Record the test run output and any screenshots in the slice report.
 
-## Validation Checklist Ideas
+## Validation Checklist
 
+- all named XCUITest functions pass
 - build succeeds for the touched iOS target
 - no new hardcoded visual values where `Theme` should own them
 - host screen still hosts; reusable view still renders
