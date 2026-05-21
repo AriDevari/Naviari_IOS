@@ -63,6 +63,23 @@ enum Theme {
         static let roundingStarboard = Color.green
         static let roundingGate = Color.orange
         static let iconForeground = Color.white
+        static let cardBorderDefault = Color(red: 239 / 255, green: 239 / 255, blue: 242 / 255)
+        static let cardBorderOpen = Color(red: 214 / 255, green: 215 / 255, blue: 220 / 255)
+        static let cardPaddingLeading: CGFloat = 28
+        static let cardPaddingOther: CGFloat = 14
+        static let iconDiameter: CGFloat = 34
+        static let railOpacity: Double = 0.7
+        static let rowGap: CGFloat = 14
+
+        static let chipFinalBackground = Color(red: 0 / 255, green: 136 / 255, blue: 255 / 255)
+        static let chipFinalForeground = Color.white
+        static let chipPrelimBackground = Color(red: 255 / 255, green: 230 / 255, blue: 242 / 255)
+        static let chipPrelimForeground = Color(red: 204 / 255, green: 0 / 255, blue: 109 / 255)
+        static let chipNoneBackground = Color(red: 233 / 255, green: 234 / 255, blue: 238 / 255)
+        static let chipNoneForeground = Color(red: 122 / 255, green: 126 / 255, blue: 140 / 255)
+
+        static let cardMinHeight: CGFloat = 68
+        static let expandedSeparatorColor = Color(red: 236 / 255, green: 236 / 255, blue: 239 / 255)
     }
 
     enum Effects {

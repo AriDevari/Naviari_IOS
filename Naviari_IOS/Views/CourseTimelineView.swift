@@ -5,6 +5,8 @@ struct CourseTimelineView: View {
     @Binding var activeItemId: String?
     @Binding var activeSubIndexByItemId: [String: Int]
     var onPositionSelected: (CoursePositionSelection) -> Void = { _ in }
+    var onEditSelected: ((String) -> Void)? = nil
+    var onAddAfter: ((String) -> Void)? = nil
 
     var body: some View {
         Group {
@@ -12,24 +14,54 @@ struct CourseTimelineView: View {
                 EmptyView()
             } else {
                 ScrollViewReader { proxy in
-                    VStack(spacing: 0) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { _, item in
+                    VStack(spacing: Theme.CourseTimeline.rowGap) {
+                        ForEach(items) { item in
                             CourseStepRow(
                                 item: item,
-                                isFirst: item.id == items.first?.id,
-                                isLast: item.id == items.last?.id,
                                 isActive: activeItemId == item.id,
                                 activeSubIndex: subIndexBinding(for: item.id),
                                 onPositionSelected: onPositionSelected,
+                                onEditSelected: onEditSelected,
                                 onTap: {
                                     withAnimation(.easeInOut(duration: 0.25)) {
-                                        activeItemId = item.id
+                                        activeItemId = activeItemId == item.id ? nil : item.id
                                     }
                                     scrollToActiveItem(using: proxy)
                                 }
                             )
                             .id(item.id)
+
+                            if activeItemId == item.id && item.type != .finish {
+                                Button(action: { onAddAfter?(item.id) }) {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Theme.RaceManager.primaryColor)
+                                            Image(systemName: "plus")
+                                                .font(.system(size: 22, weight: .semibold))
+                                                .foregroundStyle(.white)
+                                        }
+                                        .frame(width: Theme.CourseTimeline.iconDiameter, height: Theme.CourseTimeline.iconDiameter)
+                                        .shadow(color: Theme.RaceManager.primaryColor.opacity(0.3), radius: 3, x: 0, y: 2)
+                                        Text(NSLocalizedString("course_add_mark_button", comment: ""))
+                                            .font(.system(size: 12, weight: .heavy))
+                                            .kerning(0.6)
+                                            .foregroundStyle(Theme.RaceManager.primaryColor)
+                                        Spacer()
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
+                    }
+                    .background(alignment: .leading) {
+                        Rectangle()
+                            .fill(Theme.Colors.brandPrimary.opacity(Theme.CourseTimeline.railOpacity))
+                            .frame(width: 2)
+                            .frame(maxHeight: .infinity)
+                            .padding(.top, Theme.CourseTimeline.iconDiameter / 2)
+                            .padding(.bottom, Theme.CourseTimeline.iconDiameter / 2)
+                            .padding(.leading, (Theme.CourseTimeline.iconDiameter / 2) - 1)
                     }
                     .padding(.vertical, 16)
                     .padding(.horizontal, 20)
@@ -72,194 +104,220 @@ struct CourseTimelineView: View {
 
 private struct CourseStepRow: View {
     let item: CourseTimelineItem
-    let isFirst: Bool
-    let isLast: Bool
     let isActive: Bool
     @Binding var activeSubIndex: Int?
     let onPositionSelected: (CoursePositionSelection) -> Void
+    let onEditSelected: ((String) -> Void)?
     let onTap: () -> Void
 
     private var iconSize: CGFloat {
-        isActive ? 30 : 24
+        Theme.CourseTimeline.iconDiameter
     }
 
     private var symbolSize: CGFloat {
-        isActive ? 14 : 11
+        14
     }
 
     private var markDotSize: CGFloat {
-        isActive ? 10 : 7
+        7
+    }
+
+    private var cardCornerRadius: CGFloat {
+        Theme.CornerRadius.rowCard
+    }
+
+    private var cardLeadingOffset: CGFloat {
+        Theme.CourseTimeline.iconDiameter / 2
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            stepRail
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                .fill(Theme.Colors.surfacePrimary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                        .stroke(
+                            isActive ? Theme.CourseTimeline.cardBorderOpen : Theme.CourseTimeline.cardBorderDefault,
+                            lineWidth: 1
+                        )
+                )
+                .frame(minHeight: Theme.CourseTimeline.cardMinHeight)
+                .padding(.leading, Theme.CourseTimeline.iconDiameter * 0.25)
 
             VStack(alignment: .leading, spacing: 8) {
-                Button(action: onTap) {
-                    Text(item.name)
-                        .font(AppFont.textStyle(.body, weight: isActive ? .bold : .medium))
-                        .foregroundStyle(isActive ? Theme.Colors.brandPrimary : Theme.Colors.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                headerButton
 
                 if isActive {
-                    if item.type == .mark {
-                        markDetail
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    } else if item.type == .start || item.type == .finish {
-                        lineSubStepper
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    } else {
-                        Text("detail placeholder")
-                            .font(AppFont.textStyle(.subheadline))
-                            .foregroundStyle(Theme.Colors.textSecondary)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
+                    expandedSeparator
+                    expandedBody
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
-            .padding(.vertical, 10)
-        }
-    }
-
-    private var stepRail: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(isFirst ? Color.clear : Theme.Colors.brandPrimary.opacity(0.3))
-                .frame(width: 2, height: 12)
+            .padding(.top, Theme.CourseTimeline.cardPaddingOther)
+            .padding(.bottom, Theme.CourseTimeline.cardPaddingOther)
+            .padding(.trailing, Theme.CourseTimeline.cardPaddingOther)
+            .padding(.leading, Theme.CourseTimeline.cardPaddingLeading)
+            .padding(.leading, Theme.CourseTimeline.iconDiameter * 0.25)
 
             stepIcon
                 .frame(width: iconSize, height: iconSize)
-
-            if !isLast {
-                Rectangle()
-                    .fill(Theme.Colors.brandPrimary.opacity(0.3))
-                    .frame(width: 2)
-                    .frame(maxHeight: .infinity)
-            }
+                .offset(x: -(Theme.CourseTimeline.iconDiameter / 2))
         }
-        .frame(width: 30, alignment: .top)
+        .padding(.leading, cardLeadingOffset)
+    }
+
+    private var headerButton: some View {
+        Button(action: onTap) {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.name)
+                        .font(AppFont.textStyle(.body, weight: isActive ? .bold : .medium))
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !isActive, let collapsedSubtitle {
+                        Text(collapsedSubtitle)
+                            .font(AppFont.textStyle(.footnote, weight: .medium))
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .clipped()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.Colors.textSecondary.opacity(0.5))
+                    .rotationEffect(.degrees(isActive ? 180 : 0))
+                    .animation(.easeOut(duration: 0.2), value: isActive)
+                    .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var expandedSeparator: some View {
+        Rectangle()
+            .stroke(Theme.CourseTimeline.expandedSeparatorColor, style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+            .frame(height: 1)
+            .padding(.top, 6)
+    }
+
+    @ViewBuilder
+    private var expandedBody: some View {
+        if item.type == .mark {
+            markDetail
+        } else if item.type == .start || item.type == .finish {
+            lineSubStepper
+        }
+    }
+
+    private var collapsedSubtitle: String? {
+        guard let description = item.description?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !description.isEmpty else { return nil }
+        return description
     }
 
     @ViewBuilder
     private var stepIcon: some View {
-        switch item.status {
-        case .final_:
-            ZStack {
-                Circle()
-                    .fill(Theme.Colors.brandPrimary)
-                Image(systemName: "checkmark")
-                    .font(.system(size: symbolSize, weight: .bold))
-                    .foregroundStyle(Theme.Colors.surfacePrimary)
-            }
-        case .preliminary:
-            ZStack {
-                Circle()
-                    .fill(Theme.RaceManager.primaryColor)
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: symbolSize, weight: .bold))
-                    .foregroundStyle(Theme.Colors.surfacePrimary)
-            }
-        case .none:
-            switch item.type {
-            case .start:
-                ZStack {
-                    Circle()
-                        .fill(Theme.Colors.brandPrimary.opacity(isActive ? 1.0 : 0.7))
-                    Image(systemName: "flag.fill")
-                        .font(.system(size: symbolSize, weight: .bold))
-                        .foregroundStyle(Theme.Colors.surfacePrimary)
-                }
-            case .finish:
-                ZStack {
-                    Circle()
-                        .fill(Theme.Colors.brandPrimary.opacity(isActive ? 1.0 : 0.7))
-                    Image(systemName: "flag.checkered")
-                        .font(.system(size: symbolSize, weight: .bold))
-                        .foregroundStyle(Theme.Colors.surfacePrimary)
-                }
-            case .mark:
-                ZStack {
-                    Circle()
-                        .fill(Theme.Colors.surfacePrimary)
-                    Circle()
-                        .stroke(Theme.Colors.brandPrimary, lineWidth: 2)
-                    Circle()
-                        .fill(Theme.Colors.brandPrimary)
-                        .frame(width: markDotSize, height: markDotSize)
-                }
-            }
-        }
+        CourseStepStatusIcon(
+            itemType: item.type,
+            status: item.status,
+            diameter: iconSize,
+            symbolSize: symbolSize,
+            markDotSize: markDotSize,
+            ringLineWidth: 2,
+            addWhiteBackdrop: true
+        )
     }
 
     private var markDetail: some View {
         VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 6) {
-                if let description = item.description, !description.isEmpty {
-                    detailRow(label: NSLocalizedString("course_desc_label", comment: ""), value: description)
-                }
-
-                if let rounding = item.roundingSide {
-                    detailRow(
-                        label: NSLocalizedString("course_rounding_label", comment: ""),
-                        value: roundingLabel(for: rounding)
-                    )
-                }
-                detailRow(
-                    label: NSLocalizedString("race_status_label", comment: ""),
-                    value: definitionStatusLabel(for: item.status),
-                    valueColor: definitionStatusValueColor(for: item.status)
-                )
-
-                detailRow(
-                    label: NSLocalizedString("gps_status_latitude", comment: ""),
-                    value: latitudeDmsValue,
-                    valueColor: coordinateValueColor,
-                    lineLimit: 1,
-                    labelWidth: 90
-                )
-                detailRow(
-                    label: NSLocalizedString("gps_status_longitude", comment: ""),
-                    value: longitudeDmsValue,
-                    valueColor: coordinateValueColor,
-                    lineLimit: 1,
-                    labelWidth: 90
-                )
-
-                if let bearing = item.bearingToNextDeg, let distance = item.distanceToNextNm {
-                    detailRow(
-                        label: NSLocalizedString("course_to_next_mark_label", comment: ""),
-                        value: "\(bearing) - \(distance)",
-                        lineLimit: 1,
-                        labelWidth: 90
-                    )
-                } else {
-                    if let bearing = item.bearingToNextDeg {
-                        detailRow(label: NSLocalizedString("course_bearing_to_next_label", comment: ""), value: bearing)
-                    }
-
-                    if let distance = item.distanceToNextNm {
-                        detailRow(label: NSLocalizedString("course_distance_to_next_label", comment: ""), value: distance)
-                    }
-                }
-
-                if let updatedAtLabel = item.updatedAtLabel {
-                    detailRow(
-                        label: NSLocalizedString("course_last_updated_label", comment: ""),
-                        value: updatedAtLabel,
-                        valueColor: Theme.Colors.textSecondary,
-                        lineLimit: 1,
-                        labelWidth: 90
-                    )
-                }
+            if let description = item.description?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !description.isEmpty {
+                Text(description)
+                    .font(AppFont.textStyle(.footnote, weight: .medium))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            CoursePositionButton {
-                onPositionSelected(.mark(markId: item.id))
+            statusRow
+
+            if let rounding = item.roundingSide {
+                detailRow(
+                    label: NSLocalizedString("course_rounding_label", comment: ""),
+                    value: roundingLabel(for: rounding),
+                    labelWidth: 90
+                )
+            }
+
+            detailRow(
+                label: NSLocalizedString("gps_status_latitude", comment: ""),
+                value: latitudeDmsValue,
+                valueColor: coordinateValueColor,
+                lineLimit: 1,
+                labelWidth: 90
+            )
+            detailRow(
+                label: NSLocalizedString("gps_status_longitude", comment: ""),
+                value: longitudeDmsValue,
+                valueColor: coordinateValueColor,
+                lineLimit: 1,
+                labelWidth: 90
+            )
+
+            if let toNextValue {
+                detailRow(
+                    label: NSLocalizedString("course_to_next_mark_label", comment: ""),
+                    value: toNextValue,
+                    lineLimit: 1,
+                    labelWidth: 90
+                )
+            }
+
+            HStack(spacing: 10) {
+                CoursePositionButton {
+                    onPositionSelected(.mark(markId: item.id))
+                }
+                CourseEditButton { onEditSelected?(item.id) }
             }
         }
+    }
+
+    private var statusValueLabel: String {
+        switch item.status {
+        case .final_:
+            return NSLocalizedString("course_definition_status_final", comment: "")
+        case .preliminary:
+            return NSLocalizedString("course_definition_status_preliminary", comment: "")
+        case .none:
+            return NSLocalizedString("course_definition_status_not_set", comment: "")
+        }
+    }
+
+    private var statusRow: some View {
+        detailRow(
+            label: NSLocalizedString("race_status_label", comment: ""),
+            value: statusValueLabel,
+            lineLimit: 1,
+            labelWidth: 90
+        )
+    }
+
+    private var toNextValue: String? {
+        guard let bearingToNextRad = item.bearingToNextRad,
+              let distanceToNextM = item.distanceToNextM else {
+            return nil
+        }
+
+        let bearingDeg = bearingToNextRad * 180.0 / .pi
+        let distanceNm = distanceToNextM / 1852.0
+        let distanceFormatted = String(format: "%.1f", distanceNm)
+        return "\(Int(round(bearingDeg)))° · \(distanceFormatted) nm"
     }
 
     private var latitudeDmsValue: String {
@@ -323,32 +381,6 @@ private struct CourseStepRow: View {
         }
     }
 
-    private func definitionStatusLabel(for status: DefinitionStatus) -> String {
-        switch status {
-        case .final_:
-            return NSLocalizedString("course_definition_status_final", comment: "")
-        case .preliminary:
-            return NSLocalizedString("course_definition_status_preliminary", comment: "")
-        case .none:
-            return NSLocalizedString("course_definition_status_not_set", comment: "")
-        }
-    }
-
-    private func definitionStatusValueColor(for status: DefinitionStatus) -> Color {
-        status == .preliminary ? Theme.RaceManager.primaryColor : Theme.Colors.textPrimary
-    }
-
-    private func lineStatusLabel(rawStatus: String?) -> String {
-        switch normalizedLineStatus(rawStatus) {
-        case "leftset":
-            return NSLocalizedString("course_definition_status_left_set", comment: "")
-        case "rightset":
-            return NSLocalizedString("course_definition_status_right_set", comment: "")
-        default:
-            return definitionStatusLabel(for: item.status)
-        }
-    }
-
     private func normalizedLineStatus(_ rawStatus: String?) -> String {
         rawStatus?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -367,16 +399,8 @@ private struct CourseStepRow: View {
     }
 
     private var lineSubStepper: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let description = item.description, !description.isEmpty {
-                detailRow(label: NSLocalizedString("course_desc_label", comment: ""), value: description)
-            }
-
-            detailRow(
-                label: NSLocalizedString("race_status_label", comment: ""),
-                value: lineStatusLabel(rawStatus: item.rawStatus),
-                valueColor: definitionStatusValueColor(for: item.status)
-            )
+        VStack(alignment: .leading, spacing: 10) {
+            statusRow
 
             if item.lineBearingLabel != nil || item.lineLengthLabel != nil {
                 detailRow(
@@ -385,59 +409,57 @@ private struct CourseStepRow: View {
                 )
             }
 
-            if let updatedAtLabel = item.updatedAtLabel {
-                detailRow(
-                    label: NSLocalizedString("course_last_updated_label", comment: ""),
-                    value: updatedAtLabel,
-                    valueColor: Theme.Colors.textSecondary,
-                    lineLimit: 1,
-                    labelWidth: 90
-                )
+            Text(NSLocalizedString("course_left_end", comment: ""))
+                .font(AppFont.textStyle(.body, weight: .bold))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .padding(.top, 8)
+
+            detailRow(
+                label: NSLocalizedString("gps_status_latitude", comment: ""),
+                value: item.lineLeftLat.map { dmsCoordinate($0, isLatitude: true) } ?? "-",
+                lineLimit: 1,
+                labelWidth: 90
+            )
+            detailRow(
+                label: NSLocalizedString("gps_status_longitude", comment: ""),
+                value: item.lineLeftLon.map { dmsCoordinate($0, isLatitude: false) } ?? "-",
+                lineLimit: 1,
+                labelWidth: 90
+            )
+            HStack(spacing: 10) {
+                CoursePositionButton {
+                    if let selection = lineEndpointSelection(for: .left) {
+                        onPositionSelected(selection)
+                    }
+                }
+                CourseEditButton { onEditSelected?(item.id) }
             }
 
-            VStack(spacing: 0) {
-                LineEndRow(
-                    title: NSLocalizedString("course_left_end", comment: ""),
-                    latitude: item.lineLeftLat,
-                    longitude: item.lineLeftLon,
-                    status: endpointStatus(for: .left),
-                    isActive: activeSubIndex == 0,
-                    isFirst: true,
-                    isLast: false,
-                    onTap: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            activeSubIndex = activeSubIndex == 0 ? nil : 0
-                        }
-                    },
-                    onPositionTap: {
-                        if let selection = lineEndpointSelection(for: .left) {
-                            onPositionSelected(selection)
-                        }
-                    }
-                )
+            Text(NSLocalizedString("course_right_end", comment: ""))
+                .font(AppFont.textStyle(.body, weight: .bold))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .padding(.top, 18)
 
-                LineEndRow(
-                    title: NSLocalizedString("course_right_end", comment: ""),
-                    latitude: item.lineRightLat,
-                    longitude: item.lineRightLon,
-                    status: endpointStatus(for: .right),
-                    isActive: activeSubIndex == 1,
-                    isFirst: false,
-                    isLast: true,
-                    onTap: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            activeSubIndex = activeSubIndex == 1 ? nil : 1
-                        }
-                    },
-                    onPositionTap: {
-                        if let selection = lineEndpointSelection(for: .right) {
-                            onPositionSelected(selection)
-                        }
+            detailRow(
+                label: NSLocalizedString("gps_status_latitude", comment: ""),
+                value: item.lineRightLat.map { dmsCoordinate($0, isLatitude: true) } ?? "-",
+                lineLimit: 1,
+                labelWidth: 90
+            )
+            detailRow(
+                label: NSLocalizedString("gps_status_longitude", comment: ""),
+                value: item.lineRightLon.map { dmsCoordinate($0, isLatitude: false) } ?? "-",
+                lineLimit: 1,
+                labelWidth: 90
+            )
+            HStack(spacing: 10) {
+                CoursePositionButton {
+                    if let selection = lineEndpointSelection(for: .right) {
+                        onPositionSelected(selection)
                     }
-                )
+                }
+                CourseEditButton { onEditSelected?(item.id) }
             }
-            .padding(.top, 10)
-            .padding(.leading, 4)
         }
     }
 
@@ -453,151 +475,130 @@ private struct CourseStepRow: View {
     }
 
     private var lineSummaryValue: String {
-        let bearing = item.lineBearingLabel ?? "-"
-        let length = (item.lineLengthLabel ?? "-").replacingOccurrences(of: " ", with: "")
-        return "\(bearing) - \(length)"
+        let components: [String] = [item.lineBearingLabel, item.lineLengthLabel].compactMap { value in
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }
+        guard !components.isEmpty else { return "-" }
+        return components.joined(separator: " · ")
     }
 }
 
-private struct LineEndRow: View {
-    let title: String
-    let latitude: Double?
-    let longitude: Double?
-    let status: DefinitionStatus
-    let isActive: Bool
-    let isFirst: Bool
-    let isLast: Bool
-    let onTap: () -> Void
-    let onPositionTap: () -> Void
+private struct CourseEditButton: View {
+    let action: () -> Void
 
-    private var nodeSize: CGFloat {
-        isActive ? 22 : 18
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "pencil")
+                .font(.system(size: 22, weight: .medium))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.RaceManager.primaryColor)
+        .frame(width: Theme.Sizing.primaryButtonHeight, height: Theme.Sizing.primaryButtonHeight)
+        .overlay(
+            Circle()
+                .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
+        )
+    }
+}
+
+private struct CourseStatusChip: View {
+    let status: DefinitionStatus
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: iconName)
+                .font(.system(size: 16))
+                .foregroundStyle(foregroundColor)
+
+            Text(labelText)
+                .font(AppFont.textStyle(.subheadline, weight: .bold))
+                .foregroundStyle(foregroundColor)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 12)
+        .padding(.vertical, 4)
+        .background(backgroundColor)
+        .clipShape(Capsule())
     }
 
-    private var symbolSize: CGFloat {
-        isActive ? 9 : 8
+    private var iconName: String {
+        switch status {
+        case .final_:
+            return "checkmark.circle.fill"
+        case .preliminary:
+            return "clock.arrow.circlepath"
+        case .none:
+            return "circle"
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch status {
+        case .final_:
+            return Theme.CourseTimeline.chipFinalBackground
+        case .preliminary:
+            return Theme.CourseTimeline.chipPrelimBackground
+        case .none:
+            return Theme.CourseTimeline.chipNoneBackground
+        }
+    }
+
+    private var foregroundColor: Color {
+        switch status {
+        case .final_:
+            return Theme.CourseTimeline.chipFinalForeground
+        case .preliminary:
+            return Theme.CourseTimeline.chipPrelimForeground
+        case .none:
+            return Theme.CourseTimeline.chipNoneForeground
+        }
+    }
+
+    private var labelText: String {
+        switch status {
+        case .final_:
+            return NSLocalizedString("course_definition_status_final", comment: "")
+        case .preliminary:
+            return NSLocalizedString("course_definition_status_preliminary", comment: "")
+        case .none:
+            return NSLocalizedString("course_definition_status_not_set", comment: "")
+        }
+    }
+}
+
+private struct CourseStepStatusIcon: View {
+    let itemType: CourseMarkType
+    let status: DefinitionStatus
+    let diameter: CGFloat
+    let symbolSize: CGFloat
+    let markDotSize: CGFloat
+    let ringLineWidth: CGFloat
+    let addWhiteBackdrop: Bool
+
+    private var innerDiameter: CGFloat {
+        addWhiteBackdrop ? max(0, diameter - 4) : diameter
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            subRail
-
-            VStack(alignment: .leading, spacing: 4) {
-                Button(action: onTap) {
-                    Text(title)
-                        .font(AppFont.textStyle(.subheadline, weight: isActive ? .bold : .medium))
-                        .foregroundStyle(isActive ? Theme.Colors.brandPrimary : Theme.Colors.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                if isActive {
-                    VStack(alignment: .leading, spacing: 8) {
-                        detailRow(
-                            label: NSLocalizedString("gps_status_latitude", comment: ""),
-                            value: latitudeDmsValue,
-                            valueColor: coordinateValueColor,
-                            lineLimit: 1,
-                            labelWidth: 90
-                        )
-
-                        detailRow(
-                            label: NSLocalizedString("gps_status_longitude", comment: ""),
-                            value: longitudeDmsValue,
-                            valueColor: coordinateValueColor,
-                            lineLimit: 1,
-                            labelWidth: 90
-                        )
-
-                        CoursePositionButton(action: onPositionTap)
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
+        ZStack {
+            if addWhiteBackdrop {
+                Circle()
+                    .fill(Theme.Colors.surfacePrimary)
             }
-            .padding(.vertical, 10)
+
+            iconForeground
         }
-    }
-
-    private var coordinateValueColor: Color {
-        if latitude == nil || longitude == nil {
-            return Theme.RaceManager.primaryColor
-        }
-        return status == .preliminary ? Theme.RaceManager.primaryColor : Theme.Colors.textPrimary
-    }
-
-    private var latitudeDmsValue: String {
-        guard let latitude else { return "-" }
-        return dmsCoordinate(latitude, isLatitude: true)
-    }
-
-    private var longitudeDmsValue: String {
-        guard let longitude else { return "-" }
-        return dmsCoordinate(longitude, isLatitude: false)
-    }
-
-    private func dmsCoordinate(_ value: Double, isLatitude: Bool) -> String {
-        let hemisphere: String
-        if isLatitude {
-            hemisphere = value >= 0 ? "N" : "S"
-        } else {
-            hemisphere = value >= 0 ? "E" : "W"
-        }
-
-        let absValue = abs(value)
-        let degrees = Int(absValue)
-        let totalMinutes = (absValue - Double(degrees)) * 60.0
-        let minutes = Int(totalMinutes)
-        let seconds = (totalMinutes - Double(minutes)) * 60.0
-        return String(format: "%d° %02d' %04.1f\" %@", degrees, minutes, seconds, hemisphere)
-    }
-
-    private func detailRow(
-        label: String,
-        value: String,
-        valueColor: Color = Theme.Colors.textPrimary,
-        lineLimit: Int? = nil,
-        labelWidth: CGFloat = 70
-    ) -> some View {
-        HStack(spacing: 8) {
-            Text(label)
-                .font(AppFont.textStyle(.subheadline))
-                .foregroundStyle(Theme.Colors.textSecondary)
-                .frame(width: labelWidth, alignment: .leading)
-
-            Text(value)
-                .font(AppFont.textStyle(.subheadline, weight: .medium))
-                .foregroundStyle(valueColor)
-                .lineLimit(lineLimit)
-        }
-    }
-
-    private var subRail: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(isFirst ? Color.clear : Theme.Colors.brandPrimary.opacity(0.25))
-                .frame(width: 1.5, height: 12)
-
-            endpointStepIcon
-            .frame(width: nodeSize, height: nodeSize)
-
-            if !isLast {
-                Rectangle()
-                    .fill(Theme.Colors.brandPrimary.opacity(0.25))
-                    .frame(width: 1.5)
-                    .frame(maxHeight: .infinity)
-            }
-        }
-        .frame(width: 22)
     }
 
     @ViewBuilder
-    private var endpointStepIcon: some View {
+    private var iconForeground: some View {
         switch status {
         case .final_:
             ZStack {
                 Circle()
                     .fill(Theme.Colors.brandPrimary)
+                    .frame(width: innerDiameter, height: innerDiameter)
                 Image(systemName: "checkmark")
                     .font(.system(size: symbolSize, weight: .bold))
                     .foregroundStyle(Theme.Colors.surfacePrimary)
@@ -606,19 +607,43 @@ private struct LineEndRow: View {
             ZStack {
                 Circle()
                     .fill(Theme.RaceManager.primaryColor)
+                    .frame(width: innerDiameter, height: innerDiameter)
                 Image(systemName: "clock.arrow.circlepath")
                     .font(.system(size: symbolSize, weight: .bold))
                     .foregroundStyle(Theme.Colors.surfacePrimary)
             }
         case .none:
-            ZStack {
-                Circle()
-                    .fill(Theme.Colors.surfacePrimary)
-                Circle()
-                    .stroke(Theme.Colors.brandPrimary, lineWidth: 1.5)
-                Circle()
-                    .fill(Theme.Colors.brandPrimary)
-                    .frame(width: 5, height: 5)
+            switch itemType {
+            case .start:
+                ZStack {
+                    Circle()
+                        .fill(Theme.Colors.brandPrimary)
+                        .frame(width: innerDiameter, height: innerDiameter)
+                    Image(systemName: "flag.fill")
+                        .font(.system(size: symbolSize, weight: .bold))
+                        .foregroundStyle(Theme.Colors.surfacePrimary)
+                }
+            case .finish:
+                ZStack {
+                    Circle()
+                        .fill(Theme.Colors.brandPrimary)
+                        .frame(width: innerDiameter, height: innerDiameter)
+                    Image(systemName: "flag.checkered")
+                        .font(.system(size: symbolSize, weight: .bold))
+                        .foregroundStyle(Theme.Colors.surfacePrimary)
+                }
+            case .mark:
+                ZStack {
+                    Circle()
+                        .fill(Theme.Colors.surfacePrimary)
+                        .frame(width: innerDiameter, height: innerDiameter)
+                    Circle()
+                        .stroke(Theme.Colors.brandPrimary, lineWidth: ringLineWidth)
+                        .frame(width: innerDiameter, height: innerDiameter)
+                    Circle()
+                        .fill(Theme.Colors.brandPrimary)
+                        .frame(width: markDotSize, height: markDotSize)
+                }
             }
         }
     }
@@ -648,7 +673,6 @@ private struct CoursePositionButton: View {
             RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
                 .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
         )
-        .padding(.horizontal)
     }
 }
 
