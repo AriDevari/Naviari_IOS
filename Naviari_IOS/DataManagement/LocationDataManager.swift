@@ -129,3 +129,24 @@ extension LocationDataManager: CLLocationManagerDelegate {
         }
     }
 }
+
+extension LocationDataManager {
+    func injectTestLocation(
+        latitude: Double,
+        longitude: Double,
+        authorizationStatus: CLAuthorizationStatus = .authorizedWhenInUse
+    ) {
+        self.authorizationStatus = authorizationStatus
+        latestLocation = CLLocation(latitude: latitude, longitude: longitude)
+        lastAccuracy = 5
+        lastErrorMessage = nil
+        isUpdating = false
+    }
+
+    func injectDeniedAuthorizationForTesting() {
+        authorizationStatus = .denied
+        latestLocation = nil
+        lastAccuracy = nil
+        isUpdating = false
+    }
+}

@@ -270,6 +270,79 @@ struct RaceService {
         }
     }
 
+    // MARK: - Course mark write methods (S1)
+
+    /// Edits an existing course mark via `PUT /api/course-marks`.
+    func updateCourseMark(_ payload: CourseMarkWritePayload, accessToken: String) async throws -> CourseMarkItem {
+        let data = try await performCourseWrite(
+            path: "/api/course-marks",
+            accessToken: accessToken,
+            payload: payload
+        )
+        // Response envelope: { ok, mark } or bare CourseMarkItem
+        if let envelope = try? JSONDecoder().decode(CourseMarkMutationEnvelope.self, from: data) {
+            return envelope.mark
+        }
+        guard let item = try? JSONDecoder().decode(CourseMarkItem.self, from: data) else {
+            throw RaceServiceError.decodingFailed
+        }
+        return item
+    }
+
+    /// Inserts a new course mark at the specified sequence via `POST /api/courses/{courseId}/course-marks`.
+    func insertCourseMark(courseId: String, payload: CourseMarkInsertPayload, accessToken: String) async throws -> CourseMarkItem {
+        var request = try makeRequest(path: "/api/courses/\(courseId)/course-marks", queryItems: [])
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(accessToken, forHTTPHeaderField: "X-User-Key")
+        request.httpBody = try JSONEncoder().encode(payload)
+
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+
+        if let envelope = try? JSONDecoder().decode(CourseMarkMutationEnvelope.self, from: data) {
+            return envelope.mark
+        }
+        guard let item = try? JSONDecoder().decode(CourseMarkItem.self, from: data) else {
+            throw RaceServiceError.decodingFailed
+        }
+        return item
+    }
+
+    // MARK: - Course line write methods (S2)
+
+    /// Updates a start line via `PUT /api/start-lines`.
+    func updateStartLine(_ payload: CourseLineWritePayload, accessToken: String) async throws {
+        _ = try await performCourseWrite(
+            path: "/api/start-lines",
+            accessToken: accessToken,
+            payload: payload
+        )
+    }
+
+    /// Updates a finish line via `PUT /api/finish-lines`.
+    func updateFinishLine(_ payload: CourseLineWritePayload, accessToken: String) async throws {
+        _ = try await performCourseWrite(
+            path: "/api/finish-lines",
+            accessToken: accessToken,
+            payload: payload
+        )
+    }
+
+    /// Soft-deletes a course mark via `DELETE /api/course-marks/{id}`.
+    func deleteCourseMark(id: String, accessToken: String) async throws {
+        var request = try makeRequest(path: "/api/course-marks/\(id)", queryItems: [])
+        request.httpMethod = "DELETE"
+        request.setValue(accessToken, forHTTPHeaderField: "X-User-Key")
+
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+    }
+
     private func linePositionRequest(
         lineTarget: CourseLinePositionTarget,
         selectedSide: CourseEndpointSide,
@@ -507,4 +580,8 @@ private struct CourseLinePositionRequest: Encodable {
     let markLeft: CoordinatePoint
     let markRight: CoordinatePoint
     let updatedBy: String?
+}
+
+private struct CourseMarkMutationEnvelope: Decodable {
+    let mark: CourseMarkItem
 }

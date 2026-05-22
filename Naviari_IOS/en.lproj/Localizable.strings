@@ -241,6 +241,10 @@
 "course_edit_remove_confirm_action" = "Remove";
 "course_edit_save_button" = "Save";
 "course_edit_save_error" = "Failed to save. Check connection and try again.";
+"course_edit_coordinate_incomplete_error" = "Enter complete latitude and longitude values before saving.";
+"course_edit_coordinate_lat_invalid_error" = "Latitude is out of range.";
+"course_edit_coordinate_lon_invalid_error" = "Longitude is out of range.";
+"course_test_open_edit_button" = "Open edit";
 "course_edit_remove_error" = "Failed to remove mark. Check connection and try again.";
 "course_edit_section_left_end" = "Left end";
 "course_edit_section_right_end" = "Right end";

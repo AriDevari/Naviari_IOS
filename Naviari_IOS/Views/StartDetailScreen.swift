@@ -50,7 +50,9 @@ struct StartDetailScreen: View {
     @State private var storedScope: ManageAccessScope?
     @State private var storedScopeId: String?
     @State private var pendingTemplateSelection: RaceCourse?
+    @State private var pendingCourseItemEditTarget: CourseItemEditTarget?
     @State private var rehearsalNotificationId: UUID?
+    @State private var courseItemEditTarget: CourseItemEditTarget?
 
     @EnvironmentObject private var userNotifications: UserNotifications
 
@@ -280,10 +282,17 @@ struct StartDetailScreen: View {
                                         CourseTimelineView(
                                             items: courseItems,
                                             activeItemId: $activeCourseItemId,
-                                            activeSubIndexByItemId: $activeLineSubIndexByItemId
-                                        ) { selection in
-                                            handleCoursePositionSelection(selection)
-                                        }
+                                            activeSubIndexByItemId: $activeLineSubIndexByItemId,
+                                            onPositionSelected: { selection in
+                                                handleCoursePositionSelection(selection)
+                                            },
+                                            onEditSelected: { itemId in
+                                                handleEditSelected(itemId: itemId)
+                                            },
+                                            onAddAfter: { itemId in
+                                                handleAddAfter(itemId: itemId)
+                                            }
+                                        )
                                     } else if isCourseLoading {
                                         ProgressView()
                                             .padding()
@@ -339,6 +348,9 @@ struct StartDetailScreen: View {
         }
         .sheet(isPresented: $showCodeModal) {
             codeValidationSheet
+        }
+        .sheet(item: $courseItemEditTarget) { target in
+            courseItemEditSheet(for: target)
         }
         .onDisappear {
             dismissRehearsalNotificationIfNeeded()
@@ -620,6 +632,9 @@ struct StartDetailScreen: View {
             if let pendingTemplateSelection {
                 self.pendingTemplateSelection = nil
                 await copyTemplateToStart(pendingTemplateSelection)
+            } else if let pendingCourseItemEditTarget {
+                self.pendingCourseItemEditTarget = nil
+                courseItemEditTarget = pendingCourseItemEditTarget
             }
         } catch {
             codeValidationAttempts += 1
@@ -834,6 +849,110 @@ struct StartDetailScreen: View {
         return delay >= cadence - Self.uploadBoundaryTolerance ? 0 : delay
     }
 
+    // MARK: - Course item edit (S3)
+
+    private func handleEditSelected(itemId: String) {
+        guard let course = loadedCourse else { return }
+        let courseId = course.id
+
+        // Check if it's a mark.
+        if let mark = course.course_marks.first(where: { $0.id == itemId }) {
+            presentCourseItemEditor(.mark(mark, courseId: courseId))
+            return
+        }
+        // Check start line.
+        if let startLine = course.start_line, startLine.id == itemId {
+            presentCourseItemEditor(.startLine(startLine, courseId: courseId))
+            return
+        }
+        // Check finish line.
+        if let finishLine = course.finish_line, finishLine.id == itemId {
+            presentCourseItemEditor(.finishLine(finishLine, courseId: courseId))
+            return
+        }
+    }
+
+    private func handleAddAfter(itemId: String) {
+        guard let course = loadedCourse else { return }
+        let courseId = course.id
+        // Find the tapped mark's sequence; insert after it.
+        if let mark = course.course_marks.first(where: { $0.id == itemId }) {
+            presentCourseItemEditor(.addMark(courseId: courseId, afterSequence: mark.sequence + 1))
+        }
+    }
+
+    private func presentCourseItemEditor(_ target: CourseItemEditTarget) {
+        guard hasReusableToken else {
+            pendingCourseItemEditTarget = target
+            codeValidationError = nil
+            showCodeModal = true
+            return
+        }
+
+        pendingCourseItemEditTarget = nil
+        courseItemEditTarget = target
+    }
+
+    @ViewBuilder
+    private func courseItemEditSheet(for target: CourseItemEditTarget) -> some View {
+        let token = storedToken ?? ""
+        switch target {
+        case let .mark(item, courseId):
+            NavigationStack {
+                CourseMarkEditView(
+                    mode: .editMark(item, courseId: courseId),
+                    accessToken: token
+                ) { _ in
+                    courseItemEditTarget = nil
+                    Task { await reloadCourseAfterEdit() }
+                }
+            }
+        case let .addMark(courseId, afterSequence):
+            NavigationStack {
+                CourseMarkEditView(
+                    mode: .addMark(courseId: courseId, afterSequence: afterSequence),
+                    accessToken: token
+                ) { _ in
+                    courseItemEditTarget = nil
+                    Task { await reloadCourseAfterEdit() }
+                }
+            }
+        case let .startLine(line, courseId):
+            NavigationStack {
+                CourseLineEditView(
+                    mode: .editStartLine(line, courseId: courseId),
+                    accessToken: token
+                ) { _ in
+                    courseItemEditTarget = nil
+                    Task { await reloadCourseAfterEdit() }
+                }
+            }
+        case let .finishLine(line, courseId):
+            NavigationStack {
+                CourseLineEditView(
+                    mode: .editFinishLine(line, courseId: courseId),
+                    accessToken: token
+                ) { _ in
+                    courseItemEditTarget = nil
+                    Task { await reloadCourseAfterEdit() }
+                }
+            }
+        }
+    }
+
+    private func reloadCourseAfterEdit() async {
+        isCourseLoaded = false
+        isCourseLoading = true
+        loadedCourse = nil
+        courseItems = []
+        activeCourseItemId = nil
+        activeLineSubIndexByItemId = [:]
+        await loadCourse()
+        if let startId = resolvedStart.rawId {
+            viewModel.requestCourseRefresh(for: startId)
+        }
+    }
+
     private func unavailableState(messageKey: LocalizedStringKey) -> some View {
         Text(messageKey)
             .font(AppFont.textStyle(.subheadline))
@@ -958,6 +1077,7 @@ struct StartDetailScreen: View {
                 .disabled(isValidatingCode || !hasCodeAttemptsRemaining || manageCode == nil)
 
                 Button("actions_cancel") {
+                    pendingCourseItemEditTarget = nil
                     showCodeModal = false
                 }
                 .font(AppUI.buttonFont)
@@ -972,6 +1092,29 @@ struct StartDetailScreen: View {
         .interactiveDismissDisabled(true)
     }
 
+}
+
+// MARK: - CourseItemEditTarget
+
+/// Identifies which course item (and which edit mode) the sheet should open.
+enum CourseItemEditTarget: Identifiable {
+    case mark(CourseMarkItem, courseId: String)
+    case addMark(courseId: String, afterSequence: Int)
+    case startLine(CourseLine, courseId: String)
+    case finishLine(CourseLine, courseId: String)
+
+    var id: String {
+        switch self {
+        case let .mark(item, courseId):
+            return "mark|\(courseId)|\(item.id)"
+        case let .addMark(courseId, afterSequence):
+            return "addMark|\(courseId)|\(afterSequence)"
+        case let .startLine(line, courseId):
+            return "startLine|\(courseId)|\(line.id)"
+        case let .finishLine(line, courseId):
+            return "finishLine|\(courseId)|\(line.id)"
+        }
+    }
 }
 
 private struct TemplatePickerLayout {

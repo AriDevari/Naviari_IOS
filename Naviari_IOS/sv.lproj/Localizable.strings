@@ -241,6 +241,10 @@
 "course_edit_remove_confirm_action" = "Ta bort";
 "course_edit_save_button" = "Spara";
 "course_edit_save_error" = "Det gick inte att spara. Kontrollera anslutningen och försök igen.";
+"course_edit_coordinate_incomplete_error" = "Ange fullständiga latitud- och longitudvärden innan du sparar.";
+"course_edit_coordinate_lat_invalid_error" = "Latituden ligger utanför det tillåtna intervallet.";
+"course_edit_coordinate_lon_invalid_error" = "Longituden ligger utanför det tillåtna intervallet.";
+"course_test_open_edit_button" = "Öppna redigering";
 "course_edit_remove_error" = "Det gick inte att ta bort märket. Kontrollera anslutningen och försök igen.";
 "course_edit_section_left_end" = "Vänster ände";
 "course_edit_section_right_end" = "Höger ände";

@@ -16,65 +16,77 @@ struct ContentView: View {
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
 
     var body: some View {
+        let uiTestScenario = CourseEditUITestScenario.current
+
         ZStack {
-            NavigationStack(path: $navigationPath) {
-                WelcomeScreen {
-                    navigationPath.append(.races)
-                }
-                .navigationDestination(for: AppRoute.self) { route in
-                    switch route {
-                    case .races:
-                        RaceListScreen { summary in
-                            navigationPath.append(.raceDetail(summary))
+            Group {
+                if let uiTestScenario {
+                    CourseEditUITestHarnessView(scenario: uiTestScenario)
+                } else {
+                    NavigationStack(path: $navigationPath) {
+                        WelcomeScreen {
+                            navigationPath.append(.races)
                         }
-                    case let .raceDetail(summary):
-                        RaceDetailScreen(summary: summary) { start in
-                            navigationPath.append(.startDetail(summary, start))
-                        }
-                    case let .startDetail(summary, start):
-                        StartDetailScreen(
-                            raceSummary: summary,
-                            start: start,
-                            onParticipate: {
-                                let latest = latestStart(for: start, in: summary)
-                                navigationPath.append(.participate(summary, latest))
-                            },
-                            onSetStartTime: {
-                                let latest = latestStart(for: start, in: summary)
-                                navigationPath.append(.setStartTime(summary, latest))
-                            },
-                            onSetPositionTarget: { target in
-                                let latest = latestStart(for: start, in: summary)
-                                navigationPath.append(.setPosition(summary, latest, target))
+                        .navigationDestination(for: AppRoute.self) { route in
+                            switch route {
+                            case .races:
+                                RaceListScreen { summary in
+                                    navigationPath.append(.raceDetail(summary))
+                                }
+                            case let .raceDetail(summary):
+                                RaceDetailScreen(summary: summary) { start in
+                                    navigationPath.append(.startDetail(summary, start))
+                                }
+                            case let .startDetail(summary, start):
+                                StartDetailScreen(
+                                    raceSummary: summary,
+                                    start: start,
+                                    onParticipate: {
+                                        let latest = latestStart(for: start, in: summary)
+                                        navigationPath.append(.participate(summary, latest))
+                                    },
+                                    onSetStartTime: {
+                                        let latest = latestStart(for: start, in: summary)
+                                        navigationPath.append(.setStartTime(summary, latest))
+                                    },
+                                    onSetPositionTarget: { target in
+                                        let latest = latestStart(for: start, in: summary)
+                                        navigationPath.append(.setPosition(summary, latest, target))
+                                    }
+                                )
+                            case let .participate(summary, start):
+                                ParticipateView(raceSummary: summary, start: start)
+                            case let .setStartTime(summary, start):
+                                SetStartTimeScreen(raceSummary: summary, start: start)
+                            case let .setPosition(summary, start, target):
+                                SetPositionScreen(
+                                    raceSummary: summary,
+                                    start: start,
+                                    target: target
+                                )
                             }
-                        )
-                    case let .participate(summary, start):
-                        ParticipateView(raceSummary: summary, start: start)
-                    case let .setStartTime(summary, start):
-                        SetStartTimeScreen(raceSummary: summary, start: start)
-                    case let .setPosition(summary, start, target):
-                        SetPositionScreen(
-                            raceSummary: summary,
-                            start: start,
-                            target: target
-                        )
+                        }
                     }
                 }
             }
 
-            UserNotificationsOverlay()
+            if uiTestScenario == nil {
+                UserNotificationsOverlay()
+            }
 
-            if metricsUploader.isBroadcasting {
+            if uiTestScenario == nil, metricsUploader.isBroadcasting {
                 BroadcastStatusButton(uploader: metricsUploader)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     .padding(.leading, Theme.Spacing.floatingInset)
                     .padding(.bottom, Theme.Spacing.floatingInset)
             }
 
-            GPSStatusButton(locationManager: locationManager)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .padding(.trailing, Theme.Spacing.floatingInset)
-                .padding(.bottom, Theme.Spacing.floatingInset)
+            if uiTestScenario == nil {
+                GPSStatusButton(locationManager: locationManager)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(.trailing, Theme.Spacing.floatingInset)
+                    .padding(.bottom, Theme.Spacing.floatingInset)
+            }
         }
         .environmentObject(viewModel)
         .environmentObject(userNotifications)

@@ -4,6 +4,10 @@ enum Theme {
     enum Colors {
         static let brandPrimary = Color(red: 0 / 255, green: 136 / 255, blue: 255 / 255)
         static let brandPrimaryMuted = brandPrimary.opacity(0.15)
+        /// Brand blue (#0088FF) — same as brandPrimary; named alias for segmented control "Final" state.
+        static let brandBlue = Color(red: 0 / 255, green: 136 / 255, blue: 255 / 255)
+        /// Brand navy (#0A2946) — used for rounding segmented control selected state.
+        static let brandNavy = Color(red: 10 / 255, green: 41 / 255, blue: 70 / 255)
 
         static let error = Color.red
         static let destructive = Color.red
@@ -45,6 +49,7 @@ enum Theme {
 
     enum Sizing {
         static let primaryButtonHeight: CGFloat = 66
+        static let secondaryButtonHeight: CGFloat = 48
         static let floatingButtonDiameter: CGFloat = 62
     }
 
@@ -80,6 +85,26 @@ enum Theme {
 
         static let cardMinHeight: CGFloat = 68
         static let expandedSeparatorColor = Color(red: 236 / 255, green: 236 / 255, blue: 239 / 255)
+    }
+
+    enum FormField {
+        /// Default background for text input fields (#FFFFFF — same as surface primary).
+        static let background = Color(.systemBackground)
+        /// Numeric sub-field background (#FAFAFC).
+        static let numericBackground = Color(red: 250 / 255, green: 250 / 255, blue: 252 / 255)
+        /// Default border colour for fields (#EFEFF2).
+        static let borderDefault = Color(red: 239 / 255, green: 239 / 255, blue: 242 / 255)
+        /// Focused border colour for fields (#D6D7DC).
+        static let borderFocused = Color(red: 214 / 255, green: 215 / 255, blue: 220 / 255)
+        /// Standard field corner radius (12 pt).
+        static let cornerRadius: CGFloat = 12
+    }
+
+    enum Segmented {
+        /// Navy fill for the selected segment in the rounding control (#0A2946).
+        static let selectedNavy = Color(red: 10 / 255, green: 41 / 255, blue: 70 / 255)
+        /// Background of the unselected toggle container (#F2F2F7).
+        static let containerBackground = Color(red: 242 / 255, green: 242 / 255, blue: 247 / 255)
     }
 
     enum Effects {

@@ -241,6 +241,10 @@
 "course_edit_remove_confirm_action" = "Poista";
 "course_edit_save_button" = "Tallenna";
 "course_edit_save_error" = "Tallennus epäonnistui. Tarkista yhteys ja yritä uudelleen.";
+"course_edit_coordinate_incomplete_error" = "Syötä täydet leveys- ja pituusasteen arvot ennen tallennusta.";
+"course_edit_coordinate_lat_invalid_error" = "Leveysaste on sallitun alueen ulkopuolella.";
+"course_edit_coordinate_lon_invalid_error" = "Pituusaste on sallitun alueen ulkopuolella.";
+"course_test_open_edit_button" = "Avaa muokkaus";
 "course_edit_remove_error" = "Merkin poisto epäonnistui. Tarkista yhteys ja yritä uudelleen.";
 "course_edit_section_left_end" = "Vasen pää";
 "course_edit_section_right_end" = "Oikea pää";
