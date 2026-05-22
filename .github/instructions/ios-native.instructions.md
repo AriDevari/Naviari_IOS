@@ -26,12 +26,12 @@ Naviari iOS implementation rules:
   - `RaceManagerButtonLabel.swift`
   - `SplitActionButton.swift`
   - `UserNotifications.swift`
-- Keep user-visible strings localized.
+- **Localization is mandatory**: every user-visible string must be added to `en.lproj/Localizable.strings`, `fi.lproj/Localizable.strings`, and `sv.lproj/Localizable.strings`. All three languages are required — adding a key to one or two languages is not acceptable. Never hardcode a raw string literal in a view; always use `NSLocalizedString("key", comment: "")` or `String(localized: "key")`.
 - For feature work, read the active feature package in `../NaviariYleinen/features/` before implementation.
 - For Android-parity features, iOS becomes the source of truth only after the iOS behavior is validated and documented.
 
 Validation expectations:
 
 - After each substantive iOS edit, run the narrowest available build or validation for the touched slice.
-- For visually sensitive work, include screenshot-based or simulator-based manual verification.
+- For visually sensitive work, include screenshot-based or real-device manual verification. Do not use the Xcode simulator — it is not available on this Mac. All physical testing is done on a real iPhone.
 - Confirm theme-token use and reusable-view boundaries as part of validation, not only visual output.

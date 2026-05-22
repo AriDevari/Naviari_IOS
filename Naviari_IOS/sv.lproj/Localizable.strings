@@ -212,3 +212,39 @@
 "set_position_success_finish_left" = "Mållinjens vänstra ände uppdaterad.";
 "set_position_success_finish_right" = "Mållinjens högra ände uppdaterad.";
 "user_notifications_close" = "Stäng avisering";
+
+// --- CourseTimelineView ---
+"course_add_mark_button" = "Lägg till märke";
+
+// --- Course item edit / add ---
+"course_item_edit_mark_title" = "Redigera märke";
+"course_item_add_mark_title" = "Lägg till märke";
+"course_item_edit_start_line_title" = "Redigera startlinje";
+"course_item_edit_finish_line_title" = "Redigera mållinje";
+"course_item_edit_info_title" = "Redigera banpunkt";
+"course_item_edit_info_body" = "Redigera uppgifterna för detta banmärke eller denna linje. Ändringar sparas omedelbart till servern. Ladda om banan efter sparandet för att se den uppdaterade banlängden och märkesordningen.";
+"course_edit_section_identity" = "Identitet";
+"course_edit_name_label" = "Namn";
+"course_edit_name_placeholder" = "t.ex. Märke 1";
+"course_edit_description_label" = "Beskrivning";
+"course_edit_description_placeholder" = "Valfritt – lovartsida, port, ledsträck…";
+"course_edit_section_status" = "Status";
+"course_edit_section_rounding" = "Rundning";
+"course_edit_section_position" = "Position";
+"course_edit_position_subtitle" = "Ange koordinater eller hämta med GPS.";
+"course_edit_lat_label" = "Lat";
+"course_edit_lon_label" = "Lon";
+"course_edit_use_gps_button" = "Använd aktuell GPS-position";
+"course_edit_remove_button" = "Ta bort från banan";
+"course_edit_remove_confirm_title" = "Ta bort märke?";
+"course_edit_remove_confirm_message" = "Detta märke tas bort från banan. Ordningen på återstående märken räknas om.";
+"course_edit_remove_confirm_action" = "Ta bort";
+"course_edit_save_button" = "Spara";
+"course_edit_save_error" = "Det gick inte att spara. Kontrollera anslutningen och försök igen.";
+"course_edit_remove_error" = "Det gick inte att ta bort märket. Kontrollera anslutningen och försök igen.";
+"course_edit_section_left_end" = "Vänster ände";
+"course_edit_section_right_end" = "Höger ände";
+"course_edit_left_end_subtitle" = "Nock / babordssida av linjen";
+"course_edit_right_end_subtitle" = "Kommittébåt / styrbordssida";
+"course_edit_use_gps_button_left" = "GPS-position – vänster ände";
+"course_edit_use_gps_button_right" = "GPS-position – höger ände";

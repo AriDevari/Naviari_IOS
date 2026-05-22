@@ -68,7 +68,7 @@ For each test, add an `accessibilityIdentifier` to the SwiftUI element being tes
 2. Run the stubs to confirm they fail.
 3. Implement the slice.
 4. Run the tests until they all pass.
-5. For visible UI work, also perform a targeted simulator or screenshot check.
+5. For visible UI work, perform a targeted manual check on a real physical device. Do not use the simulator — it is not available on this Mac. The developer tests on a real iPhone.
 6. Confirm theme-token use, localization, and reusable-view ownership where relevant.
 7. Record the test run output and any screenshots in the slice report.
 

@@ -28,7 +28,7 @@ Keep repo-local wrappers thin. Do not duplicate shared methodology here when the
 - Treat host screens like `StartDetailScreen.swift` as composition and callback surfaces, not as the long-term owners of reusable UI presentation.
 - Preserve and extend shared view components such as `CourseTimelineView.swift` instead of duplicating the same presentation in multiple screens.
 - Reuse existing native button, card, notification, and layout patterns before inventing one-off variants.
-- Keep user-visible strings localized.
+- **Localization is mandatory**: every user-visible string must be added to `en.lproj/Localizable.strings`, `fi.lproj/Localizable.strings`, and `sv.lproj/Localizable.strings`. All three languages are required for every new key. Never hardcode a raw string literal in a view.
 - When Android parity depends on iOS, iOS implementation is the source of truth only after the iOS state is validated and documented.
 
 ## Local Customization Files

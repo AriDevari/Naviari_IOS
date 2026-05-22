@@ -212,3 +212,39 @@
 "set_position_success_finish_left" = "Finish line left end updated.";
 "set_position_success_finish_right" = "Finish line right end updated.";
 "user_notifications_close" = "Close notification";
+
+// --- CourseTimelineView ---
+"course_add_mark_button" = "Add mark";
+
+// --- Course item edit / add ---
+"course_item_edit_mark_title" = "Edit Mark";
+"course_item_add_mark_title" = "Add Mark";
+"course_item_edit_start_line_title" = "Edit Start Line";
+"course_item_edit_finish_line_title" = "Edit Finish Line";
+"course_item_edit_info_title" = "Edit Course Item";
+"course_item_edit_info_body" = "Edit the details of this course mark or line. Changes are saved to the server immediately. Reload the course after saving to see the updated course length and mark sequence.";
+"course_edit_section_identity" = "Identity";
+"course_edit_name_label" = "Name";
+"course_edit_name_placeholder" = "e.g. Mark 1";
+"course_edit_description_label" = "Description";
+"course_edit_description_placeholder" = "Optional – windward, gate, layline…";
+"course_edit_section_status" = "Status";
+"course_edit_section_rounding" = "Rounding";
+"course_edit_section_position" = "Position";
+"course_edit_position_subtitle" = "Enter coordinates or capture from GPS.";
+"course_edit_lat_label" = "Lat";
+"course_edit_lon_label" = "Lon";
+"course_edit_use_gps_button" = "Use current GPS position";
+"course_edit_remove_button" = "Remove from course";
+"course_edit_remove_confirm_title" = "Remove mark?";
+"course_edit_remove_confirm_message" = "This mark will be removed from the course. The sequence of remaining marks will be recalculated.";
+"course_edit_remove_confirm_action" = "Remove";
+"course_edit_save_button" = "Save";
+"course_edit_save_error" = "Failed to save. Check connection and try again.";
+"course_edit_remove_error" = "Failed to remove mark. Check connection and try again.";
+"course_edit_section_left_end" = "Left end";
+"course_edit_section_right_end" = "Right end";
+"course_edit_left_end_subtitle" = "Pin / port end of the line";
+"course_edit_right_end_subtitle" = "Committee boat / starboard end";
+"course_edit_use_gps_button_left" = "Use GPS – left end";
+"course_edit_use_gps_button_right" = "Use GPS – right end";

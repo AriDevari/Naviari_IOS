@@ -212,3 +212,39 @@
 "set_position_success_finish_left" = "Maalilinjan vasen pää päivitetty.";
 "set_position_success_finish_right" = "Maalilinjan oikea pää päivitetty.";
 "user_notifications_close" = "Sulje ilmoitus";
+
+// --- CourseTimelineView ---
+"course_add_mark_button" = "Lisää merkki";
+
+// --- Course item edit / add ---
+"course_item_edit_mark_title" = "Muokkaa merkkiä";
+"course_item_add_mark_title" = "Lisää merkki";
+"course_item_edit_start_line_title" = "Muokkaa lähtölinjaa";
+"course_item_edit_finish_line_title" = "Muokkaa maalilinjaa";
+"course_item_edit_info_title" = "Muokkaa radan kohdetta";
+"course_item_edit_info_body" = "Muokkaa tämän rataviitan tai linjan tietoja. Muutokset tallennetaan heti palvelimelle. Päivitä rata tallennuksen jälkeen nähdäksesi päivitetyn radan pituuden ja merkkijärjestyksen.";
+"course_edit_section_identity" = "Tunnistetiedot";
+"course_edit_name_label" = "Nimi";
+"course_edit_name_placeholder" = "esim. Merkki 1";
+"course_edit_description_label" = "Kuvaus";
+"course_edit_description_placeholder" = "Valinnainen – luuvarikki, portti, sivuviiva…";
+"course_edit_section_status" = "Tila";
+"course_edit_section_rounding" = "Kierto";
+"course_edit_section_position" = "Sijainti";
+"course_edit_position_subtitle" = "Syötä koordinaatit tai hae GPS:llä.";
+"course_edit_lat_label" = "Lat";
+"course_edit_lon_label" = "Lon";
+"course_edit_use_gps_button" = "Käytä nykyistä GPS-sijaintia";
+"course_edit_remove_button" = "Poista radalta";
+"course_edit_remove_confirm_title" = "Poistetaanko merkki?";
+"course_edit_remove_confirm_message" = "Tämä merkki poistetaan radalta. Jäljellä olevien merkkien järjestys lasketaan uudelleen.";
+"course_edit_remove_confirm_action" = "Poista";
+"course_edit_save_button" = "Tallenna";
+"course_edit_save_error" = "Tallennus epäonnistui. Tarkista yhteys ja yritä uudelleen.";
+"course_edit_remove_error" = "Merkin poisto epäonnistui. Tarkista yhteys ja yritä uudelleen.";
+"course_edit_section_left_end" = "Vasen pää";
+"course_edit_section_right_end" = "Oikea pää";
+"course_edit_left_end_subtitle" = "Nuppi / paapuuripää";
+"course_edit_right_end_subtitle" = "Tuomarilaiva / tyyrpuuripää";
+"course_edit_use_gps_button_left" = "GPS-sijainti – vasen pää";
+"course_edit_use_gps_button_right" = "GPS-sijainti – oikea pää";
