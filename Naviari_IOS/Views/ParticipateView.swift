@@ -19,15 +19,10 @@ struct ParticipateView: View {
     @State private var descriptionText = ""
     @State private var clubText = ""
     @State private var selectedColor = Theme.Colors.brandPrimary
-    @State private var codePrefix = ""
-    @State private var codeSuffix = ""
     @State private var showParticipationInfo = false
     @State private var showCodeModal = false
     @State private var submissionError: String?
-    @State private var codeValidationError: String?
     @State private var isSubmitting = false
-    @State private var isValidatingCode = false
-    @State private var codeValidationAttempts = 0
     @State private var storedToken: String?
     @State private var storedScope: ParticipationScope?
     @State private var storedScopeId: String?
@@ -40,7 +35,6 @@ struct ParticipateView: View {
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
     @EnvironmentObject private var userNotifications: UserNotifications
     @Environment(\.dismiss) private var dismiss
-    private let maxCodeValidationAttempts = 5
     private let inputContentFont = AppFont.fixed(21)
 
     private var isCompletedStart: Bool {
@@ -136,12 +130,35 @@ struct ParticipateView: View {
                 }
                 .padding()
             }
+            .accessibilityIdentifier("participate_screen")
         }
         .sheet(isPresented: $showParticipationInfo) {
             InfoHelpView(titleKey: infoTitleKey, bodyKey: infoBodyKey)
         }
         .sheet(isPresented: $showCodeModal) {
-            codeValidationSheet
+            CodeEntryView(
+                titleKey: "participate_code_modal_title",
+                messageKey: "participate_code_modal_message",
+                verifyButtonKey: "participate_code_verify_button",
+                cancelButtonKey: "back_button",
+                accentColor: AppUI.brandPrimary,
+                onVerify: { code in
+                    try await service.exchangeCodeForToken(code)
+                },
+                onSuccess: { token in
+                    storage.saveToken(
+                        token: token,
+                        startId: startIdentifier,
+                        raceId: raceIdentifier,
+                        seriesId: seriesIdentifier
+                    )
+                    showCodeModal = false
+                    Task { await loadStoredParticipation() }
+                },
+                onCancel: {
+                    showCodeModal = false
+                }
+            )
         }
         .task(id: startIdentifier) {
             resetFormForNewStart()
@@ -217,15 +234,6 @@ struct ParticipateView: View {
                 .textFieldStyle(.roundedBorder)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var participationCode: String? {
-        let trimmedPrefix = codePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedSuffix = codeSuffix.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedPrefix.isEmpty, !trimmedSuffix.isEmpty else {
-            return nil
-        }
-        return "\(trimmedPrefix)-\(trimmedSuffix)"
     }
 
     private var hasReusableToken: Bool {
@@ -496,13 +504,8 @@ struct ParticipateView: View {
         descriptionText = ""
         clubText = ""
         selectedColor = Theme.Colors.brandPrimary
-        codePrefix = ""
-        codeSuffix = ""
         submissionError = nil
-        codeValidationError = nil
-        codeValidationAttempts = 0
         showCodeModal = false
-        isValidatingCode = false
         storedRecord = nil
         storedToken = nil
         storedScope = nil
@@ -515,122 +518,6 @@ struct ParticipateView: View {
         guard let storedRecord else { return nil }
         guard storedRecord.scope == .start, storedRecord.scopeId == startIdentifier else { return nil }
         return storedRecord
-    }
-
-    private var codeAttemptsRemaining: Int {
-        max(0, maxCodeValidationAttempts - codeValidationAttempts)
-    }
-
-    private var hasCodeAttemptsRemaining: Bool {
-        codeAttemptsRemaining > 0
-    }
-
-    private func verifyParticipationCode() async {
-        guard hasCodeAttemptsRemaining else { return }
-        guard !isValidatingCode else { return }
-        guard let code = participationCode else {
-            codeValidationError = NSLocalizedString("participate_code_required", comment: "")
-            return
-        }
-
-        isValidatingCode = true
-        codeValidationError = nil
-        defer { isValidatingCode = false }
-
-        do {
-            let token = try await service.exchangeCodeForToken(code)
-            storedToken = token
-            storedScope = .start
-            storedScopeId = startIdentifier
-            storage.saveToken(
-                token: token,
-                startId: startIdentifier,
-                raceId: raceIdentifier,
-                seriesId: seriesIdentifier
-            )
-            codePrefix = ""
-            codeSuffix = ""
-            showCodeModal = false
-        } catch {
-            codeValidationAttempts += 1
-            codeValidationError = error.localizedDescription
-        }
-    }
-
-    @ViewBuilder
-    private var codeValidationSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("participate_code_modal_message")
-                    .font(AppFont.textStyle(.subheadline))
-                    .foregroundStyle(.secondary)
-
-                HStack {
-                    TextField("participate_code_prefix", text: $codePrefix)
-                        .font(inputContentFont)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("-")
-                        .font(AppFont.textStyle(.title2))
-                        .foregroundStyle(.secondary)
-                    TextField("participate_code_suffix", text: $codeSuffix)
-                        .font(inputContentFont)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                if let codeValidationError {
-                    Text(codeValidationError)
-                        .foregroundStyle(Theme.Colors.error)
-                        .font(AppFont.textStyle(.footnote))
-                }
-
-                if hasCodeAttemptsRemaining {
-                    Text(
-                        String(
-                            format: NSLocalizedString("participate_code_attempts_remaining", comment: ""),
-                            codeAttemptsRemaining
-                        )
-                    )
-                    .font(AppFont.textStyle(.footnote))
-                    .foregroundStyle(.secondary)
-                } else {
-                    Text("participate_code_attempts_exhausted")
-                        .font(AppFont.textStyle(.footnote))
-                        .foregroundStyle(Theme.Colors.error)
-                }
-
-                Button {
-                    Task { await verifyParticipationCode() }
-                } label: {
-                    if isValidatingCode {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("participate_code_verify_button")
-                            .font(AppUI.buttonFont)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(AppUI.brandPrimary)
-                .disabled(isValidatingCode || !hasCodeAttemptsRemaining || participationCode == nil)
-
-                Button("back_button") {
-                    dismiss()
-                }
-                .font(AppUI.buttonFont)
-                .frame(maxWidth: .infinity)
-
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("participate_code_modal_title")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .interactiveDismissDisabled(true)
     }
 
     /// Boots the uploader once we have a valid start-level token/scope.

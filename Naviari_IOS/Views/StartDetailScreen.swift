@@ -9,6 +9,11 @@ import SwiftUI
 
 /// Shows start-specific metadata and the entry point into the participation flow.
 struct StartDetailScreen: View {
+    private enum ManageProtectedNavigationTarget {
+        case setStartTime
+        case setPosition(SetPositionTarget)
+    }
+
     private static let templatePickerCoordinateSpace = "start-detail-template-picker-space"
     private static let rehearsalVisibilityDelay: TimeInterval = 30
     private static let rehearsalUploadCadence: TimeInterval = 10
@@ -40,17 +45,17 @@ struct StartDetailScreen: View {
     @State private var isTemplateCopying = false
     @State private var showTemplatePicker = false
     @State private var templateButtonFrame: CGRect = .zero
-    @State private var codePrefix = ""
-    @State private var codeSuffix = ""
     @State private var showCodeModal = false
-    @State private var isValidatingCode = false
-    @State private var codeValidationError: String?
-    @State private var codeValidationAttempts = 0
+    @State private var showParticipationCodeModal = false
     @State private var storedToken: String?
     @State private var storedScope: ManageAccessScope?
     @State private var storedScopeId: String?
+    @State private var storedParticipationToken: String?
+    @State private var storedParticipationScope: ParticipationScope?
+    @State private var storedParticipationScopeId: String?
     @State private var pendingTemplateSelection: RaceCourse?
     @State private var pendingCourseItemEditTarget: CourseItemEditTarget?
+    @State private var pendingManageNavigationTarget: ManageProtectedNavigationTarget?
     @State private var rehearsalNotificationId: UUID?
     @State private var courseItemEditTarget: CourseItemEditTarget?
 
@@ -58,8 +63,7 @@ struct StartDetailScreen: View {
 
     private let accessService = ParticipationService()
     private let storage = ManageAccessStorage.shared
-    private let maxCodeValidationAttempts = 5
-    private let inputContentFont = AppFont.fixed(21)
+    private let participationStorage = ParticipationStorage.shared
     private let raceService = RaceService()
 
     private var resolvedStart: RaceStart {
@@ -88,15 +92,6 @@ struct StartDetailScreen: View {
         [currentStartIdentifier ?? "", raceIdentifier ?? "", seriesIdentifier ?? ""].joined(separator: "|")
     }
 
-    private var manageCode: String? {
-        let trimmedPrefix = codePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedSuffix = codeSuffix.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedPrefix.isEmpty, !trimmedSuffix.isEmpty else {
-            return nil
-        }
-        return "\(trimmedPrefix)-\(trimmedSuffix)"
-    }
-
     private var storedTokenIsValid: Bool {
         guard let scope = storedScope, let scopeId = storedScopeId else { return false }
         switch scope {
@@ -113,12 +108,20 @@ struct StartDetailScreen: View {
         storedToken != nil && storedTokenIsValid
     }
 
-    private var codeAttemptsRemaining: Int {
-        max(0, maxCodeValidationAttempts - codeValidationAttempts)
+    private var hasReusableParticipationToken: Bool {
+        storedParticipationToken != nil && storedParticipationTokenIsValid
     }
 
-    private var hasCodeAttemptsRemaining: Bool {
-        codeAttemptsRemaining > 0
+    private var storedParticipationTokenIsValid: Bool {
+        guard let scope = storedParticipationScope, let scopeId = storedParticipationScopeId else { return false }
+        switch scope {
+        case .start:
+            return scopeId == currentStartIdentifier
+        case .race:
+            return scopeId == raceIdentifier
+        case .series:
+            return scopeId == seriesIdentifier
+        }
     }
 
     private var canShowTemplateSelection: Bool {
@@ -245,12 +248,13 @@ struct StartDetailScreen: View {
                                 } else if shouldHideParticipateCTAForOtherActiveBroadcast {
                                     EmptyView()
                                 } else {
-                                    Button(action: onParticipate) {
+                                    Button(action: handleParticipateTap) {
                                         Text(primaryActionKey)
                                             .font(AppUI.buttonFont)
                                             .frame(maxWidth: .infinity)
                                             .frame(minHeight: AppUI.primaryButtonHeight)
                                     }
+                                    .accessibilityIdentifier("start_detail_participate_button")
                                     .buttonStyle(.borderedProminent)
                                     .tint(AppUI.brandPrimary)
                                     .padding(.horizontal)
@@ -261,9 +265,10 @@ struct StartDetailScreen: View {
                                 }
 
                                 if shouldShowSetStartTimeCTA {
-                                    Button(action: onSetStartTime) {
+                                    Button(action: handleSetStartTimeTap) {
                                         RaceManagerButtonLabel("set_start_time_title")
                                     }
+                                    .accessibilityIdentifier("start_detail_set_start_time_button")
                                     .buttonStyle(.plain)
                                     .foregroundStyle(Theme.RaceManager.primaryColor)
                                     .overlay(
@@ -304,6 +309,7 @@ struct StartDetailScreen: View {
                             }
                             .padding(.bottom, 24)
                         }
+                        .accessibilityIdentifier("start_detail_screen")
                     }
 
                     if showTemplatePicker {
@@ -339,6 +345,7 @@ struct StartDetailScreen: View {
         }
         .task(id: storageScopeKey) {
             await loadStoredManageAccess()
+            await loadStoredParticipationAccess()
         }
         .task(id: courseReloadTaskKey) {
             await loadCourse()
@@ -346,8 +353,87 @@ struct StartDetailScreen: View {
         .task(id: activeRehearsalNotificationKey) {
             syncRehearsalNotification()
         }
+        .sheet(isPresented: $showParticipationCodeModal) {
+            CodeEntryView(
+                titleKey: "participate_code_modal_title",
+                messageKey: "participate_code_modal_message",
+                verifyButtonKey: "participate_code_verify_button",
+                cancelButtonKey: "actions_cancel",
+                accentColor: AppUI.brandPrimary,
+                onVerify: { code in
+                    try await accessService.exchangeCodeForToken(code)
+                },
+                onSuccess: { token in
+                    participationStorage.saveToken(
+                        token: token,
+                        startId: currentStartIdentifier,
+                        raceId: raceIdentifier,
+                        seriesId: seriesIdentifier
+                    )
+                    showParticipationCodeModal = false
+
+                    Task {
+                        await loadStoredParticipationAccess()
+                        await MainActor.run {
+                            onParticipate()
+                        }
+                    }
+                },
+                onCancel: {
+                    showParticipationCodeModal = false
+                }
+            )
+        }
         .sheet(isPresented: $showCodeModal) {
-            codeValidationSheet
+            CodeEntryView(
+                titleKey: "set_start_time_manage_code_title",
+                messageKey: "set_start_time_manage_code_message",
+                verifyButtonKey: "set_start_time_manage_code_verify_button",
+                cancelButtonKey: "actions_cancel",
+                accentColor: Theme.RaceManager.primaryColor,
+                onVerify: { code in
+                    try await accessService.exchangeManageCodeForToken(code)
+                },
+                onSuccess: { token in
+                    storage.saveToken(
+                        token: token,
+                        startId: currentStartIdentifier,
+                        raceId: raceIdentifier,
+                        seriesId: seriesIdentifier
+                    )
+                    showCodeModal = false
+
+                    let pendingTemplate = pendingTemplateSelection
+                    let pendingEditTarget = pendingCourseItemEditTarget
+                    let pendingManageNavigation = pendingManageNavigationTarget
+
+                    Task {
+                        await loadStoredManageAccess()
+
+                        if let pendingTemplate {
+                            await MainActor.run {
+                                pendingTemplateSelection = nil
+                            }
+                            await copyTemplateToStart(pendingTemplate)
+                        } else if let pendingEditTarget {
+                            await MainActor.run {
+                                pendingCourseItemEditTarget = nil
+                                courseItemEditTarget = pendingEditTarget
+                            }
+                        } else if let pendingManageNavigation {
+                            await MainActor.run {
+                                pendingManageNavigationTarget = nil
+                                performManageProtectedNavigation(pendingManageNavigation)
+                            }
+                        }
+                    }
+                },
+                onCancel: {
+                    pendingCourseItemEditTarget = nil
+                    pendingManageNavigationTarget = nil
+                    showCodeModal = false
+                }
+            )
         }
         .sheet(item: $courseItemEditTarget) { target in
             courseItemEditSheet(for: target)
@@ -605,41 +691,17 @@ struct StartDetailScreen: View {
         storedScopeId = tokenRecord.scopeId
     }
 
-    private func verifyManageCode() async {
-        guard hasCodeAttemptsRemaining else { return }
-        guard !isValidatingCode else { return }
-        guard let code = manageCode else {
-            codeValidationError = NSLocalizedString("set_position_error_manage_token_required", comment: "")
+    private func loadStoredParticipationAccess() async {
+        if let tokenRecord = participationStorage.loadToken(for: currentStartIdentifier, raceId: raceIdentifier, seriesId: seriesIdentifier) {
+            storedParticipationToken = tokenRecord.token
+            storedParticipationScope = tokenRecord.scope
+            storedParticipationScopeId = tokenRecord.scopeId
             return
         }
 
-        isValidatingCode = true
-        codeValidationError = nil
-        defer { isValidatingCode = false }
-
-        do {
-            let token = try await accessService.exchangeManageCodeForToken(code)
-            storage.saveToken(
-                token: token,
-                startId: currentStartIdentifier,
-                raceId: raceIdentifier,
-                seriesId: seriesIdentifier
-            )
-            await loadStoredManageAccess()
-            codePrefix = ""
-            codeSuffix = ""
-            showCodeModal = false
-            if let pendingTemplateSelection {
-                self.pendingTemplateSelection = nil
-                await copyTemplateToStart(pendingTemplateSelection)
-            } else if let pendingCourseItemEditTarget {
-                self.pendingCourseItemEditTarget = nil
-                courseItemEditTarget = pendingCourseItemEditTarget
-            }
-        } catch {
-            codeValidationAttempts += 1
-            codeValidationError = error.localizedDescription
-        }
+        storedParticipationToken = nil
+        storedParticipationScope = nil
+        storedParticipationScopeId = nil
     }
 
     private func copyTemplateToStart(_ template: RaceCourse) async {
@@ -649,7 +711,6 @@ struct StartDetailScreen: View {
         }
         guard hasReusableToken, let storedToken else {
             pendingTemplateSelection = template
-            codeValidationError = nil
             showCodeModal = true
             return
         }
@@ -686,10 +747,42 @@ struct StartDetailScreen: View {
         }
     }
 
+    private func handleParticipateTap() {
+        guard hasReusableParticipationToken else {
+            showParticipationCodeModal = true
+            return
+        }
+
+        onParticipate()
+    }
+
+    private func handleSetStartTimeTap() {
+        requestManageProtectedNavigation(.setStartTime)
+    }
+
+    private func requestManageProtectedNavigation(_ target: ManageProtectedNavigationTarget) {
+        guard hasReusableToken else {
+            pendingManageNavigationTarget = target
+            showCodeModal = true
+            return
+        }
+
+        performManageProtectedNavigation(target)
+    }
+
+    private func performManageProtectedNavigation(_ target: ManageProtectedNavigationTarget) {
+        switch target {
+        case .setStartTime:
+            onSetStartTime()
+        case let .setPosition(positionTarget):
+            onSetPositionTarget(positionTarget)
+        }
+    }
+
     private func handleCoursePositionSelection(_ selection: CoursePositionSelection) {
         guard let course = loadedCourse else { return }
         guard let target = setPositionTarget(from: selection, in: course) else { return }
-        onSetPositionTarget(target)
+        requestManageProtectedNavigation(.setPosition(target))
     }
 
     private func setPositionTarget(from selection: CoursePositionSelection, in course: RaceCourse) -> SetPositionTarget? {
@@ -884,7 +977,6 @@ struct StartDetailScreen: View {
     private func presentCourseItemEditor(_ target: CourseItemEditTarget) {
         guard hasReusableToken else {
             pendingCourseItemEditTarget = target
-            codeValidationError = nil
             showCodeModal = true
             return
         }
@@ -1013,83 +1105,6 @@ struct StartDetailScreen: View {
             return
         }
         metricsUploader.stopBroadcast(reason: .completedStart)
-    }
-
-    @ViewBuilder
-    private var codeValidationSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("set_start_time_manage_code_message")
-                    .font(AppFont.textStyle(.subheadline))
-                    .foregroundStyle(.secondary)
-
-                HStack {
-                    TextField("participate_code_prefix", text: $codePrefix)
-                        .font(inputContentFont)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("-")
-                        .font(AppFont.textStyle(.title2))
-                        .foregroundStyle(.secondary)
-                    TextField("participate_code_suffix", text: $codeSuffix)
-                        .font(inputContentFont)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                if let codeValidationError {
-                    Text(codeValidationError)
-                        .foregroundStyle(Theme.Colors.error)
-                        .font(AppFont.textStyle(.footnote))
-                }
-
-                if hasCodeAttemptsRemaining {
-                    Text(
-                        String(
-                            format: NSLocalizedString("participate_code_attempts_remaining", comment: ""),
-                            codeAttemptsRemaining
-                        )
-                    )
-                    .font(AppFont.textStyle(.footnote))
-                    .foregroundStyle(.secondary)
-                } else {
-                    Text("participate_code_attempts_exhausted")
-                        .font(AppFont.textStyle(.footnote))
-                        .foregroundStyle(Theme.Colors.error)
-                }
-
-                Button {
-                    Task { await verifyManageCode() }
-                } label: {
-                    if isValidatingCode {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("set_start_time_manage_code_verify_button")
-                            .font(AppUI.buttonFont)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.RaceManager.primaryColor)
-                .disabled(isValidatingCode || !hasCodeAttemptsRemaining || manageCode == nil)
-
-                Button("actions_cancel") {
-                    pendingCourseItemEditTarget = nil
-                    showCodeModal = false
-                }
-                .font(AppUI.buttonFont)
-                .frame(maxWidth: .infinity)
-
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("set_start_time_manage_code_title")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .interactiveDismissDisabled(true)
     }
 
 }

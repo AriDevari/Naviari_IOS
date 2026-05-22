@@ -22,6 +22,23 @@ This skill exists to make iOS validation explicit and cheap:
 - validate visible behavior intentionally
 - confirm theme-token and reusable-view rules, not only visual appearance
 
+## Environment Reality On This Mac
+
+- Always run Xcode commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` so the workspace uses full Xcode instead of CommandLineTools.
+- The iOS simulator is not available on this Mac. Use `-destination 'generic/platform=iOS'` for builds and a real connected iPhone for UI tests and manual verification.
+- For device tests, prefer the connected phone's exact destination id with narrow `-only-testing:` filters instead of broad full-suite runs.
+
+Proven command shapes:
+
+- Build: `env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild build -scheme Naviari_IOS -destination 'generic/platform=iOS'`
+- Targeted device test: `env DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test -scheme Naviari_IOS -destination 'id=<device-id>' -only-testing:<TestTarget/TestCase>`
+
+## Learned Device-Test Pitfalls
+
+- If a device test fails before the app really launches with CoreDevice, Mercury, or runtime-profile generation errors, rerun the same narrow selection once before treating it as a product regression. Those startup failures can be transient device-side launch issues.
+- When a parent SwiftUI container needs an accessibility identifier and the child controls must still be visible to XCUITest, use `.accessibilityElement(children: .contain)` on the container. Otherwise the parent can swallow the descendants and make field/button lookups fail.
+- For code-entry and other gate-style flows, verify the real navigation contract, not only that a sheet appears or disappears. A modal-dismiss assertion alone can miss a user-visible regression.
+
 ## Use When
 
 - a SwiftUI or UIKit change needs validation

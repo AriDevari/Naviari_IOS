@@ -37,8 +37,8 @@
 "participate_club_placeholder" = "Home club";
 "participate_color_label" = "Color";
 "participate_code_label" = "Participation Code";
-"participate_code_prefix" = "Code";
-"participate_code_suffix" = "Suffix";
+"participate_code_prefix" = "xxx";
+"participate_code_suffix" = "xxx";
 "participate_cta_hint" = "Share your live GPS with the race team.";
 "participate_rehearsal_hint" = "Test this upcoming start before the live window begins.";
 "participate_rehearsal_guidance_title" = "Short test broadcast";
@@ -136,7 +136,7 @@
 "set_start_time_starts_at_format" = "Starts at %@";
 "set_start_time_start_button" = "Start";
 "set_start_time_manage_code_title" = "Management Code";
-"set_start_time_manage_code_message" = "Enter management code to unlock start time editing.";
+"set_start_time_manage_code_message" = "To access this function, you need the race management code.";
 "set_start_time_manage_code_verify_button" = "Verify Code";
 "set_start_time_error_management_code_required" = "Management code is required.";
 "set_start_time_error_invalid_selection" = "Unable to create a valid time from selection.";

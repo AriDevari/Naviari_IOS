@@ -37,8 +37,8 @@
 "participate_club_placeholder" = "Hemmaklubb";
 "participate_color_label" = "Färg";
 "participate_code_label" = "Deltagarkod";
-"participate_code_prefix" = "Kod";
-"participate_code_suffix" = "Suffix";
+"participate_code_prefix" = "xxx";
+"participate_code_suffix" = "xxx";
 "participate_cta_hint" = "Dela din GPS-position med tävlingsledningen.";
 "participate_rehearsal_hint" = "Testa den här kommande starten innan det riktiga live-fönstret öppnar.";
 "participate_rehearsal_guidance_title" = "Kort testsändning";
@@ -136,7 +136,7 @@
 "set_start_time_starts_at_format" = "Startar kl. %@";
 "set_start_time_start_button" = "Starta";
 "set_start_time_manage_code_title" = "Administrationskod";
-"set_start_time_manage_code_message" = "Ange administrationskod för att låsa upp inställning av starttid.";
+"set_start_time_manage_code_message" = "För att använda den här funktionen behöver du tävlingens administrationskod.";
 "set_start_time_manage_code_verify_button" = "Verifiera kod";
 "set_start_time_error_management_code_required" = "Administrationskod krävs.";
 "set_start_time_error_invalid_selection" = "Det gick inte att skapa en giltig tid från valet.";

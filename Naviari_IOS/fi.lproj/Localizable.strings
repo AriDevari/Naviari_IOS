@@ -37,8 +37,8 @@
 "participate_club_placeholder" = "Kotiseura";
 "participate_color_label" = "Väri";
 "participate_code_label" = "Osallistumiskoodi";
-"participate_code_prefix" = "Koodi";
-"participate_code_suffix" = "Loppuosa";
+"participate_code_prefix" = "xxx";
+"participate_code_suffix" = "xxx";
 "participate_cta_hint" = "Jaa GPS-sijaintisi kilpailujohdolle.";
 "participate_rehearsal_hint" = "Testaa tuleva lähtö ennen varsinaisen live-ikkunan alkamista.";
 "participate_rehearsal_guidance_title" = "Lyhyt testilähetys";
@@ -136,7 +136,7 @@
 "set_start_time_starts_at_format" = "Lähtö klo %@";
 "set_start_time_start_button" = "Käynnistä";
 "set_start_time_manage_code_title" = "Hallintakoodi";
-"set_start_time_manage_code_message" = "Anna hallintakoodi avataksesi lähtöajan asettamisen.";
+"set_start_time_manage_code_message" = "Tarvitset tämän toiminnon käyttämiseen kilpailun hallintakoodin.";
 "set_start_time_manage_code_verify_button" = "Vahvista koodi";
 "set_start_time_error_management_code_required" = "Hallintakoodi vaaditaan.";
 "set_start_time_error_invalid_selection" = "Valinnasta ei voitu muodostaa kelvollista aikaa.";

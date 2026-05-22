@@ -22,9 +22,12 @@ struct Naviari_IOSApp: App {
     @StateObject private var locationManager = LocationDataManager()
     @StateObject private var boatMetricsUploader = BoatMetricsUploader()
     @Environment(\.scenePhase) private var scenePhase
+    private let uiTestScenario = CourseEditUITestScenario.current
 
     init() {
-        BoatMetricsBackgroundScheduler.shared.register()
+        if CourseEditUITestScenario.current == nil {
+            BoatMetricsBackgroundScheduler.shared.register()
+        }
         configureTypographyAppearance()
     }
     var sharedModelContainer: ModelContainer = {
@@ -47,6 +50,7 @@ struct Naviari_IOSApp: App {
                 .environmentObject(locationManager)
                 .environmentObject(boatMetricsUploader)
                 .onAppear {
+                    guard uiTestScenario == nil else { return }
                     locationManager.start()
                     boatMetricsUploader.configure(with: locationManager)
                     BoatMetricsBackgroundScheduler.shared.configure(uploader: boatMetricsUploader)
@@ -54,6 +58,7 @@ struct Naviari_IOSApp: App {
         }
         .modelContainer(sharedModelContainer)
         .onChange(of: scenePhase) { _, phase in
+            guard uiTestScenario == nil else { return }
             if phase == .background {
                 BoatMetricsBackgroundScheduler.shared.scheduleIfNeeded()
             }

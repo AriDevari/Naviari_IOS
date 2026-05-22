@@ -7,12 +7,7 @@ struct SetPositionScreen: View {
     let start: RaceStart
     let target: SetPositionTarget
 
-    @State private var codePrefix = ""
-    @State private var codeSuffix = ""
     @State private var showCodeModal = false
-    @State private var isValidatingCode = false
-    @State private var codeValidationError: String?
-    @State private var codeValidationAttempts = 0
     @State private var storedToken: String?
     @State private var storedScope: ManageAccessScope?
     @State private var storedScopeId: String?
@@ -26,8 +21,6 @@ struct SetPositionScreen: View {
 
     private let accessService = ParticipationService()
     private let storage = ManageAccessStorage.shared
-    private let maxCodeValidationAttempts = 5
-    private let inputContentFont = AppFont.fixed(21)
     private let raceService = RaceService()
 
     var body: some View {
@@ -74,9 +67,33 @@ struct SetPositionScreen: View {
                 }
                 .padding()
             }
+            .accessibilityIdentifier("set_position_screen")
         }
         .sheet(isPresented: $showCodeModal) {
-            codeValidationSheet
+            CodeEntryView(
+                titleKey: "set_start_time_manage_code_title",
+                messageKey: "set_start_time_manage_code_message",
+                verifyButtonKey: "set_start_time_manage_code_verify_button",
+                cancelButtonKey: "back_button",
+                accentColor: AppUI.brandPrimary,
+                onVerify: { code in
+                    try await accessService.exchangeManageCodeForToken(code)
+                },
+                onSuccess: { token in
+                    storage.saveToken(
+                        token: token,
+                        startId: startIdentifier,
+                        raceId: raceIdentifier,
+                        seriesId: seriesIdentifier
+                    )
+                    showCodeModal = false
+                    submissionError = nil
+                    Task { await loadStoredManageAccess() }
+                },
+                onCancel: {
+                    showCodeModal = false
+                }
+            )
         }
         .task(id: storageScopeKey) {
             await loadStoredManageAccess()
@@ -100,15 +117,6 @@ struct SetPositionScreen: View {
         [startIdentifier ?? "", raceIdentifier ?? "", seriesIdentifier ?? ""].joined(separator: "|")
     }
 
-    private var manageCode: String? {
-        let trimmedPrefix = codePrefix.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedSuffix = codeSuffix.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedPrefix.isEmpty, !trimmedSuffix.isEmpty else {
-            return nil
-        }
-        return "\(trimmedPrefix)-\(trimmedSuffix)"
-    }
-
     private var hasReusableToken: Bool {
         storedToken != nil && storedTokenIsValid
     }
@@ -123,14 +131,6 @@ struct SetPositionScreen: View {
         case .series:
             return scopeId == seriesIdentifier
         }
-    }
-
-    private var codeAttemptsRemaining: Int {
-        max(0, maxCodeValidationAttempts - codeValidationAttempts)
-    }
-
-    private var hasCodeAttemptsRemaining: Bool {
-        codeAttemptsRemaining > 0
     }
 
     private var locationAuthorizationIsValid: Bool {
@@ -185,37 +185,6 @@ struct SetPositionScreen: View {
         storedToken = tokenRecord.token
         storedScope = tokenRecord.scope
         storedScopeId = tokenRecord.scopeId
-    }
-
-    private func verifyManageCode() async {
-        guard hasCodeAttemptsRemaining else { return }
-        guard !isValidatingCode else { return }
-        guard let code = manageCode else {
-            codeValidationError = NSLocalizedString("set_position_error_manage_token_required", comment: "")
-            return
-        }
-
-        isValidatingCode = true
-        codeValidationError = nil
-        defer { isValidatingCode = false }
-
-        do {
-            let token = try await accessService.exchangeManageCodeForToken(code)
-            storage.saveToken(
-                token: token,
-                startId: startIdentifier,
-                raceId: raceIdentifier,
-                seriesId: seriesIdentifier
-            )
-            await loadStoredManageAccess()
-            codePrefix = ""
-            codeSuffix = ""
-            showCodeModal = false
-            submissionError = nil
-        } catch {
-            codeValidationAttempts += 1
-            codeValidationError = error.localizedDescription
-        }
     }
 
     private func submitPosition() async {
@@ -275,81 +244,6 @@ struct SetPositionScreen: View {
         }
     }
 
-    @ViewBuilder
-    private var codeValidationSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("set_start_time_manage_code_message")
-                    .font(AppFont.textStyle(.subheadline))
-                    .foregroundStyle(.secondary)
-
-                HStack {
-                    TextField("participate_code_prefix", text: $codePrefix)
-                        .font(inputContentFont)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text("-")
-                        .font(AppFont.textStyle(.title2))
-                        .foregroundStyle(.secondary)
-                    TextField("participate_code_suffix", text: $codeSuffix)
-                        .font(inputContentFont)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                }
-
-                if let codeValidationError {
-                    Text(codeValidationError)
-                        .foregroundStyle(Theme.Colors.error)
-                        .font(AppFont.textStyle(.footnote))
-                }
-
-                if hasCodeAttemptsRemaining {
-                    Text(
-                        String(
-                            format: NSLocalizedString("participate_code_attempts_remaining", comment: ""),
-                            codeAttemptsRemaining
-                        )
-                    )
-                    .font(AppFont.textStyle(.footnote))
-                    .foregroundStyle(.secondary)
-                } else {
-                    Text("participate_code_attempts_exhausted")
-                        .font(AppFont.textStyle(.footnote))
-                        .foregroundStyle(Theme.Colors.error)
-                }
-
-                Button {
-                    Task { await verifyManageCode() }
-                } label: {
-                    if isValidatingCode {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("set_start_time_manage_code_verify_button")
-                            .font(AppUI.buttonFont)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(AppUI.brandPrimary)
-                .disabled(isValidatingCode || !hasCodeAttemptsRemaining || manageCode == nil)
-
-                Button("back_button") {
-                    dismiss()
-                }
-                .font(AppUI.buttonFont)
-                .frame(maxWidth: .infinity)
-
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("set_start_time_manage_code_title")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .interactiveDismissDisabled(true)
-    }
 }
 
 private struct SetPositionPrimaryButtonLabel: View {

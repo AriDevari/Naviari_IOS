@@ -361,8 +361,8 @@ final class MockURLSession {
 
     var urlSession: URLSession {
         let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [MockURLProtocol.self]
-        MockURLProtocol.handler = { [weak self] request in
+        config.protocolClasses = [CourseEditMockURLProtocol.self]
+        CourseEditMockURLProtocol.handler = { [weak self] request in
             self?.capturedRequest = request
             let response = HTTPURLResponse(
                 url: request.url!,
@@ -376,14 +376,14 @@ final class MockURLSession {
     }
 }
 
-final class MockURLProtocol: URLProtocol {
+final class CourseEditMockURLProtocol: URLProtocol {
     static var handler: ((URLRequest) -> (Data, HTTPURLResponse))?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        guard let handler = MockURLProtocol.handler else {
+        guard let handler = CourseEditMockURLProtocol.handler else {
             client?.urlProtocol(self, didFailWithError: URLError(.unknown))
             return
         }

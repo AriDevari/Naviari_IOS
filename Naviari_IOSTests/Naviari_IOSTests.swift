@@ -237,7 +237,7 @@ final class Naviari_IOSTests: XCTestCase {
                 wait(for: [inspectedRequest], timeout: 1.0)
                 XCTAssertEqual(templates.count, 1)
                 XCTAssertEqual(templates.first?.id, "template-1")
-                XCTAssertEqual(templates.first?.total_length_nm, 12.4, accuracy: 0.000_001)
+                XCTAssertEqual(try XCTUnwrap(templates.first?.total_length_nm), 12.4, accuracy: 0.000_001)
         }
 
         func testCopyCourseTemplateToStartUsesStartCopyEndpointAndManageToken() async throws {
@@ -887,11 +887,14 @@ final class Naviari_IOSTests: XCTestCase {
         """.data(using: .utf8)!
 
         let course = try JSONDecoder().decode(RaceCourse.self, from: payload)
-        XCTAssertEqual(course.start_line?.mark_left_lat, 60.111, accuracy: 0.000_001)
-        XCTAssertEqual(course.start_line?.mark_right_lon, 24.222, accuracy: 0.000_001)
-        XCTAssertEqual(course.finish_line?.mark_left_lon, 24.333, accuracy: 0.000_001)
-        XCTAssertEqual(course.course_marks.first?.mark_lat, 60.555, accuracy: 0.000_001)
-        XCTAssertEqual(course.course_marks.first?.mark_lon, 24.555, accuracy: 0.000_001)
+        let startLine = try XCTUnwrap(course.start_line)
+        let finishLine = try XCTUnwrap(course.finish_line)
+        let firstMark = try XCTUnwrap(course.course_marks.first)
+        XCTAssertEqual(try XCTUnwrap(startLine.mark_left_lat), 60.111, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(startLine.mark_right_lon), 24.222, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(finishLine.mark_left_lon), 24.333, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(firstMark.mark_lat), 60.555, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(firstMark.mark_lon), 24.555, accuracy: 0.000_001)
 
         let timeline = CourseTimelineItem.buildTimeline(from: course)
         XCTAssertEqual(timeline.first(where: { $0.type == .start })?.status, .preliminary)
@@ -923,10 +926,12 @@ final class Naviari_IOSTests: XCTestCase {
         """.data(using: .utf8)!
 
         let course = try JSONDecoder().decode(RaceCourse.self, from: payload)
-        XCTAssertEqual(course.start_line?.mark_left_lat, 61.001, accuracy: 0.000_001)
-        XCTAssertEqual(course.start_line?.mark_right_lon, 25.002, accuracy: 0.000_001)
-        XCTAssertEqual(course.course_marks.first?.mark_lat, 61.101, accuracy: 0.000_001)
-        XCTAssertEqual(course.course_marks.first?.mark_lon, 25.101, accuracy: 0.000_001)
+        let startLine = try XCTUnwrap(course.start_line)
+        let firstMark = try XCTUnwrap(course.course_marks.first)
+        XCTAssertEqual(try XCTUnwrap(startLine.mark_left_lat), 61.001, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(startLine.mark_right_lon), 25.002, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(firstMark.mark_lat), 61.101, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(firstMark.mark_lon), 25.101, accuracy: 0.000_001)
     }
 
     func testRaceCourseDecoderDefaultsMissingCourseItemsForTemplateSummary() throws {
@@ -945,7 +950,7 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertEqual(course.name, "Windward")
         XCTAssertEqual(course.series_id, "series-1")
         XCTAssertEqual(course.is_template, true)
-        XCTAssertEqual(course.total_length_nm, 12.4, accuracy: 0.000_001)
+        XCTAssertEqual(try XCTUnwrap(course.total_length_nm), 12.4, accuracy: 0.000_001)
         XCTAssertEqual(course.course_marks, [])
         XCTAssertNil(course.start_line)
         XCTAssertNil(course.finish_line)
