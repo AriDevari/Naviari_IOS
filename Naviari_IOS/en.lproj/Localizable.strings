@@ -261,3 +261,25 @@
 "race_course_copy_error_title" = "Course assignment incomplete";
 "race_course_copy_partial_message" = "%d of %d starts were updated. Some starts could not be assigned a course.";
 "race_course_manage_code_hint" = "Enter the race or series management code to assign a course to all starts. A start-level code is not accepted here.";
+
+// --- Start countdown timer ---
+"start_detail_show_timer_button" = "Show timer";
+"start_timer_title" = "Start Timer";
+"start_timer_info_title" = "Start Timer Help";
+"start_timer_info_body" = "Counts down to the actual start time. Enable voice to hear time announcements at key intervals. Enable flag mode to hear additional countdowns for the flag raising and lowering moments — using a different voice so you can tell them apart.";
+"start_timer_voice_label" = "Voice";
+"start_timer_flag_label" = "Flag";
+"start_timer_go" = "GO";
+
+// --- Start timer spoken announcements ---
+"start_timer_say_5min" = "5 minutes to start";
+"start_timer_say_4min" = "4 minutes to start";
+"start_timer_say_3min" = "3 minutes to start";
+"start_timer_say_2min" = "2 minutes to start";
+"start_timer_say_1min30" = "One minute and 30 seconds to start";
+"start_timer_say_1min" = "One minute to start";
+"start_timer_say_seconds" = "%d seconds";
+"start_timer_say_go" = "GO";
+"start_timer_flag_say_20sec_to" = "20 seconds to %@ minute";
+"start_timer_flag_say_10sec_to" = "10 seconds to %@ minute";
+"start_timer_flag_say_now" = "Now";

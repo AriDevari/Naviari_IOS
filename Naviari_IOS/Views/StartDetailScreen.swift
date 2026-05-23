@@ -28,6 +28,7 @@ struct StartDetailScreen: View {
     let start: RaceStart
     var onParticipate: () -> Void
     var onSetStartTime: () -> Void
+    var onShowTimer: () -> Void
     var onSetPositionTarget: (SetPositionTarget) -> Void
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
     @EnvironmentObject private var metricsUploader: BoatMetricsUploader
@@ -266,17 +267,35 @@ struct StartDetailScreen: View {
                                 }
 
                                 if shouldShowSetStartTimeCTA {
-                                    Button(action: handleSetStartTimeTap) {
-                                        RaceManagerButtonLabel("set_start_time_title")
+                                    if resolvedStart.actualStartDate != nil {
+                                        SplitActionButton(
+                                            variant: .dualOutlined(
+                                                primaryColor: Theme.Colors.brandPrimary,
+                                                secondaryColor: Theme.RaceManager.primaryColor
+                                            ),
+                                            secondaryIconName: Theme.RaceManager.iconName,
+                                            primaryAccessibilityIdentifier: "start_detail_show_timer_button",
+                                            secondaryAccessibilityIdentifier: "start_detail_set_start_time_button",
+                                            onPrimaryTap: { onShowTimer() },
+                                            onSecondaryTap: handleSetStartTimeTap
+                                        ) {
+                                            Text("start_detail_show_timer_button")
+                                                .font(Theme.Typography.button)
+                                        }
+                                        .padding(.horizontal)
+                                    } else {
+                                        Button(action: handleSetStartTimeTap) {
+                                            RaceManagerButtonLabel("set_start_time_title")
+                                        }
+                                        .accessibilityIdentifier("start_detail_set_start_time_button")
+                                        .buttonStyle(.plain)
+                                        .foregroundStyle(Theme.RaceManager.primaryColor)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
+                                                .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
+                                        )
+                                        .padding(.horizontal)
                                     }
-                                    .accessibilityIdentifier("start_detail_set_start_time_button")
-                                    .buttonStyle(.plain)
-                                    .foregroundStyle(Theme.RaceManager.primaryColor)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
-                                            .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
-                                    )
-                                    .padding(.horizontal)
                                 }
 
                                 VStack(alignment: .leading, spacing: 12) {

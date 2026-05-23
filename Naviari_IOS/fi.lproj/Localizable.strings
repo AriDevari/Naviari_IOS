@@ -261,3 +261,25 @@
 "race_course_copy_error_title" = "Radan asettaminen epäonnistui osittain";
 "race_course_copy_partial_message" = "%d / %d lähtöä päivitettiin. Osalle lähdöistä ei voitu asettaa rataa.";
 "race_course_manage_code_hint" = "Syötä kisan tai sarjan hallintakoodi asettaaksesi radan kaikille lähdöille. Lähtötason koodi ei kelpaa tähän toimintoon.";
+
+// --- Start countdown timer ---
+"start_detail_show_timer_button" = "Näytä ajastin";
+"start_timer_title" = "Lähtöajastin";
+"start_timer_info_title" = "Lähtöajastin – ohje";
+"start_timer_info_body" = "Laskee aikaa alas todelliseen lähtöhetkeen. Ota ääniohjaus käyttöön kuullaksesi aikailmoitukset avainhetkillä. Ota lippuohjaus käyttöön saadaksesi lisäilmoitukset lipunostohetkistä – eri äänellä, jotta ne on helppo erottaa toisistaan.";
+"start_timer_voice_label" = "Ääni";
+"start_timer_flag_label" = "Lippu";
+"start_timer_go" = "GO";
+
+// --- Start timer spoken announcements ---
+"start_timer_say_5min" = "5 minuuttia lähtöön";
+"start_timer_say_4min" = "4 minuuttia lähtöön";
+"start_timer_say_3min" = "3 minuuttia lähtöön";
+"start_timer_say_2min" = "2 minuuttia lähtöön";
+"start_timer_say_1min30" = "Minuutti ja 30 sekuntia lähtöön";
+"start_timer_say_1min" = "Minuutti lähtöön";
+"start_timer_say_seconds" = "%d sekuntia";
+"start_timer_say_go" = "Lähtö";
+"start_timer_flag_say_20sec_to" = "20 sekuntia %@ minuuttiin";
+"start_timer_flag_say_10sec_to" = "10 sekuntia %@ minuuttiin";
+"start_timer_flag_say_now" = "Nyt";
