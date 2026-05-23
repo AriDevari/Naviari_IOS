@@ -58,6 +58,10 @@ struct ContentView: View {
                                         let latest = latestStart(for: start, in: summary)
                                         navigationPath.append(.setStartTime(summary, latest))
                                     },
+                                    onShowTimer: {
+                                        let latest = latestStart(for: start, in: summary)
+                                        navigationPath.append(.showTimer(summary, latest))
+                                    },
                                     onSetPositionTarget: { target in
                                         let latest = latestStart(for: start, in: summary)
                                         navigationPath.append(.setPosition(summary, latest, target))
@@ -67,6 +71,8 @@ struct ContentView: View {
                                 ParticipateView(raceSummary: summary, start: start)
                             case let .setStartTime(summary, start):
                                 SetStartTimeScreen(raceSummary: summary, start: start)
+                            case let .showTimer(summary, start):
+                                StartCountdownTimerScreen(raceSummary: summary, start: start)
                             case let .setPosition(summary, start, target):
                                 SetPositionScreen(
                                     raceSummary: summary,
@@ -119,6 +125,7 @@ private enum AppRoute: Hashable {
     case startDetail(RaceSummary, RaceStart)
     case participate(RaceSummary, RaceStart)
     case setStartTime(RaceSummary, RaceStart)
+    case showTimer(RaceSummary, RaceStart)
     case setPosition(RaceSummary, RaceStart, SetPositionTarget)
 }
 #Preview {

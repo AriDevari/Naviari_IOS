@@ -220,6 +220,9 @@ private struct StartDetailCodeEntryHarnessView: View {
                     onSetStartTime: {
                         navigationResult = "set-start-time"
                     },
+                    onShowTimer: {
+                        navigationResult = "show-timer"
+                    },
                     onSetPositionTarget: { _ in
                         navigationResult = "set-position"
                     }

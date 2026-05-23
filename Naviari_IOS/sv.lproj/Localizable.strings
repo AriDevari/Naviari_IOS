@@ -261,3 +261,25 @@
 "race_course_copy_error_title" = "Bantilldelning ofullständig";
 "race_course_copy_partial_message" = "%d av %d starter uppdaterades. Några starter kunde inte tilldelas en bana.";
 "race_course_manage_code_hint" = "Ange tävlings- eller seriehanteringskoden för att tilldela en bana till alla starter. En startnivåkod accepteras inte här.";
+
+// --- Start countdown timer ---
+"start_detail_show_timer_button" = "Visa timer";
+"start_timer_title" = "Starttimer";
+"start_timer_info_title" = "Starttimer – hjälp";
+"start_timer_info_body" = "Räknar ned till faktisk starttid. Aktivera röst för att höra tidsmeddelanden vid viktiga ögonblick. Aktivera flaggläget för extra nedräkningar inför flagg-momenten – med en annan röst så att du enkelt kan skilja dem åt.";
+"start_timer_voice_label" = "Röst";
+"start_timer_flag_label" = "Flagga";
+"start_timer_go" = "GO";
+
+// --- Start timer spoken announcements ---
+"start_timer_say_5min" = "5 minuter till start";
+"start_timer_say_4min" = "4 minuter till start";
+"start_timer_say_3min" = "3 minuter till start";
+"start_timer_say_2min" = "2 minuter till start";
+"start_timer_say_1min30" = "En minut och 30 sekunder till start";
+"start_timer_say_1min" = "En minut till start";
+"start_timer_say_seconds" = "%d sekunder";
+"start_timer_say_go" = "Start";
+"start_timer_flag_say_20sec_to" = "20 sekunder till %@ minuter";
+"start_timer_flag_say_10sec_to" = "10 sekunder till %@ minuter";
+"start_timer_flag_say_now" = "Nu";

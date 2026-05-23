@@ -3,24 +3,38 @@ import SwiftUI
 struct SplitActionButton<Label: View>: View {
     enum Variant {
         case outlined(accentColor: Color)
+        case dualOutlined(primaryColor: Color, secondaryColor: Color)
 
         var borderColor: Color {
             switch self {
             case let .outlined(accentColor):
                 return accentColor
+            case let .dualOutlined(primaryColor, _):
+                return primaryColor
             }
         }
 
-        var foregroundColor: Color {
+        var primaryForegroundColor: Color {
             switch self {
             case let .outlined(accentColor):
                 return accentColor
+            case let .dualOutlined(primaryColor, _):
+                return primaryColor
+            }
+        }
+
+        var secondaryForegroundColor: Color {
+            switch self {
+            case let .outlined(accentColor):
+                return accentColor
+            case let .dualOutlined(_, secondaryColor):
+                return secondaryColor
             }
         }
 
         var backgroundColor: Color {
             switch self {
-            case .outlined:
+            case .outlined, .dualOutlined:
                 return .clear
             }
         }
@@ -29,6 +43,7 @@ struct SplitActionButton<Label: View>: View {
     let variant: Variant
     let isEnabled: Bool
     let isExpanded: Bool
+    let secondaryIconName: String
     let primaryAccessibilityIdentifier: String?
     let secondaryAccessibilityIdentifier: String?
     let onPrimaryTap: () -> Void
@@ -39,6 +54,7 @@ struct SplitActionButton<Label: View>: View {
         variant: Variant,
         isEnabled: Bool = true,
         isExpanded: Bool = false,
+        secondaryIconName: String = "chevron.down",
         primaryAccessibilityIdentifier: String? = nil,
         secondaryAccessibilityIdentifier: String? = nil,
         onPrimaryTap: @escaping () -> Void,
@@ -48,6 +64,7 @@ struct SplitActionButton<Label: View>: View {
         self.variant = variant
         self.isEnabled = isEnabled
         self.isExpanded = isExpanded
+        self.secondaryIconName = secondaryIconName
         self.primaryAccessibilityIdentifier = primaryAccessibilityIdentifier
         self.secondaryAccessibilityIdentifier = secondaryAccessibilityIdentifier
         self.onPrimaryTap = onPrimaryTap
@@ -71,6 +88,7 @@ struct SplitActionButton<Label: View>: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .foregroundStyle(variant.primaryForegroundColor.opacity(isEnabled ? 1.0 : 0.45))
             .disabled(!isEnabled)
             .accessibilityIdentifier(primaryAccessibilityIdentifier ?? "")
 
@@ -80,17 +98,17 @@ struct SplitActionButton<Label: View>: View {
                 .padding(.vertical, 10)
 
             Button(action: onSecondaryTap) {
-                Image(systemName: "chevron.down")
+                Image(systemName: secondaryIconName)
                     .font(AppFont.fixed(20, weight: .semibold))
-                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .rotationEffect(.degrees(secondaryIconName == "chevron.down" && isExpanded ? 180 : 0))
                     .frame(width: Theme.Sizing.primaryButtonHeight, height: Theme.Sizing.primaryButtonHeight)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .foregroundStyle(variant.secondaryForegroundColor.opacity(isEnabled ? 1.0 : 0.45))
             .disabled(!isEnabled)
             .accessibilityIdentifier(secondaryAccessibilityIdentifier ?? "")
         }
-        .foregroundStyle(variant.foregroundColor)
         .background(variant.backgroundColor)
         .clipShape(shape)
         .overlay(
