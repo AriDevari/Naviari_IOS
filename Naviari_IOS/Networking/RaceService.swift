@@ -159,6 +159,45 @@ struct RaceService {
         return payload.course
     }
 
+    /// Copies one template once for the whole race and links that shared
+    /// course to all starts in the race.
+    func copyCourseTemplateToRace(
+        raceId: String,
+        templateCourseId: String,
+        accessToken: String,
+        name: String? = nil,
+        description: String? = nil,
+        updatedBy: String? = "ios-race-detail"
+    ) async throws -> RaceCourseTemplateCopyResult {
+        var request = try makeRequest(path: "/api/races/\(raceId)/course-copy", queryItems: [])
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(accessToken, forHTTPHeaderField: "X-User-Key")
+        request.httpBody = try JSONEncoder().encode(
+            CourseTemplateCopyRequest(
+                templateCourseId: templateCourseId,
+                name: name,
+                description: description,
+                updatedBy: updatedBy
+            )
+        )
+
+        logRequest(request)
+        let (data, response) = try await session.data(for: request)
+        logResponse(data: data, response: response)
+        try RaceService.validate(response: response, data: data)
+
+        guard let payload = try? JSONDecoder().decode(RaceCourseTemplateCopyEnvelope.self, from: data) else {
+            throw RaceServiceError.decodingFailed
+        }
+
+        return RaceCourseTemplateCopyResult(
+            course: payload.course,
+            linkedStartCount: payload.linkedStartCount,
+            totalStartCount: payload.totalStartCount
+        )
+    }
+
     /// Updates only the start's actual start time through the narrow backend PATCH contract.
     func updateStartActualTime(
         startId: String,
@@ -523,6 +562,20 @@ private struct CourseTemplateCopyEnvelope: Decodable {
         case startId
         case course
     }
+}
+
+struct RaceCourseTemplateCopyResult: Equatable {
+    let course: RaceCourse
+    let linkedStartCount: Int
+    let totalStartCount: Int
+}
+
+private struct RaceCourseTemplateCopyEnvelope: Decodable {
+    let ok: Bool
+    let raceId: String?
+    let course: RaceCourse
+    let linkedStartCount: Int
+    let totalStartCount: Int
 }
 
 private struct StartMutationEnvelope: Decodable {

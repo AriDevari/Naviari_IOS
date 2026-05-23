@@ -110,6 +110,20 @@ final class CourseItemIntegrationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts[expectedTitle].waitForExistence(timeout: 5))
     }
 
+    func testIntegration_addMarkButtonOnStartLineOpensAddSheet() {
+        launchWithTestStart()
+        let startRow = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Start'")) .firstMatch
+        XCTAssertTrue(startRow.waitForExistence(timeout: 10))
+        startRow.tap()
+
+        let addButton = app.buttons[NSLocalizedString("course_add_mark_button", comment: "")]
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        addButton.tap()
+
+        let expectedTitle = NSLocalizedString("course_item_add_mark_title", comment: "")
+        XCTAssertTrue(app.staticTexts[expectedTitle].waitForExistence(timeout: 5))
+    }
+
     func testIntegration_saveClosesSheet() {
         launchWithTestStart()
         app.buttons.firstMatch.tap()

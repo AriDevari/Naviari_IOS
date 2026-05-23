@@ -4,6 +4,7 @@ struct CourseTimelineView: View {
     let items: [CourseTimelineItem]
     @Binding var activeItemId: String?
     @Binding var activeSubIndexByItemId: [String: Int]
+    var horizontalPadding: CGFloat = 20
     var onPositionSelected: (CoursePositionSelection) -> Void = { _ in }
     var onEditSelected: ((String) -> Void)? = nil
     var onAddAfter: ((String) -> Void)? = nil
@@ -51,6 +52,7 @@ struct CourseTimelineView: View {
                                     }
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityIdentifier("course_add_mark_button")
                             }
                         }
                     }
@@ -64,7 +66,7 @@ struct CourseTimelineView: View {
                             .padding(.leading, (Theme.CourseTimeline.iconDiameter / 2) - 1)
                     }
                     .padding(.vertical, 16)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, horizontalPadding)
                     .onAppear {
                         scrollToActiveItem(using: proxy)
                     }

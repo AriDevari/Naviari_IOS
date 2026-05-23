@@ -58,6 +58,7 @@ struct StartDetailScreen: View {
     @State private var pendingManageNavigationTarget: ManageProtectedNavigationTarget?
     @State private var rehearsalNotificationId: UUID?
     @State private var courseItemEditTarget: CourseItemEditTarget?
+    @State private var preferredActiveCourseItemIdAfterEdit: String?
 
     @EnvironmentObject private var userNotifications: UserNotifications
 
@@ -449,32 +450,14 @@ struct StartDetailScreen: View {
 
         VStack(spacing: 0) {
             ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(courseTemplates.enumerated()), id: \.element.id) { index, template in
-                        Button {
-                            dismissTemplatePicker()
-                            Task { await copyTemplateToStart(template) }
-                        } label: {
-                            HStack(alignment: .center, spacing: 12) {
-                                Text(templateSelectionTitle(for: template))
-                                    .font(AppFont.textStyle(.body))
-                                    .foregroundStyle(Theme.Colors.textPrimary)
-                                    .multilineTextAlignment(.leading)
-                                    .lineLimit(2)
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.horizontal, 16)
-                            .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight, alignment: .leading)
-                            .background(Theme.Colors.surfacePrimary)
-                        }
-                        .buttonStyle(.plain)
-
-                        if index < courseTemplates.count - 1 {
-                            Divider()
-                                .padding(.leading, 16)
-                        }
+                CourseTemplatePickerDropdown(
+                    templates: courseTemplates,
+                    optionIdentifierPrefix: "start_detail_course_template_option_",
+                    onTemplateSelected: { template in
+                        dismissTemplatePicker()
+                        Task { await copyTemplateToStart(template) }
                     }
-                }
+                )
             }
             .frame(height: layout.height)
         }
@@ -541,30 +524,14 @@ struct StartDetailScreen: View {
             }
 
             if canShowTemplateSelection && !courseTemplates.isEmpty {
-                SplitActionButton(
-                    variant: .outlined(accentColor: Theme.RaceManager.primaryColor),
+                CourseTemplatePickerButton(
                     isEnabled: !isTemplateCopying,
                     isExpanded: showTemplatePicker,
-                    onPrimaryTap: {
-                        toggleTemplatePicker()
-                    },
-                    onSecondaryTap: {
-                        toggleTemplatePicker()
-                    }
-                ) {
-                    HStack {
-                        Spacer()
-                        if isTemplateCopying {
-                            ProgressView()
-                                .tint(Theme.RaceManager.primaryColor)
-                        } else {
-                            Text("start_detail_course_template_button")
-                                .font(Theme.Typography.button)
-                                .multilineTextAlignment(.center)
-                        }
-                        Spacer()
-                    }
-                }
+                    isCopying: isTemplateCopying,
+                    titleKey: "start_detail_course_template_button",
+                    accessibilityIdentifier: "start_detail_course_template_picker_button",
+                    onTap: toggleTemplatePicker
+                )
                 .background(
                     GeometryReader { geometry in
                         Color.clear.preference(
@@ -832,43 +799,6 @@ struct StartDetailScreen: View {
         return CoordinatePoint(lat: lat, lon: lon)
     }
 
-    private func courseTemplateDisplayName(_ template: RaceCourse) -> String {
-        let trimmed = template.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return trimmed.isEmpty
-            ? NSLocalizedString("start_detail_course_template_unnamed", comment: "")
-            : trimmed
-    }
-
-    private func templateSelectionTitle(for template: RaceCourse) -> String {
-        let name = courseTemplateDisplayName(template)
-        guard let lengthLabel = templateLengthLabel(for: template) else {
-            return name
-        }
-        return "\(name) · \(lengthLabel)"
-    }
-
-    private func templateLengthLabel(for template: RaceCourse) -> String? {
-        if let nauticalMiles = template.total_length_nm, nauticalMiles.isFinite {
-            return String(
-                format: NSLocalizedString("start_detail_course_template_length_nm_format", comment: ""),
-                nauticalMiles
-            )
-        }
-        if let meters = template.total_length_m, meters.isFinite {
-            if meters >= 1000 {
-                return String(
-                    format: NSLocalizedString("start_detail_course_template_length_km_format", comment: ""),
-                    meters / 1000
-                )
-            }
-            return String(
-                format: NSLocalizedString("start_detail_course_template_length_m_format", comment: ""),
-                meters
-            )
-        }
-        return nil
-    }
-
     private func normalizedOptionalText(_ value: String?) -> String? {
         guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
             return nil
@@ -968,9 +898,8 @@ struct StartDetailScreen: View {
     private func handleAddAfter(itemId: String) {
         guard let course = loadedCourse else { return }
         let courseId = course.id
-        // Find the tapped mark's sequence; insert after it.
-        if let mark = course.course_marks.first(where: { $0.id == itemId }) {
-            presentCourseItemEditor(.addMark(courseId: courseId, afterSequence: mark.sequence + 1))
+        if let afterSequence = courseAddMarkInsertionSequence(after: itemId, in: course) {
+            presentCourseItemEditor(.addMark(courseId: courseId, afterSequence: afterSequence))
         }
     }
 
@@ -994,9 +923,9 @@ struct StartDetailScreen: View {
                 CourseMarkEditView(
                     mode: .editMark(item, courseId: courseId),
                     accessToken: token
-                ) { _ in
+                ) { outcome in
                     courseItemEditTarget = nil
-                    Task { await reloadCourseAfterEdit() }
+                    Task { await reloadCourseAfterEdit(outcome: outcome) }
                 }
             }
         case let .addMark(courseId, afterSequence):
@@ -1004,9 +933,9 @@ struct StartDetailScreen: View {
                 CourseMarkEditView(
                     mode: .addMark(courseId: courseId, afterSequence: afterSequence),
                     accessToken: token
-                ) { _ in
+                ) { outcome in
                     courseItemEditTarget = nil
-                    Task { await reloadCourseAfterEdit() }
+                    Task { await reloadCourseAfterEdit(outcome: outcome) }
                 }
             }
         case let .startLine(line, courseId):
@@ -1014,9 +943,9 @@ struct StartDetailScreen: View {
                 CourseLineEditView(
                     mode: .editStartLine(line, courseId: courseId),
                     accessToken: token
-                ) { _ in
+                ) { outcome in
                     courseItemEditTarget = nil
-                    Task { await reloadCourseAfterEdit() }
+                    Task { await reloadCourseAfterEdit(outcome: outcome) }
                 }
             }
         case let .finishLine(line, courseId):
@@ -1024,15 +953,22 @@ struct StartDetailScreen: View {
                 CourseLineEditView(
                     mode: .editFinishLine(line, courseId: courseId),
                     accessToken: token
-                ) { _ in
+                ) { outcome in
                     courseItemEditTarget = nil
-                    Task { await reloadCourseAfterEdit() }
+                    Task { await reloadCourseAfterEdit(outcome: outcome) }
                 }
             }
         }
     }
 
-    private func reloadCourseAfterEdit() async {
+    private func reloadCourseAfterEdit(outcome: CourseItemSaveOutcome) async {
+        switch outcome {
+        case let .saved(activeItemId):
+            preferredActiveCourseItemIdAfterEdit = activeItemId
+        case .removed:
+            preferredActiveCourseItemIdAfterEdit = nil
+        }
+
         isCourseLoaded = false
         isCourseLoading = true
         loadedCourse = nil
@@ -1040,6 +976,11 @@ struct StartDetailScreen: View {
         activeCourseItemId = nil
         activeLineSubIndexByItemId = [:]
         await loadCourse()
+        if let preferredActiveCourseItemIdAfterEdit,
+           courseItems.contains(where: { $0.id == preferredActiveCourseItemIdAfterEdit }) {
+            activeCourseItemId = preferredActiveCourseItemIdAfterEdit
+        }
+        preferredActiveCourseItemIdAfterEdit = nil
         if let startId = resolvedStart.rawId {
             viewModel.requestCourseRefresh(for: startId)
         }

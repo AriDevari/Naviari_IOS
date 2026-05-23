@@ -19,7 +19,7 @@ enum CourseMarkEditMode {
 // MARK: - Save outcome
 
 enum CourseItemSaveOutcome {
-    case saved
+    case saved(activeItemId: String)
     case removed
 }
 
@@ -465,7 +465,8 @@ struct CourseMarkEditView: View {
                     mark: CoordinatePoint(lat: lat.toDecimal(), lon: lon.toDecimal()),
                     updatedBy: "ios-course-edit"
                 )
-                _ = try await raceService.updateCourseMark(payload, accessToken: accessToken)
+                let savedMark = try await raceService.updateCourseMark(payload, accessToken: accessToken)
+                onSaved(.saved(activeItemId: savedMark.id))
 
             case let .addMark(courseId, afterSequence):
                 let payload = CourseMarkInsertPayload(
@@ -477,10 +478,9 @@ struct CourseMarkEditView: View {
                     status: selectedStatus.rawValue,
                     mark: CoordinatePoint(lat: lat.toDecimal(), lon: lon.toDecimal())
                 )
-                _ = try await raceService.insertCourseMark(courseId: courseId, payload: payload, accessToken: accessToken)
+                let savedMark = try await raceService.insertCourseMark(courseId: courseId, payload: payload, accessToken: accessToken)
+                onSaved(.saved(activeItemId: savedMark.id))
             }
-
-            onSaved(.saved)
         } catch {
             saveError = error.localizedDescription.isEmpty
                 ? NSLocalizedString("course_edit_save_error", comment: "")

@@ -17,10 +17,19 @@ struct ContentView: View {
 
     var body: some View {
         let uiTestScenario = CourseEditUITestScenario.current
+        let raceCourseSectionScenario = RaceCourseSectionUITestScenario.current
+        let raceDetailScreenScenario = RaceDetailScreenUITestScenario.current
+        let isUITestActive = uiTestScenario != nil
+            || raceCourseSectionScenario != nil
+            || raceDetailScreenScenario != nil
 
         ZStack {
             Group {
-                if let uiTestScenario {
+                if let raceDetailScreenScenario {
+                    RaceDetailScreenUITestHarnessView(scenario: raceDetailScreenScenario)
+                } else if let raceCourseSectionScenario {
+                    RaceCourseSectionUITestHarnessView(scenario: raceCourseSectionScenario)
+                } else if let uiTestScenario {
                     CourseEditUITestHarnessView(scenario: uiTestScenario)
                 } else {
                     NavigationStack(path: $navigationPath) {
@@ -70,18 +79,18 @@ struct ContentView: View {
                 }
             }
 
-            if uiTestScenario == nil {
+            if !isUITestActive {
                 UserNotificationsOverlay()
             }
 
-            if uiTestScenario == nil, metricsUploader.isBroadcasting {
+            if !isUITestActive, metricsUploader.isBroadcasting {
                 BroadcastStatusButton(uploader: metricsUploader)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     .padding(.leading, Theme.Spacing.floatingInset)
                     .padding(.bottom, Theme.Spacing.floatingInset)
             }
 
-            if uiTestScenario == nil {
+            if !isUITestActive {
                 GPSStatusButton(locationManager: locationManager)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     .padding(.trailing, Theme.Spacing.floatingInset)

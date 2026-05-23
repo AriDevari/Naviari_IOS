@@ -21,6 +21,72 @@ final class CourseEditIntegrationTests: XCTestCase {
         return try! JSONDecoder().decode(CourseLine.self, from: json)
     }
 
+        private func sampleCourse() -> RaceCourse {
+                let json = """
+                {
+                    "id": "course-1",
+                    "name": "Course",
+                    "description": null,
+                    "series_id": "series-1",
+                    "total_length_m": null,
+                    "total_length_nm": null,
+                    "is_template": false,
+                    "template_source_id": null,
+                    "start_line": {
+                        "id": "start-line-1",
+                        "name": "Start Line",
+                        "description": null,
+                        "status": "preliminary",
+                        "mark_left_lat": null,
+                        "mark_left_lon": null,
+                        "mark_right_lat": null,
+                        "mark_right_lon": null,
+                        "midpoint_lat": null,
+                        "midpoint_lon": null,
+                        "length_m": null,
+                        "bearing_deg": null,
+                        "distance_to_first_mark_m": null,
+                        "bearing_to_first_mark_rad": null,
+                        "updated_at": null
+                    },
+                    "finish_line": {
+                        "id": "finish-line-1",
+                        "name": "Finish Line",
+                        "description": null,
+                        "status": "final",
+                        "mark_left_lat": null,
+                        "mark_left_lon": null,
+                        "mark_right_lat": null,
+                        "mark_right_lon": null,
+                        "midpoint_lat": null,
+                        "midpoint_lon": null,
+                        "length_m": null,
+                        "bearing_deg": null,
+                        "distance_to_first_mark_m": null,
+                        "bearing_to_first_mark_rad": null,
+                        "updated_at": null
+                    },
+                    "course_marks": [
+                        {
+                            "id": "mark-1",
+                            "sequence": 1,
+                            "name": "Alpha",
+                            "description": null,
+                            "rounding_side": null,
+                            "type": "mark",
+                            "status": "preliminary",
+                            "mark_lat": null,
+                            "mark_lon": null,
+                            "distance_to_next_m": null,
+                            "bearing_to_next_rad": null,
+                            "updated_at": null
+                        }
+                    ]
+                }
+                """.data(using: .utf8)!
+                return try! JSONDecoder().decode(RaceCourse.self, from: json)
+        }
+
     // MARK: - Tests
 
     func testCourseItemEditTarget_markHasStableId() {
@@ -45,5 +111,23 @@ final class CourseEditIntegrationTests: XCTestCase {
         let lineTarget = CourseItemEditTarget.startLine(line, courseId: "course-1")
         XCTAssertNotEqual(markTarget.id, lineTarget.id,
                           ".mark and .startLine targets must have different .id values")
+    }
+
+    func testCourseAddMarkInsertionSequence_startLineReturnsFirstSequence() {
+        let course = sampleCourse()
+
+        XCTAssertEqual(courseAddMarkInsertionSequence(after: "start-line-1", in: course), 1)
+    }
+
+    func testCourseAddMarkInsertionSequence_markReturnsNextSequence() {
+        let course = sampleCourse()
+
+        XCTAssertEqual(courseAddMarkInsertionSequence(after: "mark-1", in: course), 2)
+    }
+
+    func testCourseAddMarkInsertionSequence_finishLineReturnsNil() {
+        let course = sampleCourse()
+
+        XCTAssertNil(courseAddMarkInsertionSequence(after: "finish-line-1", in: course))
     }
 }

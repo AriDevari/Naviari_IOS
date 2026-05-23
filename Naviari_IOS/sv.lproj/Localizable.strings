@@ -252,3 +252,12 @@
 "course_edit_right_end_subtitle" = "Kommittébåt / styrbordssida";
 "course_edit_use_gps_button_left" = "GPS-position – vänster ände";
 "course_edit_use_gps_button_right" = "GPS-position – höger ände";
+
+// --- Race-level course section (S2 of ios-race-level-course-selection) ---
+"race_course_section_title" = "Bana";
+"race_course_none_set_hint" = "Ingen bana har tilldelats starter";
+"race_course_no_templates" = "Inga banmallar tillgängliga";
+"race_course_mixed_hint" = "Banor har angetts på startsnivå";
+"race_course_copy_error_title" = "Bantilldelning ofullständig";
+"race_course_copy_partial_message" = "%d av %d starter uppdaterades. Några starter kunde inte tilldelas en bana.";
+"race_course_manage_code_hint" = "Ange tävlings- eller seriehanteringskoden för att tilldela en bana till alla starter. En startnivåkod accepteras inte här.";

@@ -23,10 +23,30 @@ struct Naviari_IOSApp: App {
     @StateObject private var boatMetricsUploader = BoatMetricsUploader()
     @Environment(\.scenePhase) private var scenePhase
     private let uiTestScenario = CourseEditUITestScenario.current
+    private let raceCourseSectionScenario = RaceCourseSectionUITestScenario.current
+    private let raceDetailScreenScenario = RaceDetailScreenUITestScenario.current
+
+    /// True when any UITest harness is active. Production launches always
+    /// see `false` here, so all schedulers and managers boot normally.
+    private var isUITestActive: Bool {
+        uiTestScenario != nil
+            || raceCourseSectionScenario != nil
+            || raceDetailScreenScenario != nil
+    }
 
     init() {
-        if CourseEditUITestScenario.current == nil {
+        if CourseEditUITestScenario.current == nil
+            && RaceCourseSectionUITestScenario.current == nil
+            && RaceDetailScreenUITestScenario.current == nil {
             BoatMetricsBackgroundScheduler.shared.register()
+        }
+        // Register the RaceDetailScreen URLProtocol up front so the
+        // intercept is active before any `URLSession.shared` request fires.
+        if let scenario = RaceDetailScreenUITestScenario.current {
+            RaceDetailScreenUITestURLProtocol.activeScenario = scenario
+            URLProtocol.registerClass(RaceDetailScreenUITestURLProtocol.self)
+            UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
+            UserDefaults.standard.removeObject(forKey: "participation_tokens")
         }
         configureTypographyAppearance()
     }
@@ -50,7 +70,7 @@ struct Naviari_IOSApp: App {
                 .environmentObject(locationManager)
                 .environmentObject(boatMetricsUploader)
                 .onAppear {
-                    guard uiTestScenario == nil else { return }
+                    guard !isUITestActive else { return }
                     locationManager.start()
                     boatMetricsUploader.configure(with: locationManager)
                     BoatMetricsBackgroundScheduler.shared.configure(uploader: boatMetricsUploader)
@@ -58,7 +78,7 @@ struct Naviari_IOSApp: App {
         }
         .modelContainer(sharedModelContainer)
         .onChange(of: scenePhase) { _, phase in
-            guard uiTestScenario == nil else { return }
+            guard !isUITestActive else { return }
             if phase == .background {
                 BoatMetricsBackgroundScheduler.shared.scheduleIfNeeded()
             }

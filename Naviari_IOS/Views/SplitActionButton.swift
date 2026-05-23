@@ -29,6 +29,8 @@ struct SplitActionButton<Label: View>: View {
     let variant: Variant
     let isEnabled: Bool
     let isExpanded: Bool
+    let primaryAccessibilityIdentifier: String?
+    let secondaryAccessibilityIdentifier: String?
     let onPrimaryTap: () -> Void
     let onSecondaryTap: () -> Void
     let label: () -> Label
@@ -37,6 +39,8 @@ struct SplitActionButton<Label: View>: View {
         variant: Variant,
         isEnabled: Bool = true,
         isExpanded: Bool = false,
+        primaryAccessibilityIdentifier: String? = nil,
+        secondaryAccessibilityIdentifier: String? = nil,
         onPrimaryTap: @escaping () -> Void,
         onSecondaryTap: @escaping () -> Void,
         @ViewBuilder label: @escaping () -> Label
@@ -44,6 +48,8 @@ struct SplitActionButton<Label: View>: View {
         self.variant = variant
         self.isEnabled = isEnabled
         self.isExpanded = isExpanded
+        self.primaryAccessibilityIdentifier = primaryAccessibilityIdentifier
+        self.secondaryAccessibilityIdentifier = secondaryAccessibilityIdentifier
         self.onPrimaryTap = onPrimaryTap
         self.onSecondaryTap = onSecondaryTap
         self.label = label
@@ -66,6 +72,7 @@ struct SplitActionButton<Label: View>: View {
             }
             .buttonStyle(.plain)
             .disabled(!isEnabled)
+            .accessibilityIdentifier(primaryAccessibilityIdentifier ?? "")
 
             Rectangle()
                 .fill(variant.borderColor.opacity(isEnabled ? 1.0 : 0.45))
@@ -81,6 +88,7 @@ struct SplitActionButton<Label: View>: View {
             }
             .buttonStyle(.plain)
             .disabled(!isEnabled)
+            .accessibilityIdentifier(secondaryAccessibilityIdentifier ?? "")
         }
         .foregroundStyle(variant.foregroundColor)
         .background(variant.backgroundColor)

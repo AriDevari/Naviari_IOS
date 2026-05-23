@@ -453,6 +453,18 @@ struct CourseTimelineItem: Identifiable, Equatable {
     }
 }
 
+func courseAddMarkInsertionSequence(after itemId: String, in course: RaceCourse) -> Int? {
+    if let startLine = course.start_line, startLine.id == itemId {
+        return 1
+    }
+
+    if let mark = course.course_marks.first(where: { $0.id == itemId }) {
+        return mark.sequence + 1
+    }
+
+    return nil
+}
+
 enum CourseEndpointSide: String, Hashable {
     case left
     case right

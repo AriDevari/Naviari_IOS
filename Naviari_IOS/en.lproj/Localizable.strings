@@ -252,3 +252,12 @@
 "course_edit_right_end_subtitle" = "Committee boat / starboard end";
 "course_edit_use_gps_button_left" = "Use GPS – left end";
 "course_edit_use_gps_button_right" = "Use GPS – right end";
+
+// --- Race-level course section (S2 of ios-race-level-course-selection) ---
+"race_course_section_title" = "Course";
+"race_course_none_set_hint" = "No course assigned to starts";
+"race_course_no_templates" = "No course templates available";
+"race_course_mixed_hint" = "Courses are set at start level";
+"race_course_copy_error_title" = "Course assignment incomplete";
+"race_course_copy_partial_message" = "%d of %d starts were updated. Some starts could not be assigned a course.";
+"race_course_manage_code_hint" = "Enter the race or series management code to assign a course to all starts. A start-level code is not accepted here.";

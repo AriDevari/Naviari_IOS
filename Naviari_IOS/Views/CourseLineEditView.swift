@@ -414,7 +414,7 @@ struct CourseLineEditView: View {
                 try await raceService.updateFinishLine(payload, accessToken: accessToken)
             }
 
-            onSaved(.saved)
+            onSaved(.saved(activeItemId: currentLine.id))
         } catch {
             saveError = error.localizedDescription.isEmpty
                 ? NSLocalizedString("course_edit_save_error", comment: "")

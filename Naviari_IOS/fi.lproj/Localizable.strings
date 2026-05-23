@@ -252,3 +252,12 @@
 "course_edit_right_end_subtitle" = "Tuomarilaiva / tyyrpuuripää";
 "course_edit_use_gps_button_left" = "GPS-sijainti – vasen pää";
 "course_edit_use_gps_button_right" = "GPS-sijainti – oikea pää";
+
+// --- Race-level course section (S2 of ios-race-level-course-selection) ---
+"race_course_section_title" = "Rata";
+"race_course_none_set_hint" = "Lähdöille ei ole asetettu rataa";
+"race_course_no_templates" = "Ei ratamalleja saatavilla";
+"race_course_mixed_hint" = "Radat on asetettu lähtötasolla";
+"race_course_copy_error_title" = "Radan asettaminen epäonnistui osittain";
+"race_course_copy_partial_message" = "%d / %d lähtöä päivitettiin. Osalle lähdöistä ei voitu asettaa rataa.";
+"race_course_manage_code_hint" = "Syötä kisan tai sarjan hallintakoodi asettaaksesi radan kaikille lähdöille. Lähtötason koodi ei kelpaa tähän toimintoon.";
