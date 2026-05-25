@@ -196,7 +196,9 @@
 "set_position_guide_text" = "Ställ in märkes-/bojkoordinaterna på den här platsen. För banmärken rekommenderas att positionen sätts 5-10 meter \"innanför\" banan. Det hjälper båtar att runda märkena även om GPS har små fel. För start- och mållinjer, sätt den exakta punkten eller utsidan, men håll den i linje.";
 "set_position_guide_text_mark" = "Set the course mark coordinates to this device location.\n\nFor course marks it is recommended to set the position 5-10 meters \"inside\" the course. This helps to regocnice boats mark roundings even if there are small GPS inaccuracies on boat's data.";
 "set_position_guide_text_line" = "Set the line end coordinates to this device location.\n\nFor line ends it is recommended to set the position on outside of end, as extension on the line. This keeps start end finish times accurate.";
+"set_position_guide_text_buoy" = "Ställ in bojens koordinater till den här enhetens position.\n\nFör banbojar rekommenderas att positionen sätts 5-10 meter \"innanför\" banan och, för start-/mållinjen, på utsidan som en förlängning av linjen. Detta hjälper till att identifiera märkesrundningar och linjepassager även om båtens GPS-position har små fel.";
 "set_position_target_mark" = "Banmärke";
+"set_position_target_buoy" = "Boj";
 "set_position_target_start_left" = "Startlinjens vänstra ände";
 "set_position_target_start_right" = "Startlinjens högra ände";
 "set_position_target_finish_left" = "Mållinjens vänstra ände";
@@ -232,6 +234,8 @@
 "course_edit_section_rounding" = "Rundning";
 "course_edit_section_position" = "Position";
 "course_edit_position_subtitle" = "Ange koordinater eller hämta med GPS.";
+"course_edit_copy_from_buoy_action" = "Kopiera från boj";
+"course_edit_select_buoy_button" = "Välj boj";
 "course_edit_lat_label" = "Lat";
 "course_edit_lon_label" = "Lon";
 "course_edit_use_gps_button" = "Använd aktuell GPS-position";
@@ -261,6 +265,34 @@
 "race_course_copy_error_title" = "Bantilldelning ofullständig";
 "race_course_copy_partial_message" = "%d av %d starter uppdaterades. Några starter kunde inte tilldelas en bana.";
 "race_course_manage_code_hint" = "Ange tävlings- eller seriehanteringskoden för att tilldela en bana till alla starter. En startnivåkod accepteras inte här.";
+
+// --- Buoys MVP ---
+"buoy_section_title" = "Bojar";
+"buoy_empty_title" = "Inga bojar ännu";
+"buoy_empty_message" = "Lägg till bojar för denna tävling. I denna MVP sparas de bara på den här enheten för denna tävling.";
+"buoy_add_button" = "Lägg till boj";
+"buoy_edit_button" = "Redigera";
+"buoy_set_coordinates_button" = "Ange koordinater";
+"buoy_delete_button" = "Ta bort";
+"buoy_delete_confirm_title" = "Ta bort boj?";
+"buoy_delete_confirm_message" = "Den här bojen tas bort från lokal tävlingslagring på denna enhet.";
+"buoy_id_label" = "ID";
+"buoy_last_updated_label" = "Senast uppdaterad";
+"buoy_coordinates_missing" = "Inga koordinater";
+"buoy_editor_add_title" = "Lägg till boj";
+"buoy_editor_edit_title" = "Redigera boj";
+"buoy_editor_info_title" = "Bojhjälp";
+"buoy_editor_info_body" = "Bojar är lokala objekt på tävlingsnivå i denna MVP. Spara namn, valfri beskrivning och valfria koordinater. Använd Position i listan när du vill öppna positionens guidningsvy.";
+"course_edit_copy_to_clipboard_action" = "Kopiera till urklipp";
+"course_edit_paste_from_clipboard_action" = "Klistra in från urklipp";
+"course_edit_copy_to_clipboard_success" = "Märkets koordinater kopierades till urklipp.";
+"course_edit_paste_from_clipboard_invalid_error" = "Urklippet innehåller inga giltiga koordinater.";
+"buoy_edit_name_placeholder" = "t.ex. Gul boj";
+"buoy_edit_description_placeholder" = "Valfritt – pinände, port, reservboj…";
+"buoy_edit_position_subtitle" = "Ange bojens koordinater eller hämta dem med GPS.";
+"buoy_edit_save_error" = "Det gick inte att spara bojen lokalt.";
+"buoy_save_success" = "Bojen sparades.";
+"buoy_delete_success" = "Bojen togs bort.";
 
 // --- Start countdown timer ---
 "start_detail_show_timer_button" = "Visa timer";

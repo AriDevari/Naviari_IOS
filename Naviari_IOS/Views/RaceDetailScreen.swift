@@ -14,12 +14,16 @@ struct RaceDetailScreen: View {
     let summary: RaceSummary
     var onSelectStart: (RaceStart) -> Void
     @EnvironmentObject private var viewModel: RaceBrowserViewModel
+    @EnvironmentObject private var userNotifications: UserNotifications
     @StateObject private var courseViewModel: RaceDetailViewModel
+    @StateObject private var buoyViewModel: BuoySectionViewModel
 
     @State private var showCodeModal = false
     @State private var pendingTemplate: RaceCourse?
     @State private var pendingCourseItemEditTarget: CourseItemEditTarget?
+    @State private var pendingBuoyManageAction: PendingBuoyManageAction?
     @State private var courseItemEditTarget: CourseItemEditTarget?
+    @State private var buoySetPositionTarget: BuoyRecord?
     @State private var copyFailureAlertVisible = false
     @State private var copyFailureSuccessCount = 0
     @State private var copyFailureTotalCount = 0
@@ -37,6 +41,9 @@ struct RaceDetailScreen: View {
                 raceId: raceId,
                 seriesId: summary.seriesId
             )
+        )
+        _buoyViewModel = StateObject(
+            wrappedValue: BuoySectionViewModel(raceId: raceId)
         )
     }
 
@@ -172,12 +179,31 @@ struct RaceDetailScreen: View {
                         }
                         .accessibilityIdentifier("race_course_section")
                     }
+
+                    Divider().padding(.vertical, 8)
+
+                    BuoySectionView(
+                        titleKey: "buoy_section_title",
+                        buoys: buoyViewModel.buoys,
+                        activeBuoyId: Binding(
+                            get: { buoyViewModel.activeBuoyId },
+                            set: { buoyViewModel.activeBuoyId = $0 }
+                        ),
+                        sectionAccessibilityIdentifier: "race_buoy_section",
+                        addButtonAccessibilityIdentifier: "race_buoy_add_button",
+                        onAddTapped: handleAddBuoy,
+                        onEditBuoy: handleEditBuoy,
+                        onSetCoordinates: handleSetBuoyCoordinates
+                    )
                 }
                 .padding()
             }
         }
         .task {
             await viewModel.ensureRaceData(for: summary)
+        }
+        .task(id: raceIdentifier ?? summary.id) {
+            buoyViewModel.reload()
         }
         .task(id: courseStateTaskKey) {
             await refreshCourseStateIfStartsAvailable()
@@ -221,6 +247,7 @@ struct RaceDetailScreen: View {
 
                     let pendingTemplateLocal = pendingTemplate
                     let pendingEditLocal = pendingCourseItemEditTarget
+                    let pendingBuoyActionLocal = pendingBuoyManageAction
 
                     Task { @MainActor in
                         courseViewModel.reloadToken()
@@ -231,18 +258,46 @@ struct RaceDetailScreen: View {
                         } else if let pendingEditLocal {
                             pendingCourseItemEditTarget = nil
                             courseItemEditTarget = pendingEditLocal
+                        } else if let pendingBuoyActionLocal {
+                            pendingBuoyManageAction = nil
+                            performAuthorizedBuoyManageAction(pendingBuoyActionLocal)
                         }
                     }
                 },
                 onCancel: {
                     pendingTemplate = nil
                     pendingCourseItemEditTarget = nil
+                    pendingBuoyManageAction = nil
                     showCodeModal = false
                 }
             )
         }
         .sheet(item: $courseItemEditTarget) { target in
             courseItemEditSheet(for: target)
+        }
+        .fullScreenCover(item: $buoySetPositionTarget) { buoy in
+            NavigationStack {
+                BuoySetPositionScreen(
+                    contextTitle: summary.race.nameOrFallback,
+                    buoy: buoy
+                ) { savedBuoy in
+                    buoySetPositionTarget = nil
+                    handleBuoyPositionSaved(savedBuoy)
+                }
+            }
+        }
+        .sheet(
+            item: Binding(
+                get: { buoyViewModel.editorMode },
+                set: { buoyViewModel.editorMode = $0 }
+            )
+        ) { mode in
+            NavigationStack {
+                BuoyEditorView(mode: mode, storage: .shared) { outcome in
+                    buoyViewModel.editorMode = nil
+                    handleBuoyEditorOutcome(outcome)
+                }
+            }
         }
     }
 
@@ -306,6 +361,66 @@ struct RaceDetailScreen: View {
         }
     }
 
+    private func handleAddBuoy() {
+        requestBuoyManageAction(.present(.add(raceId: buoyViewModel.raceId)))
+    }
+
+    private func handleEditBuoy(_ buoy: BuoyRecord) {
+        requestBuoyManageAction(.present(.edit(buoy)))
+    }
+
+    private func handleSetBuoyCoordinates(_ buoy: BuoyRecord) {
+        requestBuoyManageAction(.setPosition(buoy))
+    }
+
+    private func requestBuoyManageAction(_ action: PendingBuoyManageAction) {
+        courseViewModel.reloadToken()
+        guard courseViewModel.hasValidRaceLevelToken,
+              courseViewModel.storedToken != nil else {
+            pendingTemplate = nil
+            pendingCourseItemEditTarget = nil
+            pendingBuoyManageAction = action
+            showCodeModal = true
+            return
+        }
+
+        pendingBuoyManageAction = nil
+        performAuthorizedBuoyManageAction(action)
+    }
+
+    private func performAuthorizedBuoyManageAction(_ action: PendingBuoyManageAction) {
+        switch action {
+        case let .present(mode):
+            buoyViewModel.editorMode = mode
+        case let .setPosition(buoy):
+            buoySetPositionTarget = buoy
+        }
+    }
+
+    private func handleBuoyEditorOutcome(_ outcome: BuoyEditorOutcome) {
+        buoyViewModel.handleEditorOutcome(outcome)
+        let messageKey: String
+        switch outcome {
+        case .saved:
+            messageKey = "buoy_save_success"
+        case .removed:
+            messageKey = "buoy_delete_success"
+        }
+        userNotifications.show(
+            message: NSLocalizedString(messageKey, comment: ""),
+            severity: .success
+        )
+    }
+
+    private func handleBuoyPositionSaved(_ buoy: BuoyRecord) {
+        buoyViewModel.activeBuoyId = buoy.id
+        buoyViewModel.reload()
+        userNotifications.show(
+            message: NSLocalizedString("buoy_save_success", comment: ""),
+            severity: .success
+        )
+    }
+
     // MARK: - Shared race copy
 
     private func performTemplateCopy(template: RaceCourse, accessToken: String) async {
@@ -362,7 +477,8 @@ struct RaceDetailScreen: View {
             NavigationStack {
                 CourseMarkEditView(
                     mode: .editMark(item, courseId: courseId),
-                    accessToken: token
+                    accessToken: token,
+                    buoyOptions: buoyViewModel.buoys
                 ) { outcome in
                     courseItemEditTarget = nil
                     Task { await handleCourseItemSave(outcome) }
@@ -372,7 +488,8 @@ struct RaceDetailScreen: View {
             NavigationStack {
                 CourseMarkEditView(
                     mode: .addMark(courseId: courseId, afterSequence: afterSequence),
-                    accessToken: token
+                    accessToken: token,
+                    buoyOptions: buoyViewModel.buoys
                 ) { outcome in
                     courseItemEditTarget = nil
                     Task { await handleCourseItemSave(outcome) }

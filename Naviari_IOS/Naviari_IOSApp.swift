@@ -25,6 +25,7 @@ struct Naviari_IOSApp: App {
     private let uiTestScenario = CourseEditUITestScenario.current
     private let raceCourseSectionScenario = RaceCourseSectionUITestScenario.current
     private let raceDetailScreenScenario = RaceDetailScreenUITestScenario.current
+    private let buoySectionScenario = BuoySectionUITestScenario.current
 
     /// True when any UITest harness is active. Production launches always
     /// see `false` here, so all schedulers and managers boot normally.
@@ -32,12 +33,14 @@ struct Naviari_IOSApp: App {
         uiTestScenario != nil
             || raceCourseSectionScenario != nil
             || raceDetailScreenScenario != nil
+            || buoySectionScenario != nil
     }
 
     init() {
         if CourseEditUITestScenario.current == nil
             && RaceCourseSectionUITestScenario.current == nil
-            && RaceDetailScreenUITestScenario.current == nil {
+            && RaceDetailScreenUITestScenario.current == nil
+            && BuoySectionUITestScenario.current == nil {
             BoatMetricsBackgroundScheduler.shared.register()
         }
         // Register the RaceDetailScreen URLProtocol up front so the

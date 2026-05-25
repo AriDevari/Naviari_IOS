@@ -33,6 +33,7 @@ private enum MarkEditScrollTarget: String, Hashable {
 struct CourseMarkEditView: View {
     let mode: CourseMarkEditMode
     let accessToken: String
+    let buoyOptions: [BuoyRecord]
     var onSaved: (CourseItemSaveOutcome) -> Void = { _ in }
 
     // MARK: Form state
@@ -51,11 +52,28 @@ struct CourseMarkEditView: View {
     @State private var showRemoveConfirm = false
     @State private var showInfoSheet = false
     @State private var isKeyboardVisible = false
+    @State private var positionInputMode: MarkPositionInputMode = .manual
+    @State private var isPositionActionMenuExpanded = false
+    @State private var isBuoyPickerExpanded = false
+    @State private var selectedBuoyId: String?
 
     @FocusState private var focusedField: MarkField?
     @EnvironmentObject private var locationManager: LocationDataManager
+    @EnvironmentObject private var userNotifications: UserNotifications
 
     private let raceService = RaceService()
+
+    init(
+        mode: CourseMarkEditMode,
+        accessToken: String,
+        buoyOptions: [BuoyRecord] = [],
+        onSaved: @escaping (CourseItemSaveOutcome) -> Void = { _ in }
+    ) {
+        self.mode = mode
+        self.accessToken = accessToken
+        self.buoyOptions = buoyOptions
+        self.onSaved = onSaved
+    }
 
     // MARK: - Computed helpers
 
@@ -70,6 +88,26 @@ struct CourseMarkEditView: View {
 
     private var isSaveDisabled: Bool {
         name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving
+    }
+
+    private var copyableBuoys: [BuoyRecord] {
+        buoyOptions
+            .filter { $0.coordinate != nil }
+            .sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+    }
+
+    private var hasBuoyCopyOption: Bool {
+        !copyableBuoys.isEmpty
+    }
+
+    private var selectedBuoyPickerTitle: String {
+        guard let selectedBuoyId,
+              let buoy = copyableBuoys.first(where: { $0.id == selectedBuoyId }) else {
+            return NSLocalizedString("course_edit_select_buoy_button", comment: "")
+        }
+        return buoySelectionTitle(buoy)
     }
 
     private var currentCourseId: String {
@@ -264,44 +302,165 @@ struct CourseMarkEditView: View {
         onLatitudeEditingBegan: @escaping () -> Void = {},
         onLongitudeEditingBegan: @escaping () -> Void = {}
     ) -> some View {
-        CoursePositionSection(
-            sectionTitle: NSLocalizedString("course_edit_section_position", comment: ""),
-            sectionSubtitle: NSLocalizedString("course_edit_position_subtitle", comment: ""),
-            lat: $lat,
-            lon: $lon,
-            onSetGPSPosition: handleUseCurrentGPSPosition,
-            onLatitudeEditingBegan: onLatitudeEditingBegan,
-            onLongitudeEditingBegan: onLongitudeEditingBegan,
-            onLatitudeEntryStateChanged: { latEntryState = $0 },
-            onLongitudeEntryStateChanged: { lonEntryState = $0 },
-            accessibilityPrefix: "mark",
-            gpsButtonAccessibilityId: "course_edit_gps_mark"
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(NSLocalizedString("course_edit_section_position", comment: ""))
+                    .font(AppFont.fixed(16, weight: .bold))
+                    .foregroundStyle(Theme.Colors.textPrimary)
+
+                Text(NSLocalizedString("course_edit_position_subtitle", comment: ""))
+                    .font(AppFont.fixed(13, weight: .medium))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+
+            if positionInputMode == .manual {
+                CourseDMSField(
+                    label: NSLocalizedString("course_edit_lat_label", comment: ""),
+                    isLatitude: true,
+                    value: $lat,
+                    accessibilityIdentifier: "mark_dms_lat",
+                    onBeginEditing: onLatitudeEditingBegan,
+                    onEntryStateChanged: { latEntryState = $0 }
+                )
+
+                CourseDMSField(
+                    label: NSLocalizedString("course_edit_lon_label", comment: ""),
+                    isLatitude: false,
+                    value: $lon,
+                    accessibilityIdentifier: "mark_dms_lon",
+                    onBeginEditing: onLongitudeEditingBegan,
+                    onEntryStateChanged: { lonEntryState = $0 }
+                )
+            } else {
+                buoySelectorButton
+
+                if isBuoyPickerExpanded {
+                    CourseBuoyPickerDropdown(
+                        buoys: copyableBuoys,
+                        optionIdentifierPrefix: "course_edit_buoy_option_",
+                        onBuoySelected: handleSelectedBuoyCopy
+                    )
+                }
+            }
+
+            positionSplitButton
+
+            if isPositionActionMenuExpanded {
+                positionActionDropdown
+            }
+        }
+    }
+
+    private var buoySelectorButton: some View {
+        SplitActionButton(
+            variant: .outlined(accentColor: Theme.RaceManager.primaryColor),
+            isEnabled: true,
+            isExpanded: isBuoyPickerExpanded,
+            primaryAccessibilityIdentifier: "course_edit_buoy_selector_button",
+            secondaryAccessibilityIdentifier: "course_edit_buoy_selector_button_disclosure",
+            onPrimaryTap: { isBuoyPickerExpanded.toggle() },
+            onSecondaryTap: { isBuoyPickerExpanded.toggle() }
+        ) {
+            HStack {
+                Spacer()
+                Text(selectedBuoyPickerTitle)
+                    .font(Theme.Typography.button)
+                    .multilineTextAlignment(.center)
+                Spacer()
+            }
+        }
+    }
+
+    private var positionSplitButton: some View {
+        SplitActionButton(
+            variant: .outlined(accentColor: Theme.RaceManager.primaryColor),
+            isEnabled: true,
+            isExpanded: isPositionActionMenuExpanded,
+            primaryAccessibilityIdentifier: "course_edit_gps_mark",
+            secondaryAccessibilityIdentifier: "course_edit_gps_mark_disclosure",
+            onPrimaryTap: handlePrimaryPositionAction,
+            onSecondaryTap: {
+                dismissKeyboard()
+                isPositionActionMenuExpanded.toggle()
+            }
+        ) {
+            SetPositionPrimaryButtonLabel()
+        }
+    }
+
+    private var positionActionDropdown: some View {
+        VStack(spacing: 0) {
+            if hasBuoyCopyOption {
+                positionActionButton(
+                    titleKey: "course_edit_copy_from_buoy_action",
+                    accessibilityIdentifier: "course_edit_copy_from_buoy_action",
+                    showsDivider: true,
+                    action: handleCopyFromBuoyAction
+                )
+            }
+
+            positionActionButton(
+                titleKey: "course_edit_copy_to_clipboard_action",
+                accessibilityIdentifier: "course_edit_copy_to_clipboard_action",
+                showsDivider: true,
+                action: handleCopyToClipboard
+            )
+
+            positionActionButton(
+                titleKey: "course_edit_paste_from_clipboard_action",
+                accessibilityIdentifier: "course_edit_paste_from_clipboard_action",
+                showsDivider: false,
+                action: handlePasteFromClipboard
+            )
+        }
+        .background(Theme.Colors.surfacePrimary)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous)
+                .stroke(Theme.RaceManager.primaryColor.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(
+            color: Color.black.opacity(Theme.Effects.floatingStatusShadowOpacity * 0.35),
+            radius: Theme.Effects.floatingStatusShadowRadius,
+            x: 0,
+            y: Theme.Effects.floatingStatusShadowYOffset
         )
     }
 
-    private var removeButton: some View {
-        Button(action: { showRemoveConfirm = true }) {
-            ZStack {
-                Text(NSLocalizedString("course_edit_remove_button", comment: ""))
-                    .font(AppFont.fixed(17, weight: .semibold))
-                    .foregroundStyle(Theme.RaceManager.primaryColor)
-                    .frame(maxWidth: .infinity, alignment: .center)
-
-                HStack {
-                    Spacer()
-                    Image(systemName: "trash")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(Theme.RaceManager.primaryColor)
-                        .padding(.trailing, 20)
+    private func positionActionButton(
+        titleKey: String,
+        accessibilityIdentifier: String,
+        showsDivider: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(LocalizedStringKey(titleKey))
+                    .font(AppFont.textStyle(.body))
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight, alignment: .leading)
+            .background(Theme.Colors.surfacePrimary)
+            .overlay(alignment: .bottom) {
+                if showsDivider {
+                    Rectangle()
+                        .fill(Theme.FormField.borderDefault)
+                        .frame(height: 1)
+                        .padding(.horizontal, 16)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: Theme.Sizing.secondaryButtonHeight)
         }
         .buttonStyle(.plain)
-        .overlay(
-            Capsule()
-                .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
-        )
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+
+    private var removeButton: some View {
+        CourseRemoveButton(titleKey: "course_edit_remove_button") {
+            showRemoveConfirm = true
+        }
         .accessibilityIdentifier("course_edit_remove_button")
     }
 
@@ -529,6 +688,71 @@ struct CourseMarkEditView: View {
         saveError = nil
     }
 
+    private func handlePrimaryPositionAction() {
+        positionInputMode = .manual
+        isBuoyPickerExpanded = false
+        isPositionActionMenuExpanded = false
+        handleUseCurrentGPSPosition()
+    }
+
+    private func handleCopyFromBuoyAction() {
+        dismissKeyboard()
+        isPositionActionMenuExpanded = false
+        positionInputMode = .copyFromBuoy
+        isBuoyPickerExpanded = true
+    }
+
+    private func handleCopyToClipboard() {
+        dismissKeyboard()
+        isPositionActionMenuExpanded = false
+
+        if let coordinateError = validateCoordinates() {
+            saveError = coordinateError
+            return
+        }
+
+        UIPasteboard.general.string = clipboardCoordinateString(
+            lat: lat.toDecimal(),
+            lon: lon.toDecimal()
+        )
+        saveError = nil
+        userNotifications.show(
+            message: NSLocalizedString("course_edit_copy_to_clipboard_success", comment: ""),
+            severity: .success
+        )
+    }
+
+    private func handlePasteFromClipboard() {
+        dismissKeyboard()
+        isPositionActionMenuExpanded = false
+
+        guard let clipboardText = UIPasteboard.general.string,
+              let coordinate = clipboardCoordinate(from: clipboardText) else {
+            saveError = NSLocalizedString("course_edit_paste_from_clipboard_invalid_error", comment: "")
+            return
+        }
+
+        applyCoordinate(coordinate)
+    }
+
+    private func handleSelectedBuoyCopy(_ buoy: BuoyRecord) {
+        guard let coordinate = buoy.coordinate else { return }
+
+        selectedBuoyId = buoy.id
+        applyCoordinate(coordinate)
+    }
+
+    private func applyCoordinate(_ coordinate: CoordinatePoint) {
+        lat = DMSCoordinate(from: coordinate.lat, isLat: true)
+        lon = DMSCoordinate(from: coordinate.lon, isLat: false)
+        latEntryState = entryState(for: lat)
+        lonEntryState = entryState(for: lon)
+        positionInputMode = .manual
+        isBuoyPickerExpanded = false
+        isPositionActionMenuExpanded = false
+        saveError = nil
+    }
+
     private var locationAuthorizationIsValid: Bool {
         switch locationManager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
@@ -563,6 +787,42 @@ struct CourseMarkEditView: View {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
+
+    private func entryState(for coordinate: DMSCoordinate) -> DMSFieldEntryState {
+        let secondsRounded = (coordinate.seconds * 10).rounded() / 10
+        let secondsText = secondsRounded.truncatingRemainder(dividingBy: 1) == 0
+            ? "\(Int(secondsRounded))"
+            : "\(secondsRounded)"
+
+        return DMSFieldEntryState(
+            degreesText: "\(coordinate.degrees)",
+            minutesText: String(format: "%02d", coordinate.minutes),
+            secondsText: secondsText
+        )
+    }
+
+    private func clipboardCoordinateString(lat: Double, lon: Double) -> String {
+        String(format: "%.6f, %.6f", lat, lon)
+    }
+
+    private func clipboardCoordinate(from text: String) -> CoordinatePoint? {
+        let components = text
+            .replacingOccurrences(of: "\n", with: ",")
+            .replacingOccurrences(of: ";", with: ",")
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard components.count == 2,
+              let latitude = Double(components[0]),
+              let longitude = Double(components[1]),
+              abs(latitude) <= 90,
+              abs(longitude) <= 180 else {
+            return nil
+        }
+
+        return CoordinatePoint(lat: latitude, lon: longitude)
+    }
 }
 
 // MARK: - Supporting types
@@ -570,6 +830,11 @@ struct CourseMarkEditView: View {
 private enum MarkField: Hashable {
     case name
     case descriptionField
+}
+
+private enum MarkPositionInputMode {
+    case manual
+    case copyFromBuoy
 }
 
 enum CourseMarkFormStatus: String, CaseIterable {

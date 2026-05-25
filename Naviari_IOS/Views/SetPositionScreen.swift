@@ -246,7 +246,7 @@ struct SetPositionScreen: View {
 
 }
 
-private struct SetPositionPrimaryButtonLabel: View {
+struct SetPositionPrimaryButtonLabel: View {
     var body: some View {
         ZStack {
             Text("set_position_button")

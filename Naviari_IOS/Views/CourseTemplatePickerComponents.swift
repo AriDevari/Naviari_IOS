@@ -117,3 +117,54 @@ struct CourseTemplatePickerDropdown: View {
         )
     }
 }
+
+func buoySelectionTitle(_ buoy: BuoyRecord) -> String {
+    buoy.name.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+struct CourseBuoyPickerDropdown: View {
+    let buoys: [BuoyRecord]
+    let optionIdentifierPrefix: String
+    let onBuoySelected: (BuoyRecord) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(buoys.enumerated()), id: \.element.id) { index, buoy in
+                Button {
+                    onBuoySelected(buoy)
+                } label: {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(buoySelectionTitle(buoy))
+                            .font(AppFont.textStyle(.body))
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight, alignment: .leading)
+                    .background(Theme.Colors.surfacePrimary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("\(optionIdentifierPrefix)\(buoy.id)")
+
+                if index < buoys.count - 1 {
+                    Divider()
+                        .padding(.leading, 16)
+                }
+            }
+        }
+        .background(Theme.Colors.surfacePrimary)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.CornerRadius.materialCard, style: .continuous)
+                .stroke(Theme.RaceManager.primaryColor.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(
+            color: Color.black.opacity(Theme.Effects.floatingStatusShadowOpacity * 0.35),
+            radius: Theme.Effects.floatingStatusShadowRadius,
+            x: 0,
+            y: Theme.Effects.floatingStatusShadowYOffset
+        )
+    }
+}

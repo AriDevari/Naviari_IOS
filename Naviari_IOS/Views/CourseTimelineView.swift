@@ -282,10 +282,13 @@ private struct CourseStepRow: View {
             }
 
             HStack(spacing: 10) {
-                CoursePositionButton {
+                CourseOutlineTextIconButton(
+                    titleKey: "course_position_label",
+                    systemName: "mappin.and.ellipse"
+                ) {
                     onPositionSelected(.mark(markId: item.id))
                 }
-                CourseEditButton { onEditSelected?(item.id) }
+                CourseCircularIconButton(systemName: "pencil") { onEditSelected?(item.id) }
             }
         }
     }
@@ -429,12 +432,15 @@ private struct CourseStepRow: View {
                 labelWidth: 90
             )
             HStack(spacing: 10) {
-                CoursePositionButton {
+                CourseOutlineTextIconButton(
+                    titleKey: "course_position_label",
+                    systemName: "mappin.and.ellipse"
+                ) {
                     if let selection = lineEndpointSelection(for: .left) {
                         onPositionSelected(selection)
                     }
                 }
-                CourseEditButton { onEditSelected?(item.id) }
+                CourseCircularIconButton(systemName: "pencil") { onEditSelected?(item.id) }
             }
 
             Text(NSLocalizedString("course_right_end", comment: ""))
@@ -455,12 +461,15 @@ private struct CourseStepRow: View {
                 labelWidth: 90
             )
             HStack(spacing: 10) {
-                CoursePositionButton {
+                CourseOutlineTextIconButton(
+                    titleKey: "course_position_label",
+                    systemName: "mappin.and.ellipse"
+                ) {
                     if let selection = lineEndpointSelection(for: .right) {
                         onPositionSelected(selection)
                     }
                 }
-                CourseEditButton { onEditSelected?(item.id) }
+                CourseCircularIconButton(systemName: "pencil") { onEditSelected?(item.id) }
             }
         }
     }
@@ -483,24 +492,6 @@ private struct CourseStepRow: View {
         }
         guard !components.isEmpty else { return "-" }
         return components.joined(separator: " · ")
-    }
-}
-
-private struct CourseEditButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "pencil")
-                .font(.system(size: 22, weight: .medium))
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(Theme.RaceManager.primaryColor)
-        .frame(width: Theme.Sizing.primaryButtonHeight, height: Theme.Sizing.primaryButtonHeight)
-        .overlay(
-            Circle()
-                .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
-        )
     }
 }
 
@@ -648,33 +639,6 @@ private struct CourseStepStatusIcon: View {
                 }
             }
         }
-    }
-}
-
-private struct CoursePositionButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Text("course_position_label")
-                    .font(Theme.Typography.button)
-
-                HStack {
-                    Spacer()
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(Theme.Typography.iconMedium)
-                        .padding(.trailing, Theme.Sizing.primaryButtonHeight / 3)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: Theme.Sizing.primaryButtonHeight)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(Theme.RaceManager.primaryColor)
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Sizing.primaryButtonHeight / 2, style: .continuous)
-                .stroke(Theme.RaceManager.primaryColor, lineWidth: 1.5)
-        )
     }
 }
 

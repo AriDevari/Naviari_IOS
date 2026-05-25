@@ -196,7 +196,9 @@
 "set_position_guide_text" = "Set the mark / buoy coordinates to this location. For course marks it is recommended to set the position 5-10 meters \"inside\" the course. This helps boats round the marks even if there are small GPS inaccuracies. For start and finish lines, set the exact spot or the outer side, but keep it on the line.";
 "set_position_guide_text_mark" = "Set the course mark coordinates to this device location.\n\nFor course marks it is recommended to set the position 5-10 meters \"inside\" the course. This helps to regocnice boats mark roundings even if there are small GPS inaccuracies on boat's data.";
 "set_position_guide_text_line" = "Set the line end coordinates to this device location.\n\nFor line ends it is recommended to set the position on outside of end, as extension on the line. This keeps start end finish times accurate.";
+"set_position_guide_text_buoy" = "Set the buoy coordinates to this device location.\n\nFor course buoys it is recommended to set the position 5-10 meters \"inside\" the course and, for the start/finish line, on the outside as an extension of the line. This helps identify mark roundings and line crossings even if the boat GPS position has small inaccuracies.";
 "set_position_target_mark" = "Course mark";
+"set_position_target_buoy" = "Buoy";
 "set_position_target_start_left" = "Start line left end";
 "set_position_target_start_right" = "Start line right end";
 "set_position_target_finish_left" = "Finish line left end";
@@ -232,6 +234,8 @@
 "course_edit_section_rounding" = "Rounding";
 "course_edit_section_position" = "Position";
 "course_edit_position_subtitle" = "Enter coordinates or capture from GPS.";
+"course_edit_copy_from_buoy_action" = "Copy from buoy";
+"course_edit_select_buoy_button" = "Select buoy";
 "course_edit_lat_label" = "Lat";
 "course_edit_lon_label" = "Lon";
 "course_edit_use_gps_button" = "Use current GPS position";
@@ -261,6 +265,34 @@
 "race_course_copy_error_title" = "Course assignment incomplete";
 "race_course_copy_partial_message" = "%d of %d starts were updated. Some starts could not be assigned a course.";
 "race_course_manage_code_hint" = "Enter the race or series management code to assign a course to all starts. A start-level code is not accepted here.";
+
+// --- Buoys MVP ---
+"buoy_section_title" = "Buoys";
+"buoy_empty_title" = "No buoys yet";
+"buoy_empty_message" = "Add buoys for this race. In this MVP they are saved only on this device for this race.";
+"buoy_add_button" = "Add buoy";
+"buoy_edit_button" = "Edit";
+"buoy_set_coordinates_button" = "Set coordinates";
+"buoy_delete_button" = "Delete";
+"buoy_delete_confirm_title" = "Delete buoy?";
+"buoy_delete_confirm_message" = "This buoy will be removed from local race storage on this device.";
+"buoy_id_label" = "ID";
+"buoy_last_updated_label" = "Last updated";
+"buoy_coordinates_missing" = "No coordinates";
+"buoy_editor_add_title" = "Add Buoy";
+"buoy_editor_edit_title" = "Edit Buoy";
+"buoy_editor_info_title" = "Buoy Help";
+"buoy_editor_info_body" = "Buoys are local race-level objects in this MVP. Save a name, optional description, and optional coordinates. Use Position from the list when you want to open the position guide screen.";
+"course_edit_copy_to_clipboard_action" = "Copy to clipboard";
+"course_edit_paste_from_clipboard_action" = "Paste from clipboard";
+"course_edit_copy_to_clipboard_success" = "Mark coordinates copied to clipboard.";
+"course_edit_paste_from_clipboard_invalid_error" = "Clipboard does not contain valid coordinates.";
+"buoy_edit_name_placeholder" = "e.g. Yellow buoy";
+"buoy_edit_description_placeholder" = "Optional – pin end, gate, spare buoy…";
+"buoy_edit_position_subtitle" = "Enter buoy coordinates or capture from GPS.";
+"buoy_edit_save_error" = "Failed to save buoy locally.";
+"buoy_save_success" = "Buoy saved.";
+"buoy_delete_success" = "Buoy deleted.";
 
 // --- Start countdown timer ---
 "start_detail_show_timer_button" = "Show timer";

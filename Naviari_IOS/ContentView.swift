@@ -19,13 +19,17 @@ struct ContentView: View {
         let uiTestScenario = CourseEditUITestScenario.current
         let raceCourseSectionScenario = RaceCourseSectionUITestScenario.current
         let raceDetailScreenScenario = RaceDetailScreenUITestScenario.current
+        let buoySectionScenario = BuoySectionUITestScenario.current
         let isUITestActive = uiTestScenario != nil
             || raceCourseSectionScenario != nil
             || raceDetailScreenScenario != nil
+            || buoySectionScenario != nil
 
         ZStack {
             Group {
-                if let raceDetailScreenScenario {
+                if let buoySectionScenario {
+                    BuoySectionUITestHarnessView(scenario: buoySectionScenario)
+                } else if let raceDetailScreenScenario {
                     RaceDetailScreenUITestHarnessView(scenario: raceDetailScreenScenario)
                 } else if let raceCourseSectionScenario {
                     RaceCourseSectionUITestHarnessView(scenario: raceCourseSectionScenario)

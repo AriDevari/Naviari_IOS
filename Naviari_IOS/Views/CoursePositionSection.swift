@@ -62,7 +62,7 @@ struct CoursePositionSection: View {
             // GPS button — outlined pill
             Button(action: onSetGPSPosition) {
                 ZStack {
-                    Text(NSLocalizedString("course_edit_use_gps_button", comment: ""))
+                    Text(NSLocalizedString("course_position_label", comment: ""))
                         .font(AppFont.fixed(15, weight: .semibold))
                         .foregroundStyle(Theme.RaceManager.primaryColor)
                         .frame(maxWidth: .infinity, alignment: .center)

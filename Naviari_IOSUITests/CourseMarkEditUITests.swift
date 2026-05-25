@@ -208,6 +208,17 @@ final class CourseMarkEditUITests: XCTestCase {
         XCTAssertEqual(lonDegrees.value as? String, "25")
     }
 
+    func testMarkEditView_positionDisclosureShowsClipboardActions() {
+        launchInEditMode()
+
+        let disclosureButton = app.buttons["course_edit_gps_mark_disclosure"]
+        XCTAssertTrue(disclosureButton.waitForExistence(timeout: 5))
+        disclosureButton.tap()
+
+        XCTAssertTrue(app.buttons["course_edit_copy_to_clipboard_action"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["course_edit_paste_from_clipboard_action"].waitForExistence(timeout: 5))
+    }
+
     func testMarkEditView_invalidCoordinateShowsValidationError() {
         launchInEditMode()
 
