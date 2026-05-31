@@ -40,6 +40,59 @@ final class CourseEditServiceTests: XCTestCase {
         XCTAssertEqual(restored, original, accuracy: 0.0001)
     }
 
+    func testDMSSecondsTextCodecDisplayString_usesLocaleDecimalSeparator() {
+        let displayed = DMSSecondsTextCodec.displayString(for: 30.5, locale: Locale(identifier: "fi_FI"))
+        XCTAssertEqual(displayed, "30,5")
+    }
+
+    func testDMSSecondsTextCodecSanitize_usesLocaleDecimalSeparator() {
+        let sanitized = DMSSecondsTextCodec.sanitize("30.5", maxLength: 6, locale: Locale(identifier: "fi_FI"))
+        XCTAssertEqual(sanitized, "30,5")
+    }
+
+    func testDMSSecondsTextCodecParse_acceptsLocaleDecimalSeparator() {
+        let parsed = DMSSecondsTextCodec.parse("30,5", locale: Locale(identifier: "fi_FI"))
+        XCTAssertEqual(parsed, 30.5)
+    }
+
+    func testDecimalCoordinateTextCodecDisplayString_usesLocaleDecimalSeparator() {
+        let displayed = DecimalCoordinateTextCodec.displayString(for: 60.123456, locale: Locale(identifier: "fi_FI"))
+        XCTAssertEqual(displayed, "60,123456")
+    }
+
+    func testDecimalCoordinateTextCodecSanitize_usesLocaleDecimalSeparator() {
+        let sanitized = DecimalCoordinateTextCodec.sanitize("60.123456", maxLength: 16, locale: Locale(identifier: "fi_FI"))
+        XCTAssertEqual(sanitized, "60,123456")
+    }
+
+    func testDecimalCoordinateTextCodecParse_acceptsLocalizedNegativeValue() {
+        let parsed = DecimalCoordinateTextCodec.parse("-24,987654", locale: Locale(identifier: "fi_FI"))
+        XCTAssertEqual(parsed, -24.987654)
+    }
+
+    func testDecimalCoordinateTextCodecPlaceholder_supportsCustomPrecision() {
+        let placeholder = DecimalCoordinateTextCodec.placeholder(
+            for: 90,
+            locale: Locale(identifier: "fi_FI"),
+            maximumFractionDigits: 1
+        )
+        XCTAssertEqual(placeholder, "90")
+    }
+
+    func testBearingDistanceProjection_roundTripsBearingAndDistance() {
+        let origin = CoordinatePoint(lat: 60.1699, lon: 24.9384)
+        let destination = BearingDistanceProjection.destination(
+            from: origin,
+            bearingDegrees: 72.5,
+            distanceMeters: 850
+        )
+
+        let projection = BearingDistanceProjection.bearingAndDistance(from: origin, to: destination)
+
+        XCTAssertEqual(projection.bearingDegrees, 72.5, accuracy: 0.1)
+        XCTAssertEqual(projection.distanceMeters, 850, accuracy: 0.5)
+    }
+
     // MARK: - RaceService mock tests
 
     /// Returns a RaceService wired to the mock session and records the last request.
@@ -142,6 +195,27 @@ final class CourseEditServiceTests: XCTestCase {
         }
         XCTAssertEqual(mark["lat"] as? Double ?? 0, 60.175139, accuracy: 0.000001)
         XCTAssertEqual(mark["lon"] as? Double ?? 0, 24.945, accuracy: 0.000001)
+    }
+
+    func testUpdateCourseMarkRequest_omitsCourseId() async throws {
+        let (service, mock) = makeService(responseData: sampleMarkJSON())
+        let payload = CourseMarkWritePayload(
+            id: "mark-1",
+            name: "Alpha",
+            description: nil,
+            roundingSide: "port",
+            type: "mark",
+            status: "final",
+            mark: CoordinatePoint(lat: 60.1, lon: 24.9),
+            updatedBy: "test"
+        )
+        _ = try await service.updateCourseMark(payload, accessToken: "tok")
+        guard let bodyData = mock.capturedRequest?.httpBody,
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
+            XCTFail("No body data or JSON decoding failed")
+            return
+        }
+        XCTAssertNil(json["courseId"], "Existing mark updates must not send courseId")
     }
 
     // MARK: insertCourseMark
@@ -254,7 +328,6 @@ final class CourseEditServiceTests: XCTestCase {
     ) -> CourseLineWritePayload {
         CourseLineWritePayload(
             id: id,
-            courseId: "course-1",
             name: "Start Line",
             description: nil,
             status: "final",
@@ -317,6 +390,17 @@ final class CourseEditServiceTests: XCTestCase {
         XCTAssertEqual(json["id"] as? String, lineId)
     }
 
+    func testUpdateStartLineRequest_omitsCourseId() async throws {
+        let (service, mock) = makeService(responseData: sampleLineJSON())
+        try await service.updateStartLine(sampleLinePayload(), accessToken: "tok")
+        guard let bodyData = mock.capturedRequest?.httpBody,
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
+            XCTFail("No body data")
+            return
+        }
+        XCTAssertNil(json["courseId"], "Existing line updates must not send courseId")
+    }
+
     func testUpdateFinishLineRequest_httpMethod() async throws {
         let (service, mock) = makeService(responseData: sampleLineJSON())
         try await service.updateFinishLine(sampleLinePayload(), accessToken: "tok")
@@ -343,6 +427,17 @@ final class CourseEditServiceTests: XCTestCase {
         }
         XCTAssertEqual(markLeft["lat"] as? Double ?? 0, 61.1, accuracy: 0.0001)
         XCTAssertEqual(markRight["lat"] as? Double ?? 0, 61.2, accuracy: 0.0001)
+    }
+
+    func testUpdateFinishLineRequest_omitsCourseId() async throws {
+        let (service, mock) = makeService(responseData: sampleLineJSON())
+        try await service.updateFinishLine(sampleLinePayload(), accessToken: "tok")
+        guard let bodyData = mock.capturedRequest?.httpBody,
+              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] else {
+            XCTFail("No body data")
+            return
+        }
+        XCTAssertNil(json["courseId"], "Existing line updates must not send courseId")
     }
 }
 

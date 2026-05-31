@@ -76,7 +76,7 @@ final class BuoyStorageTests: XCTestCase {
         XCTAssertEqual(loaded.first?.name, "Second")
     }
 
-    func testBuoyStorage_loadSortsByLastUpdatedDescendingThenNameAscending() {
+    func testBuoyStorage_loadPreservesCreationOrder() {
         let (storage, defaults, suiteName) = makeStorage()
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -102,7 +102,40 @@ final class BuoyStorageTests: XCTestCase {
             now: Date(timeIntervalSince1970: 20)
         )
 
-        XCTAssertEqual(storage.loadBuoys(for: "race-a").map(\ .name), ["Zulu", "Alpha", "Bravo"])
+        XCTAssertEqual(storage.loadBuoys(for: "race-a").map(\ .name), ["Bravo", "Alpha", "Zulu"])
+    }
+
+    func testBuoyStorage_updatePreservesExistingListPosition() {
+        let (storage, defaults, suiteName) = makeStorage()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let first = storage.createBuoy(
+            raceId: "race-a",
+            name: "First",
+            description: nil,
+            coordinate: nil,
+            now: Date(timeIntervalSince1970: 10)
+        )
+        let second = storage.createBuoy(
+            raceId: "race-a",
+            name: "Second",
+            description: nil,
+            coordinate: nil,
+            now: Date(timeIntervalSince1970: 20)
+        )
+
+        _ = storage.updateBuoy(
+            id: second.id,
+            raceId: "race-a",
+            name: "Second updated",
+            description: nil,
+            coordinate: CoordinatePoint(lat: 60.1, lon: 24.9),
+            lastUpdated: Date(timeIntervalSince1970: 30)
+        )
+
+        let loaded = storage.loadBuoys(for: "race-a")
+        XCTAssertEqual(loaded.map(\ .id), [first.id, second.id])
+        XCTAssertEqual(loaded.map(\ .name), ["First", "Second updated"])
     }
 
     func testBuoyRecord_coordinateSummaryWithoutCoordinatesUsesFallback() {

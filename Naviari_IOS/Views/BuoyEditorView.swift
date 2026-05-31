@@ -42,16 +42,13 @@ struct BuoyEditorView: View {
 
     @State private var name: String = ""
     @State private var description: String = ""
-    @State private var lat: DMSCoordinate = DMSCoordinate()
-    @State private var lon: DMSCoordinate = DMSCoordinate(hemisphere: "E")
-    @State private var latEntryState: DMSFieldEntryState = DMSFieldEntryState()
-    @State private var lonEntryState: DMSFieldEntryState = DMSFieldEntryState()
     @State private var saveError: String?
     @State private var isSaving = false
     @State private var showRemoveConfirm = false
     @State private var showInfoSheet = false
     @State private var isKeyboardVisible = false
     @State private var didRunInitialSetup = false
+    @StateObject private var coordinateEditor = CourseCoordinateEditorController()
 
     @FocusState private var focusedField: BuoyEditorField?
     @EnvironmentObject private var locationManager: LocationDataManager
@@ -67,21 +64,12 @@ struct BuoyEditorView: View {
 
     private var isSaveDisabled: Bool {
         name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || !hasCompleteCoordinates
-            || coordinateValidationError != nil
+            || coordinateEditor.validationError(locationManager: locationManager) != nil
             || isSaving
     }
 
     private var infoBodyKey: LocalizedStringKey {
         "buoy_editor_info_body"
-    }
-
-    private var hasCompleteCoordinates: Bool {
-        latEntryState.isComplete && lonEntryState.isComplete
-    }
-
-    private var coordinateValidationError: String? {
-        validateCoordinatesRequired()
     }
 
     var body: some View {
@@ -214,16 +202,14 @@ struct BuoyEditorView: View {
         onLatitudeEditingBegan: @escaping () -> Void = {},
         onLongitudeEditingBegan: @escaping () -> Void = {}
     ) -> some View {
-        CoursePositionSection(
+        CourseCoordinateEditorSection(
             sectionTitle: NSLocalizedString("course_edit_section_position", comment: ""),
             sectionSubtitle: NSLocalizedString("buoy_edit_position_subtitle", comment: ""),
-            lat: $lat,
-            lon: $lon,
-            onSetGPSPosition: handleUseCurrentGPSPosition,
+            controller: coordinateEditor,
+            errorMessage: $saveError,
+            buoyOptions: [],
             onLatitudeEditingBegan: onLatitudeEditingBegan,
             onLongitudeEditingBegan: onLongitudeEditingBegan,
-            onLatitudeEntryStateChanged: { latEntryState = $0 },
-            onLongitudeEntryStateChanged: { lonEntryState = $0 },
             accessibilityPrefix: "buoy",
             gpsButtonAccessibilityId: "buoy_set_coordinates_button"
         )
@@ -354,13 +340,11 @@ struct BuoyEditorView: View {
         switch mode {
         case .add:
             focusedField = .name
+            coordinateEditor.resetForNewItem()
         case let .edit(buoy, _):
             name = buoy.name
             description = buoy.description ?? ""
-            if let coordinate = buoy.coordinate {
-                lat = DMSCoordinate(from: coordinate.lat, isLat: true)
-                lon = DMSCoordinate(from: coordinate.lon, isLat: false)
-            }
+            coordinateEditor.prefill(coordinate: buoy.coordinate)
         }
     }
 
@@ -368,8 +352,12 @@ struct BuoyEditorView: View {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
 
-        if let coordinateError = validateCoordinatesRequired() {
-            saveError = coordinateError
+        let coordinateValue: CoordinatePoint
+        switch coordinateEditor.resolvedCoordinate(locationManager: locationManager) {
+        case let .success(resolvedCoordinate):
+            coordinateValue = resolvedCoordinate
+        case let .failure(error):
+            saveError = error
             return
         }
 
@@ -378,7 +366,6 @@ struct BuoyEditorView: View {
         defer { isSaving = false }
 
         let descriptionValue = normalizedOptional(description)
-        let coordinateValue = resolvedCoordinate()
 
         let savedBuoy: BuoyRecord?
         switch mode {
@@ -413,54 +400,9 @@ struct BuoyEditorView: View {
         onSaved(.removed(id: buoy.id))
     }
 
-    private func resolvedCoordinate() -> CoordinatePoint? {
-        return CoordinatePoint(lat: lat.toDecimal(), lon: lon.toDecimal())
-    }
-
-    private func validateCoordinatesRequired() -> String? {
-        if !latEntryState.isComplete || !lonEntryState.isComplete {
-            return NSLocalizedString("course_edit_coordinate_incomplete_error", comment: "")
-        }
-        if !lat.isValid(isLatitude: true) {
-            return NSLocalizedString("course_edit_coordinate_lat_invalid_error", comment: "")
-        }
-        if !lon.isValid(isLatitude: false) {
-            return NSLocalizedString("course_edit_coordinate_lon_invalid_error", comment: "")
-        }
-        return nil
-    }
-
     private func dismissKeyboard() {
         focusedField = nil
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-
-    private func handleUseCurrentGPSPosition() {
-        dismissKeyboard()
-        locationManager.start()
-
-        guard locationAuthorizationIsValid else {
-            saveError = NSLocalizedString("set_position_error_location_permission_required", comment: "")
-            return
-        }
-
-        guard let coordinate = locationManager.latestLocation?.coordinate else {
-            saveError = NSLocalizedString("set_position_error_location_unavailable", comment: "")
-            return
-        }
-
-        lat = DMSCoordinate(from: coordinate.latitude, isLat: true)
-        lon = DMSCoordinate(from: coordinate.longitude, isLat: false)
-        saveError = nil
-    }
-
-    private var locationAuthorizationIsValid: Bool {
-        switch locationManager.authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            return true
-        default:
-            return false
-        }
     }
 
     private func scrollToTarget(_ target: BuoyEditorScrollTarget, using proxy: ScrollViewProxy) {

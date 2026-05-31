@@ -251,7 +251,7 @@ private struct CourseStepRow: View {
 
             if let rounding = item.roundingSide {
                 detailRow(
-                    label: NSLocalizedString("course_rounding_label", comment: ""),
+                    label: NSLocalizedString("course_timeline_rounding_label", comment: ""),
                     value: roundingLabel(for: rounding),
                     labelWidth: 90
                 )
@@ -378,9 +378,9 @@ private struct CourseStepRow: View {
     private func roundingLabel(for rounding: RoundingSide) -> String {
         switch rounding {
         case .port:
-            return NSLocalizedString("course_rounding_port", comment: "")
+            return NSLocalizedString("course_timeline_rounding_port", comment: "")
         case .starboard:
-            return NSLocalizedString("course_rounding_starboard", comment: "")
+            return NSLocalizedString("course_timeline_rounding_starboard", comment: "")
         case .gate:
             return NSLocalizedString("course_rounding_gate", comment: "")
         }

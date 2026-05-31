@@ -1073,8 +1073,9 @@ struct StartDetailScreen: View {
                     accessToken: token,
                     buoyOptions: buoyViewModel.buoys
                 ) { outcome in
+                    let successMessageKey = courseItemSaveSuccessMessageKey(for: target, outcome: outcome)
                     courseItemEditTarget = nil
-                    Task { await reloadCourseAfterEdit(outcome: outcome) }
+                    Task { await reloadCourseAfterEdit(outcome: outcome, successMessageKey: successMessageKey) }
                 }
             }
         case let .addMark(courseId, afterSequence):
@@ -1084,34 +1085,39 @@ struct StartDetailScreen: View {
                     accessToken: token,
                     buoyOptions: buoyViewModel.buoys
                 ) { outcome in
+                    let successMessageKey = courseItemSaveSuccessMessageKey(for: target, outcome: outcome)
                     courseItemEditTarget = nil
-                    Task { await reloadCourseAfterEdit(outcome: outcome) }
+                    Task { await reloadCourseAfterEdit(outcome: outcome, successMessageKey: successMessageKey) }
                 }
             }
         case let .startLine(line, courseId):
             NavigationStack {
                 CourseLineEditView(
                     mode: .editStartLine(line, courseId: courseId),
-                    accessToken: token
+                    accessToken: token,
+                    buoyOptions: buoyViewModel.buoys
                 ) { outcome in
+                    let successMessageKey = courseItemSaveSuccessMessageKey(for: target, outcome: outcome)
                     courseItemEditTarget = nil
-                    Task { await reloadCourseAfterEdit(outcome: outcome) }
+                    Task { await reloadCourseAfterEdit(outcome: outcome, successMessageKey: successMessageKey) }
                 }
             }
         case let .finishLine(line, courseId):
             NavigationStack {
                 CourseLineEditView(
                     mode: .editFinishLine(line, courseId: courseId),
-                    accessToken: token
+                    accessToken: token,
+                    buoyOptions: buoyViewModel.buoys
                 ) { outcome in
+                    let successMessageKey = courseItemSaveSuccessMessageKey(for: target, outcome: outcome)
                     courseItemEditTarget = nil
-                    Task { await reloadCourseAfterEdit(outcome: outcome) }
+                    Task { await reloadCourseAfterEdit(outcome: outcome, successMessageKey: successMessageKey) }
                 }
             }
         }
     }
 
-    private func reloadCourseAfterEdit(outcome: CourseItemSaveOutcome) async {
+    private func reloadCourseAfterEdit(outcome: CourseItemSaveOutcome, successMessageKey: String?) async {
         switch outcome {
         case let .saved(activeItemId):
             preferredActiveCourseItemIdAfterEdit = activeItemId
@@ -1133,6 +1139,25 @@ struct StartDetailScreen: View {
         preferredActiveCourseItemIdAfterEdit = nil
         if let startId = resolvedStart.rawId {
             viewModel.requestCourseRefresh(for: startId)
+        }
+        if let successMessageKey {
+            userNotifications.show(
+                message: NSLocalizedString(successMessageKey, comment: ""),
+                severity: .success
+            )
+        }
+    }
+
+    private func courseItemSaveSuccessMessageKey(for target: CourseItemEditTarget, outcome: CourseItemSaveOutcome) -> String? {
+        guard case .saved = outcome else { return nil }
+
+        switch target {
+        case .mark, .addMark:
+            return "course_edit_mark_save_success"
+        case .startLine:
+            return "course_edit_start_line_save_success"
+        case .finishLine:
+            return "course_edit_finish_line_save_success"
         }
     }
 

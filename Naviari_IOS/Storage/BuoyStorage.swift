@@ -11,7 +11,7 @@ final class BuoyStorage {
     }
 
     func loadBuoys(for raceId: String) -> [BuoyRecord] {
-        sorted(loadAllBuoys()[raceId] ?? [])
+        loadAllBuoys()[raceId] ?? []
     }
 
     func loadBuoy(id: String, raceId: String) -> BuoyRecord? {
@@ -100,21 +100,6 @@ final class BuoyStorage {
     private func persist(_ buoysByRace: [String: [BuoyRecord]]) {
         if let data = try? JSONEncoder().encode(buoysByRace) {
             userDefaults.set(data, forKey: storageKey)
-        }
-    }
-
-    private func sorted(_ buoys: [BuoyRecord]) -> [BuoyRecord] {
-        buoys.sorted { lhs, rhs in
-            if lhs.lastUpdated != rhs.lastUpdated {
-                return lhs.lastUpdated > rhs.lastUpdated
-            }
-
-            let nameOrder = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
-            if nameOrder != .orderedSame {
-                return nameOrder == .orderedAscending
-            }
-
-            return lhs.id < rhs.id
         }
     }
 }

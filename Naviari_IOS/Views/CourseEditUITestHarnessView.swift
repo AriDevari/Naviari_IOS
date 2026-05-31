@@ -83,14 +83,16 @@ struct CourseEditUITestHarnessView: View {
             NavigationStack {
                 CourseLineEditView(
                     mode: .editFinishLine(testLine(name: launchValue("-UITestLineName") ?? NSLocalizedString("course_item_edit_finish_line_title", comment: "")), courseId: "course-1"),
-                    accessToken: "test-token"
+                    accessToken: "test-token",
+                    buoyOptions: []
                 )
             }
         default:
             NavigationStack {
                 CourseLineEditView(
                     mode: .editStartLine(testLine(name: launchValue("-UITestLineName") ?? NSLocalizedString("course_item_edit_start_line_title", comment: "")), courseId: "course-1"),
-                    accessToken: "test-token"
+                    accessToken: "test-token",
+                    buoyOptions: []
                 )
             }
         }

@@ -85,6 +85,71 @@ struct DMSFieldEntryState: Equatable {
     }
 }
 
+enum DMSSecondsTextCodec {
+    static func placeholder(locale: Locale = .autoupdatingCurrent) -> String {
+        "0\(decimalSeparator(in: locale))0"
+    }
+
+    static func displayString(for seconds: Double, locale: Locale = .autoupdatingCurrent) -> String {
+        let roundedSeconds = (seconds * 10).rounded() / 10
+        guard roundedSeconds != 0 else { return "" }
+
+        let formatter = NumberFormatter()
+        formatter.locale = locale
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 1
+
+        return formatter.string(from: NSNumber(value: roundedSeconds)) ?? fallbackDisplayString(for: roundedSeconds)
+    }
+
+    static func sanitize(_ input: String, maxLength: Int, locale: Locale = .autoupdatingCurrent) -> String {
+        let separator = decimalSeparator(in: locale)
+        var result = ""
+        var hasSeparator = false
+
+        for scalar in input.unicodeScalars {
+            if CharacterSet.decimalDigits.contains(scalar) {
+                result.unicodeScalars.append(scalar)
+            } else if isSupportedDecimalSeparator(scalar) {
+                if !hasSeparator {
+                    result.append(separator)
+                    hasSeparator = true
+                }
+            }
+
+            if result.count >= maxLength {
+                break
+            }
+        }
+
+        return result
+    }
+
+    static func parse(_ input: String, locale: Locale = .autoupdatingCurrent) -> Double? {
+        guard !input.isEmpty else { return nil }
+
+        let normalized = input.replacingOccurrences(of: decimalSeparator(in: locale), with: ".")
+        return Double(normalized)
+    }
+
+    private static func decimalSeparator(in locale: Locale) -> String {
+        locale.decimalSeparator ?? "."
+    }
+
+    private static func isSupportedDecimalSeparator(_ scalar: UnicodeScalar) -> Bool {
+        scalar == "." || scalar == ","
+    }
+
+    private static func fallbackDisplayString(for seconds: Double) -> String {
+        let integerSeconds = Int(seconds)
+        if seconds.truncatingRemainder(dividingBy: 1) == 0 {
+            return "\(integerSeconds)"
+        }
+        return "\(seconds)"
+    }
+}
+
 // MARK: - CourseDMSField
 
 private enum DMSPart: Hashable {
@@ -152,13 +217,13 @@ struct CourseDMSField: View {
                 separatorLabel("'")
 
                 // Seconds (decimal)
-                decimalField(text: $secText, maxLength: 6, placeholder: "0.0")
+                decimalField(text: $secText, maxLength: 6, placeholder: DMSSecondsTextCodec.placeholder())
                     .frame(width: 66)
                     .focused($focusedPart, equals: .seconds)
                     .onChange(of: secText) { _, newVal in
-                        let stripped = stripNonDecimal(newVal, maxLen: 6)
+                        let stripped = DMSSecondsTextCodec.sanitize(newVal, maxLength: 6)
                         if stripped != newVal { secText = stripped }
-                        value.seconds = Double(stripped) ?? 0.0
+                        value.seconds = DMSSecondsTextCodec.parse(stripped) ?? 0.0
                         notifyEntryStateChanged()
                     }
 
@@ -262,10 +327,7 @@ struct CourseDMSField: View {
     private func syncTextFromBinding() {
         let newDegText = value.degrees == 0 ? "" : "\(value.degrees)"
         let newMinText = value.minutes == 0 ? "" : "\(value.minutes)"
-        let secRounded = (value.seconds * 10).rounded() / 10
-        let newSecText = secRounded == 0.0 ? "" : secRounded.truncatingRemainder(dividingBy: 1) == 0
-            ? "\(Int(secRounded))"
-            : "\(secRounded)"
+        let newSecText = DMSSecondsTextCodec.displayString(for: value.seconds)
 
         if degText != newDegText { degText = newDegText }
         if minText != newMinText { minText = newMinText }
@@ -286,23 +348,6 @@ struct CourseDMSField: View {
     private func stripNonDigits(_ input: String, maxLen: Int) -> String {
         let digits = input.filter(\.isNumber)
         return String(digits.prefix(maxLen))
-    }
-
-    private func stripNonDecimal(_ input: String, maxLen: Int) -> String {
-        var result = ""
-        var hasDot = false
-        for char in input {
-            if char.isNumber {
-                result.append(char)
-            } else if char == "." || char == "," {
-                if !hasDot {
-                    result.append(".")
-                    hasDot = true
-                }
-            }
-            if result.count >= maxLen { break }
-        }
-        return result
     }
 
 }

@@ -28,20 +28,15 @@ private enum LineEditScrollTarget: String, Hashable {
 struct CourseLineEditView: View {
     let mode: CourseLineEditMode
     let accessToken: String
+    let buoyOptions: [BuoyRecord]
     var onSaved: (CourseItemSaveOutcome) -> Void = { _ in }
 
     // MARK: Form state
     @State private var name: String = ""
     @State private var description: String = ""
     @State private var selectedStatus: CourseMarkFormStatus = .preliminary
-    @State private var leftLat: DMSCoordinate = DMSCoordinate()
-    @State private var leftLon: DMSCoordinate = DMSCoordinate(hemisphere: "E")
-    @State private var rightLat: DMSCoordinate = DMSCoordinate()
-    @State private var rightLon: DMSCoordinate = DMSCoordinate(hemisphere: "E")
-    @State private var leftLatEntryState: DMSFieldEntryState = DMSFieldEntryState()
-    @State private var leftLonEntryState: DMSFieldEntryState = DMSFieldEntryState()
-    @State private var rightLatEntryState: DMSFieldEntryState = DMSFieldEntryState()
-    @State private var rightLonEntryState: DMSFieldEntryState = DMSFieldEntryState()
+    @StateObject private var leftCoordinateEditor = CourseCoordinateEditorController()
+    @StateObject private var rightCoordinateEditor = CourseCoordinateEditorController()
 
     // MARK: UI state
     @State private var isSaving = false
@@ -69,13 +64,6 @@ struct CourseLineEditView: View {
         switch mode {
         case let .editStartLine(line, _): return line
         case let .editFinishLine(line, _): return line
-        }
-    }
-
-    private var currentCourseId: String {
-        switch mode {
-        case let .editStartLine(_, courseId): return courseId
-        case let .editFinishLine(_, courseId): return courseId
         }
     }
 
@@ -215,16 +203,14 @@ struct CourseLineEditView: View {
         onLatitudeEditingBegan: @escaping () -> Void = {},
         onLongitudeEditingBegan: @escaping () -> Void = {}
     ) -> some View {
-        CoursePositionSection(
+        CourseCoordinateEditorSection(
             sectionTitle: NSLocalizedString("course_edit_section_left_end", comment: ""),
             sectionSubtitle: NSLocalizedString("course_edit_left_end_subtitle", comment: ""),
-            lat: $leftLat,
-            lon: $leftLon,
-            onSetGPSPosition: { handleUseCurrentGPSPosition(for: .left) },
+            controller: leftCoordinateEditor,
+            errorMessage: $saveError,
+            buoyOptions: buoyOptions,
             onLatitudeEditingBegan: onLatitudeEditingBegan,
             onLongitudeEditingBegan: onLongitudeEditingBegan,
-            onLatitudeEntryStateChanged: { leftLatEntryState = $0 },
-            onLongitudeEntryStateChanged: { leftLonEntryState = $0 },
             accessibilityPrefix: "left",
             gpsButtonAccessibilityId: "course_edit_gps_left"
         )
@@ -234,16 +220,14 @@ struct CourseLineEditView: View {
         onLatitudeEditingBegan: @escaping () -> Void = {},
         onLongitudeEditingBegan: @escaping () -> Void = {}
     ) -> some View {
-        CoursePositionSection(
+        CourseCoordinateEditorSection(
             sectionTitle: NSLocalizedString("course_edit_section_right_end", comment: ""),
             sectionSubtitle: NSLocalizedString("course_edit_right_end_subtitle", comment: ""),
-            lat: $rightLat,
-            lon: $rightLon,
-            onSetGPSPosition: { handleUseCurrentGPSPosition(for: .right) },
+            controller: rightCoordinateEditor,
+            errorMessage: $saveError,
+            buoyOptions: buoyOptions,
             onLatitudeEditingBegan: onLatitudeEditingBegan,
             onLongitudeEditingBegan: onLongitudeEditingBegan,
-            onLatitudeEntryStateChanged: { rightLatEntryState = $0 },
-            onLongitudeEntryStateChanged: { rightLonEntryState = $0 },
             accessibilityPrefix: "right",
             gpsButtonAccessibilityId: "course_edit_gps_right"
         )
@@ -374,20 +358,36 @@ struct CourseLineEditView: View {
         selectedStatus = CourseMarkFormStatus(from: line.status)
 
         if let leftLatVal = line.mark_left_lat, let leftLonVal = line.mark_left_lon {
-            leftLat = DMSCoordinate(from: leftLatVal, isLat: true)
-            leftLon = DMSCoordinate(from: leftLonVal, isLat: false)
+            leftCoordinateEditor.prefill(coordinate: CoordinatePoint(lat: leftLatVal, lon: leftLonVal))
+        } else {
+            leftCoordinateEditor.prefill(coordinate: nil)
         }
         if let rightLatVal = line.mark_right_lat, let rightLonVal = line.mark_right_lon {
-            rightLat = DMSCoordinate(from: rightLatVal, isLat: true)
-            rightLon = DMSCoordinate(from: rightLonVal, isLat: false)
+            rightCoordinateEditor.prefill(coordinate: CoordinatePoint(lat: rightLatVal, lon: rightLonVal))
+        } else {
+            rightCoordinateEditor.prefill(coordinate: nil)
         }
     }
 
     private func performSave() async {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
-        if let coordinateError = validateCoordinates() {
-            saveError = coordinateError
+
+        let leftCoordinate: CoordinatePoint
+        switch leftCoordinateEditor.resolvedCoordinate(locationManager: locationManager) {
+        case let .success(resolvedCoordinate):
+            leftCoordinate = resolvedCoordinate
+        case let .failure(error):
+            saveError = error
+            return
+        }
+
+        let rightCoordinate: CoordinatePoint
+        switch rightCoordinateEditor.resolvedCoordinate(locationManager: locationManager) {
+        case let .success(resolvedCoordinate):
+            rightCoordinate = resolvedCoordinate
+        case let .failure(error):
+            saveError = error
             return
         }
 
@@ -398,12 +398,11 @@ struct CourseLineEditView: View {
         do {
             let payload = CourseLineWritePayload(
                 id: currentLine.id,
-                courseId: currentCourseId,
                 name: trimmedName,
                 description: normalizedOptional(description),
                 status: selectedStatus.rawValue,
-                markLeft: CoordinatePoint(lat: leftLat.toDecimal(), lon: leftLon.toDecimal()),
-                markRight: CoordinatePoint(lat: rightLat.toDecimal(), lon: rightLon.toDecimal()),
+                markLeft: leftCoordinate,
+                markRight: rightCoordinate,
                 updatedBy: "ios-course-edit"
             )
 
@@ -425,69 +424,6 @@ struct CourseLineEditView: View {
     private func dismissKeyboard() {
         focusedField = nil
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-
-    private func handleUseCurrentGPSPosition(for side: CourseEndpointSide) {
-        dismissKeyboard()
-        locationManager.start()
-
-        guard locationAuthorizationIsValid else {
-            saveError = NSLocalizedString("set_position_error_location_permission_required", comment: "")
-            return
-        }
-
-        guard let coordinate = locationManager.latestLocation?.coordinate else {
-            saveError = NSLocalizedString("set_position_error_location_unavailable", comment: "")
-            return
-        }
-
-        switch side {
-        case .left:
-            leftLat = DMSCoordinate(from: coordinate.latitude, isLat: true)
-            leftLon = DMSCoordinate(from: coordinate.longitude, isLat: false)
-        case .right:
-            rightLat = DMSCoordinate(from: coordinate.latitude, isLat: true)
-            rightLon = DMSCoordinate(from: coordinate.longitude, isLat: false)
-        }
-
-        saveError = nil
-    }
-
-    private var locationAuthorizationIsValid: Bool {
-        switch locationManager.authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private func validateCoordinates() -> String? {
-        if let leftError = validateCoordinatePair(latState: leftLatEntryState, lonState: leftLonEntryState, lat: leftLat, lon: leftLon) {
-            return leftError
-        }
-        if let rightError = validateCoordinatePair(latState: rightLatEntryState, lonState: rightLonEntryState, lat: rightLat, lon: rightLon) {
-            return rightError
-        }
-        return nil
-    }
-
-    private func validateCoordinatePair(
-        latState: DMSFieldEntryState,
-        lonState: DMSFieldEntryState,
-        lat: DMSCoordinate,
-        lon: DMSCoordinate
-    ) -> String? {
-        if !latState.isComplete || !lonState.isComplete {
-            return NSLocalizedString("course_edit_coordinate_incomplete_error", comment: "")
-        }
-        if !lat.isValid(isLatitude: true) {
-            return NSLocalizedString("course_edit_coordinate_lat_invalid_error", comment: "")
-        }
-        if !lon.isValid(isLatitude: false) {
-            return NSLocalizedString("course_edit_coordinate_lon_invalid_error", comment: "")
-        }
-        return nil
     }
 
     private func scrollToTarget(_ target: LineEditScrollTarget, using proxy: ScrollViewProxy) {
@@ -515,7 +451,6 @@ private enum LineField: Hashable {
 
 struct CourseLineWritePayload: Encodable {
     let id: String
-    let courseId: String
     let name: String
     let description: String?
     let status: String
