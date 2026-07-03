@@ -41,6 +41,27 @@ struct BroadcastSession {
         return startedAt.addingTimeInterval(Self.rehearsalDuration)
     }
 
+    var hasUploadCredentials: Bool {
+        let trimmedToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedBoatToken = boatToken?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedStartEntryId = startEntryId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedStartId = startId?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return !trimmedToken.isEmpty &&
+            !(trimmedBoatToken?.isEmpty ?? true) &&
+            !trimmedStartEntryId.isEmpty &&
+            !(trimmedStartId?.isEmpty ?? true)
+    }
+
+    func canReuse(for desiredSession: BroadcastSession) -> Bool {
+        startEntryId == desiredSession.startEntryId &&
+            startId == desiredSession.startId &&
+            boatId == desiredSession.boatId &&
+            mode == desiredSession.mode &&
+            token == desiredSession.token &&
+            boatToken == desiredSession.boatToken
+    }
+
     func matches(startId: String?) -> Bool {
         guard let startId, !startId.isEmpty else { return false }
         return self.startId == startId

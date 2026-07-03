@@ -51,9 +51,13 @@
 "participate_info_body" = "Anna veneen tiedot sekä kilpailutoimistolta saatu koodi ja käynnistä GPS-lähetys, jotta yleisö ja kilpailunjohto näkevät sijaintisi reaaliajassa.";
 "participate_rehearsal_info_title" = "Testilähetyksen ohje";
 "participate_rehearsal_info_body" = "Ennen 2 tunnin live-ikkunaa tämä näkymä käynnistää lyhyen testilähetyksen oikealle tulevalle lähdölle. Tarkista naviari.org-palvelusta, että sijainti, veneen nimi ja veneen väri ovat oikein, ja muista että frontend voi viivästyä noin 30 sekuntia.";
+"participate_name_required" = "Anna veneen tai kipparin nimi.";
+"participate_sail_required" = "Anna purjenumero.";
+"participate_rating_invalid" = "Anna kelvollinen rating-arvo, joka on suurempi kuin 0.";
 "participate_code_required" = "Anna koko osallistumiskoodi.";
 "participate_start_missing" = "Lähtöä ei löytynyt.";
 "participate_code_reuse_notice" = "Koodi on jo tallessa tältä sarjalta – voit aloittaa lähetyksen heti.";
+"participate_broadcast_credentials_missing" = "Lähetystä ei voitu käynnistää, koska veneen tunnistetiedot puuttuvat. Yritä uudelleen.";
 "participate_broadcast_window_hint" = "Varsinainen GPS-lähetys avautuu 2 tuntia ennen arvioitua lähtöaikaa.";
 "participate_estimated_start_required_hint" = "Tästä lähdöstä puuttuu arvioitu lähtöaika. Lähetys ei ole käytettävissä ennen kuin kilpailunjohto korjaa lähtötiedot.";
 "participate_completed_hint" = "Tämä lähtö on päättynyt. GPS-lähetys ei ole enää käytettävissä.";

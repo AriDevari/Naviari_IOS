@@ -314,6 +314,53 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertEqual(token, "manage-token-1")
     }
 
+    func testValidateParticipationFormRejectsMissingName() {
+        let result = validateParticipationForm(name: "  ", sailNumber: "FIN-123", ratingValue: "1.123")
+
+        XCTAssertEqual(result, .failure(.missingName))
+    }
+
+    func testValidateParticipationFormRejectsMissingSailNumber() {
+        let result = validateParticipationForm(name: "Boat", sailNumber: " ", ratingValue: "1.123")
+
+        XCTAssertEqual(result, .failure(.missingSailNumber))
+    }
+
+    func testValidateParticipationFormRejectsNonPositiveOrInvalidRating() {
+        XCTAssertEqual(
+            validateParticipationForm(name: "Boat", sailNumber: "FIN-123", ratingValue: "0"),
+            .failure(.invalidRating)
+        )
+        XCTAssertEqual(
+            validateParticipationForm(name: "Boat", sailNumber: "FIN-123", ratingValue: "-1"),
+            .failure(.invalidRating)
+        )
+        XCTAssertEqual(
+            validateParticipationForm(name: "Boat", sailNumber: "FIN-123", ratingValue: "abc"),
+            .failure(.invalidRating)
+        )
+    }
+
+    func testValidateParticipationFormTrimsAndAcceptsLocalizedRating() {
+        let result = validateParticipationForm(
+            name: "  Boat  ",
+            sailNumber: "  FIN-123  ",
+            ratingValue: "1,234",
+            locale: Locale(identifier: "fi_FI")
+        )
+
+        XCTAssertEqual(
+            result,
+            .success(
+                ValidatedParticipationFormValues(
+                    name: "Boat",
+                    sailNumber: "FIN-123",
+                    rating: 1.234
+                )
+            )
+        )
+    }
+
     func testStartIconAssetNamesMatchApprovedKeys() {
         XCTAssertEqual(debugStartIconAssetName(nil), "system:sailboat.fill")
         XCTAssertEqual(debugStartIconAssetName("default"), "system:sailboat.fill")
@@ -775,6 +822,87 @@ final class Naviari_IOSTests: XCTestCase {
         XCTAssertTrue(session.blocksStartBroadcastCTA(for: "cross-race-start"))
         XCTAssertFalse(session.blocksStartBroadcastCTA(for: nil))
         XCTAssertFalse(session.blocksStartBroadcastCTA(for: ""))
+    }
+
+    func testBroadcastSessionRequiresBoatTokenForUploadCredentials() {
+        let session = BroadcastSession(
+            token: "token",
+            boatToken: nil,
+            startEntryId: "entry-1",
+            startId: "start-a",
+            boatId: nil,
+            raceId: nil,
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: ParticipationSummary(name: nil, sailNumber: nil, rating: nil, club: nil, description: nil, colorHex: nil),
+            mode: .live,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_000)
+        )
+
+        XCTAssertFalse(session.hasUploadCredentials)
+    }
+
+    func testBroadcastSessionCanReuseOnlyMatchingModeAndCredentials() {
+        let baseSummary = ParticipationSummary(name: nil, sailNumber: nil, rating: nil, club: nil, description: nil, colorHex: nil)
+        let active = BroadcastSession(
+            token: "token-a",
+            boatToken: "boat-token-a",
+            startEntryId: "entry-1",
+            startId: "start-a",
+            boatId: "boat-a",
+            raceId: nil,
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: baseSummary,
+            mode: .rehearsal,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_000)
+        )
+
+        let matching = BroadcastSession(
+            token: "token-a",
+            boatToken: "boat-token-a",
+            startEntryId: "entry-1",
+            startId: "start-a",
+            boatId: "boat-a",
+            raceId: nil,
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: baseSummary,
+            mode: .rehearsal,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_100)
+        )
+
+        let liveMode = BroadcastSession(
+            token: "token-a",
+            boatToken: "boat-token-a",
+            startEntryId: "entry-1",
+            startId: "start-a",
+            boatId: "boat-a",
+            raceId: nil,
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: baseSummary,
+            mode: .live,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_100)
+        )
+
+        let rotatedBoatToken = BroadcastSession(
+            token: "token-a",
+            boatToken: "boat-token-b",
+            startEntryId: "entry-1",
+            startId: "start-a",
+            boatId: "boat-a",
+            raceId: nil,
+            seriesId: nil,
+            startDisplayName: nil,
+            summary: baseSummary,
+            mode: .rehearsal,
+            startedAt: Date(timeIntervalSince1970: 1_743_190_100)
+        )
+
+        XCTAssertTrue(active.canReuse(for: matching))
+        XCTAssertFalse(active.canReuse(for: liveMode))
+        XCTAssertFalse(active.canReuse(for: rotatedBoatToken))
     }
 
     func testBroadcastSessionUsesSensibleDrawerFallbacks() {

@@ -51,9 +51,13 @@
 "participate_info_body" = "Fyll i båtuppgifterna och koden från tävlingskontoret och starta sedan GPS-sändningen så att publik och arrangör kan följa din position i realtid.";
 "participate_rehearsal_info_title" = "Testsändning – hjälp";
 "participate_rehearsal_info_body" = "Före 2-timmars live-fönstret startar det här flödet en kort testsändning för den riktiga kommande starten. Kontrollera på naviari.org att din position, båtens namn och båtens färg är rätt, och kom ihåg att frontenden kan ligga efter med cirka 30 sekunder.";
+"participate_name_required" = "Ange båtens eller skepparens namn.";
+"participate_sail_required" = "Ange ett segelnummer.";
+"participate_rating_invalid" = "Ange ett giltigt ratingtal som är större än 0.";
 "participate_code_required" = "Ange hela deltagarkoden.";
 "participate_start_missing" = "Starten hittades inte.";
 "participate_code_reuse_notice" = "Koden finns redan sparad för den här serien – du kan starta sändningen direkt.";
+"participate_broadcast_credentials_missing" = "Sändningen kunde inte startas eftersom båtens inloggningsuppgifter saknas. Försök igen.";
 "participate_broadcast_window_hint" = "Den riktiga GPS-sändningen öppnar 2 timmar före den uppskattade starttiden.";
 "participate_estimated_start_required_hint" = "Den här starten saknar uppskattad starttid. Sändning är inte tillgänglig förrän tävlingsledningen har rättat startdatan.";
 "participate_completed_hint" = "Den här starten är avslutad. GPS-sändning är inte längre tillgänglig.";

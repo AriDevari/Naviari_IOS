@@ -51,9 +51,13 @@
 "participate_info_body" = "Provide boat and contact details plus the code from the race office, then start the GPS broadcast so spectators and race management can see your live position.";
 "participate_rehearsal_info_title" = "Test Broadcast Help";
 "participate_rehearsal_info_body" = "Before the 2 hour live window, this flow starts a short test broadcast for the real upcoming start. Check on naviari.org that your position, boat name, and boat color are correct, and remember that the frontend can lag by about 30 seconds.";
+"participate_name_required" = "Enter a boat or skipper name.";
+"participate_sail_required" = "Enter a sail number.";
+"participate_rating_invalid" = "Enter a valid rating greater than 0.";
 "participate_code_required" = "Enter the full participation code.";
 "participate_start_missing" = "Missing start identifier.";
 "participate_code_reuse_notice" = "Code already on file from this race – you can start broadcasting immediately.";
+"participate_broadcast_credentials_missing" = "Broadcast could not start because boat credentials are missing. Please try again.";
 "participate_broadcast_window_hint" = "Real GPS broadcast opens 2 hours before the estimated start time.";
 "participate_estimated_start_required_hint" = "This start is missing its estimated start time. Broadcasting is unavailable until race management fixes the start data.";
 "participate_completed_hint" = "This start is completed. GPS broadcast is no longer available.";

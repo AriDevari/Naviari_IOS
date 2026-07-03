@@ -8,6 +8,71 @@
 import SwiftUI
 import UIKit
 
+enum ParticipationFormValidationError: Error, Equatable {
+    case missingName
+    case missingSailNumber
+    case invalidRating
+
+    var localizationKey: String {
+        switch self {
+        case .missingName:
+            return "participate_name_required"
+        case .missingSailNumber:
+            return "participate_sail_required"
+        case .invalidRating:
+            return "participate_rating_invalid"
+        }
+    }
+}
+
+struct ValidatedParticipationFormValues: Equatable {
+    let name: String
+    let sailNumber: String
+    let rating: Double
+}
+
+func validateParticipationForm(
+    name: String,
+    sailNumber: String,
+    ratingValue: String,
+    locale: Locale = .current
+) -> Result<ValidatedParticipationFormValues, ParticipationFormValidationError> {
+    let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmedName.isEmpty {
+        return .failure(.missingName)
+    }
+
+    let trimmedSailNumber = sailNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmedSailNumber.isEmpty {
+        return .failure(.missingSailNumber)
+    }
+
+    let trimmedRating = ratingValue.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedRating.isEmpty else {
+        return .failure(.invalidRating)
+    }
+
+    let formatter = NumberFormatter()
+    formatter.locale = locale
+    let localizedNumber = formatter.number(from: trimmedRating)?.doubleValue
+
+    let fallbackFormatter = NumberFormatter()
+    fallbackFormatter.locale = Locale(identifier: "en_US_POSIX")
+    let fallbackNumber = fallbackFormatter.number(from: trimmedRating)?.doubleValue
+
+    guard let parsedRating = localizedNumber ?? fallbackNumber, parsedRating > 0 else {
+        return .failure(.invalidRating)
+    }
+
+    return .success(
+        ValidatedParticipationFormValues(
+            name: trimmedName,
+            sailNumber: trimmedSailNumber,
+            rating: parsedRating
+        )
+    )
+}
+
 /// Collects basic entrant info + participation code, then starts GPS broadcasting.
 struct ParticipateView: View {
     let raceSummary: RaceSummary
@@ -287,6 +352,14 @@ struct ParticipateView: View {
             submissionError = NSLocalizedString("participate_estimated_start_required_hint", comment: "")
             return
         }
+        let validatedForm: ValidatedParticipationFormValues
+        switch validateParticipationForm(name: name, sailNumber: sailNumber, ratingValue: ratingValue) {
+        case let .success(result):
+            validatedForm = result
+        case let .failure(error):
+            submissionError = NSLocalizedString(error.localizationKey, comment: "")
+            return
+        }
         isSubmitting = true
         defer { isSubmitting = false }
         submissionError = nil
@@ -302,13 +375,13 @@ struct ParticipateView: View {
             let submission = ParticipationSubmission(
                 startId: startId,
                 boatId: existingBoatId,
-                name: trimmedOrNil(name),
-                sailNumber: trimmedOrNil(sailNumber),
+                name: validatedForm.name,
+                sailNumber: validatedForm.sailNumber,
                 club: trimmedOrNil(clubText),
-                rating: parsedRatingValue(),
+                rating: validatedForm.rating,
                 description: trimmedOrNil(descriptionText),
                 displayColor: colorHex,
-                issueNewBoatSecret: existingBoatId == nil
+                issueNewBoatSecret: true
             )
             let result = try await service.submitStartEntry(token: token, submission: submission)
             let mergedResult = ParticipationResult(
@@ -332,24 +405,11 @@ struct ParticipateView: View {
                     await MainActor.run { dismiss() }
                     return
                 }
+                submissionError = NSLocalizedString("participate_broadcast_credentials_missing", comment: "")
             }
         } catch {
             submissionError = error.localizedDescription
         }
-    }
-
-    /// Converts the localized rating text field into a decimal value (fallback to en_US when needed).
-    private func parsedRatingValue() -> Double? {
-        let trimmed = ratingValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        let formatter = NumberFormatter()
-        formatter.locale = Locale.current
-        if let number = formatter.number(from: trimmed) {
-            return number.doubleValue
-        }
-        let dotFormatter = NumberFormatter()
-        dotFormatter.locale = Locale(identifier: "en_US_POSIX")
-        return dotFormatter.number(from: trimmed)?.doubleValue
     }
 
     private func hexString(from color: Color) -> String? {
@@ -529,23 +589,17 @@ struct ParticipateView: View {
             record.scope == .start,
             record.scopeId == startIdentifier,
             let startEntryId = record.startEntryId,
-            let startId = startIdentifier
+            let startId = startIdentifier,
+            let boatToken = record.boatToken?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !boatToken.isEmpty
         else {
             return false
         }
 
-        if
-            let activeSession = metricsUploader.activeSession,
-            metricsUploader.isBroadcasting,
-            activeSession.startId == startId,
-            activeSession.startEntryId == startEntryId
-        {
-            return true
-        }
         let summary = summaryOverride ?? record.summary
         let session = BroadcastSession(
             token: record.token,
-            boatToken: record.boatToken,
+            boatToken: boatToken,
             startEntryId: startEntryId,
             startId: startId,
             boatId: record.boatId,
@@ -556,6 +610,18 @@ struct ParticipateView: View {
             mode: isRehearsalMode ? .rehearsal : .live,
             startedAt: Date()
         )
+
+        guard session.hasUploadCredentials else {
+            return false
+        }
+
+        if
+            let activeSession = metricsUploader.activeSession,
+            metricsUploader.isBroadcasting,
+            activeSession.canReuse(for: session)
+        {
+            return true
+        }
         metricsUploader.startBroadcast(session: session)
         if !isRehearsalMode {
             userNotifications.show(
