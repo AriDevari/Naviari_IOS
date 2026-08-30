@@ -533,7 +533,7 @@ enum SetPositionTarget: Hashable {
         }
     }
 
-    func nextLineStatus() -> String {
+    func nextLineStatus(currentStatus: String? = nil) -> String {
         let normalizedStatus: String
         let rawStatus: String
         let side: CourseEndpointSide
@@ -542,7 +542,8 @@ enum SetPositionTarget: Hashable {
         case .mark:
             return "final"
         case let .startLine(target, selectedSide), let .finishLine(target, selectedSide):
-            rawStatus = target.status?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "preliminary"
+            rawStatus = (currentStatus ?? target.status)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? "preliminary"
             normalizedStatus = rawStatus.lowercased()
             side = selectedSide
         }

@@ -461,6 +461,7 @@ struct CourseMarkEditView: View {
                     updatedBy: "ios-course-edit"
                 )
                 let savedMark = try await raceService.updateCourseMark(payload, accessToken: accessToken)
+                coordinateEditor.markCurrentCoordinateAsSaved()
                 onSaved(.saved(activeItemId: savedMark.id))
 
             case let .addMark(courseId, afterSequence):
@@ -474,6 +475,7 @@ struct CourseMarkEditView: View {
                     mark: coordinate
                 )
                 let savedMark = try await raceService.insertCourseMark(courseId: courseId, payload: payload, accessToken: accessToken)
+                coordinateEditor.markCurrentCoordinateAsSaved()
                 onSaved(.saved(activeItemId: savedMark.id))
             }
         } catch {

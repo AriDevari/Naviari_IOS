@@ -213,7 +213,10 @@
 "set_position_error_manage_token_required" = "Administrationskod krävs.";
 "set_position_error_location_permission_required" = "Platsbehörighet krävs.";
 "set_position_error_location_unavailable" = "Nuvarande position är inte tillgänglig ännu.";
+"set_position_error_location_stale" = "Väntar på en aktuell GPS-position. Försök igen om en stund.";
+"set_position_error_location_inaccurate" = "GPS-noggrannheten är för låg för att ställa in en bankursposition. Vänta på en bättre position.";
 "set_position_error_line_endpoint_missing" = "Den andra linjeänden saknas. Uppdatera bankursdata och försök igen.";
+"set_position_error_line_refresh_failed" = "Den aktuella linjen kunde inte uppdateras. Ingen position ändrades.";
 "set_position_error_save_failed" = "Det gick inte att ställa in position.";
 "set_position_success_mark" = "Position uppdaterad.";
 "set_position_success_start_left" = "Startlinjens vänstra ände uppdaterad.";
@@ -246,6 +249,7 @@
 "course_edit_position_subtitle" = "Ange koordinater eller hämta med GPS.";
 "course_edit_copy_from_buoy_action" = "Kopiera från boj";
 "course_edit_select_buoy_button" = "Välj boj";
+"course_edit_buoy_selection_required_error" = "Välj en boj innan du sparar den kopierade positionen.";
 "course_edit_lat_label" = "Lat";
 "course_edit_lon_label" = "Lon";
 "course_edit_use_gps_button" = "Använd aktuell GPS-position";

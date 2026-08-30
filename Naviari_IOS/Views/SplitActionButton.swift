@@ -4,6 +4,7 @@ struct SplitActionButton<Label: View>: View {
     enum Variant {
         case outlined(accentColor: Color)
         case dualOutlined(primaryColor: Color, secondaryColor: Color)
+        case filled(backgroundColor: Color, foregroundColor: Color)
 
         var borderColor: Color {
             switch self {
@@ -11,6 +12,8 @@ struct SplitActionButton<Label: View>: View {
                 return accentColor
             case let .dualOutlined(primaryColor, _):
                 return primaryColor
+            case let .filled(_, foregroundColor):
+                return foregroundColor.opacity(0.58)
             }
         }
 
@@ -20,6 +23,8 @@ struct SplitActionButton<Label: View>: View {
                 return accentColor
             case let .dualOutlined(primaryColor, _):
                 return primaryColor
+            case let .filled(_, foregroundColor):
+                return foregroundColor
             }
         }
 
@@ -29,6 +34,19 @@ struct SplitActionButton<Label: View>: View {
                 return accentColor
             case let .dualOutlined(_, secondaryColor):
                 return secondaryColor
+            case let .filled(_, foregroundColor):
+                return foregroundColor
+            }
+        }
+
+        var dividerColor: Color {
+            switch self {
+            case let .outlined(accentColor):
+                return accentColor
+            case let .dualOutlined(primaryColor, _):
+                return primaryColor
+            case let .filled(_, foregroundColor):
+                return foregroundColor.opacity(0.42)
             }
         }
 
@@ -36,6 +54,8 @@ struct SplitActionButton<Label: View>: View {
             switch self {
             case .outlined, .dualOutlined:
                 return .clear
+            case let .filled(backgroundColor, _):
+                return backgroundColor
             }
         }
     }
@@ -93,7 +113,7 @@ struct SplitActionButton<Label: View>: View {
             .accessibilityIdentifier(primaryAccessibilityIdentifier ?? "")
 
             Rectangle()
-                .fill(variant.borderColor.opacity(isEnabled ? 1.0 : 0.45))
+                .fill(variant.dividerColor.opacity(isEnabled ? 1.0 : 0.45))
                 .frame(width: 1)
                 .padding(.vertical, 10)
 

@@ -213,7 +213,10 @@
 "set_position_error_manage_token_required" = "Management code is required.";
 "set_position_error_location_permission_required" = "Location permission is required.";
 "set_position_error_location_unavailable" = "Current location is not available yet.";
+"set_position_error_location_stale" = "Waiting for a recent GPS location. Please try again in a moment.";
+"set_position_error_location_inaccurate" = "GPS accuracy is too low to set a course position. Please wait for a better location.";
 "set_position_error_line_endpoint_missing" = "The other line endpoint is missing. Refresh course data and try again.";
+"set_position_error_line_refresh_failed" = "Could not refresh the current line. No position was changed.";
 "set_position_error_save_failed" = "Failed to set position.";
 "set_position_success_mark" = "Position updated.";
 "set_position_success_start_left" = "Start line left end updated.";
@@ -246,6 +249,7 @@
 "course_edit_position_subtitle" = "Enter coordinates or capture from GPS.";
 "course_edit_copy_from_buoy_action" = "Copy from buoy";
 "course_edit_select_buoy_button" = "Select buoy";
+"course_edit_buoy_selection_required_error" = "Select a buoy before saving the copied position.";
 "course_edit_lat_label" = "Lat";
 "course_edit_lon_label" = "Lon";
 "course_edit_use_gps_button" = "Use current GPS position";

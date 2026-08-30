@@ -45,6 +45,10 @@ final class CourseEditServiceTests: XCTestCase {
         XCTAssertEqual(displayed, "30,5")
     }
 
+    func testDMSSecondsTextCodecDisplayString_keepsZeroAsAnExplicitValue() {
+        XCTAssertEqual(DMSSecondsTextCodec.displayString(for: 0, locale: Locale(identifier: "en_US")), "0")
+    }
+
     func testDMSSecondsTextCodecSanitize_usesLocaleDecimalSeparator() {
         let sanitized = DMSSecondsTextCodec.sanitize("30.5", maxLength: 6, locale: Locale(identifier: "fi_FI"))
         XCTAssertEqual(sanitized, "30,5")
@@ -91,6 +95,54 @@ final class CourseEditServiceTests: XCTestCase {
 
         XCTAssertEqual(projection.bearingDegrees, 72.5, accuracy: 0.1)
         XCTAssertEqual(projection.distanceMeters, 850, accuracy: 0.5)
+    }
+
+    @MainActor
+    func testCopyFromBuoyRequiresSelectionBeforeResolvingCoordinate() {
+        let locationManager = LocationDataManager()
+        let controller = CourseCoordinateEditorController()
+        controller.prefill(coordinate: CoordinatePoint(lat: 60.1, lon: 24.1))
+        controller.handleCopyFromBuoyAction()
+
+        switch controller.resolvedCoordinate(locationManager: locationManager) {
+        case .success:
+            XCTFail("Copy-from-buoy mode must not resolve the old coordinate before a buoy is selected.")
+        case let .failure(error):
+            XCTAssertEqual(
+                error,
+                NSLocalizedString("course_edit_buoy_selection_required_error", comment: "")
+            )
+        }
+    }
+
+    @MainActor
+    func testCoursePositionLocationReadinessRejectsStaleAndInaccurateLocations() {
+        let locationManager = LocationDataManager()
+        let now = Date()
+
+        locationManager.injectTestLocation(
+            latitude: 60.1,
+            longitude: 24.1,
+            accuracy: 5,
+            timestamp: now.addingTimeInterval(-16)
+        )
+        if case .stale = locationManager.coursePositionLocationReadiness(now: now) {
+            // Expected.
+        } else {
+            XCTFail("A 16-second-old location must not be used for setting a course position.")
+        }
+
+        locationManager.injectTestLocation(
+            latitude: 60.1,
+            longitude: 24.1,
+            accuracy: 101,
+            timestamp: now
+        )
+        if case .inaccurate = locationManager.coursePositionLocationReadiness(now: now) {
+            // Expected.
+        } else {
+            XCTFail("A location with over 100 m horizontal accuracy must not be used for setting a course position.")
+        }
     }
 
     // MARK: - RaceService mock tests

@@ -1271,6 +1271,86 @@ final class Naviari_IOSTests: XCTestCase {
         wait(for: [inspectedRequest], timeout: 1.0)
     }
 
+    func testSetCoursePositionForStartLineUsesFreshCourseEndpointInsteadOfStaleScreenValue() async throws {
+        let fetchedCurrentLine = expectation(description: "current start course requested")
+        let inspectedWrite = expectation(description: "start line write inspected")
+
+        MockURLProtocol.requestHandler = { request in
+            switch request.url?.path {
+            case "/api/starts/id/start-1":
+                XCTAssertEqual(request.httpMethod, "GET")
+                fetchedCurrentLine.fulfill()
+                let payload = """
+                {
+                  "ok": true,
+                  "start": { "id": "start-1", "name": "Start 1", "status": "scheduled" },
+                  "course": {
+                    "id": "course-1",
+                    "course_marks": [],
+                    "start_line": {
+                      "id": "line-1",
+                      "name": "Start line",
+                      "status": "leftSet",
+                      "mark_left_lat": 60.5,
+                      "mark_left_lon": 24.5,
+                      "mark_right_lat": 60.2,
+                      "mark_right_lon": 24.2
+                    }
+                  }
+                }
+                """.data(using: .utf8)!
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, payload)
+
+            case "/api/start-lines":
+                XCTAssertEqual(request.httpMethod, "PUT")
+                let json = try XCTUnwrap(
+                    try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any]
+                )
+                XCTAssertEqual(json["status"] as? String, "final")
+
+                let markLeft = try XCTUnwrap(json["markLeft"] as? [String: Any])
+                XCTAssertEqual(markLeft["lat"] as? Double, 60.5)
+                XCTAssertEqual(markLeft["lon"] as? Double, 24.5)
+
+                let markRight = try XCTUnwrap(json["markRight"] as? [String: Any])
+                XCTAssertEqual(markRight["lat"] as? Double, 60.8)
+                XCTAssertEqual(markRight["lon"] as? Double, 24.8)
+                inspectedWrite.fulfill()
+
+                let payload = """
+                { "ok": true, "startLine": { "id": "line-1" } }
+                """.data(using: .utf8)!
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, payload)
+
+            default:
+                throw RaceServiceError.invalidURL
+            }
+        }
+
+        let target = SetPositionTarget.startLine(
+            CourseLinePositionTarget(
+                lineId: "line-1",
+                name: "Start line",
+                description: "stale screen snapshot",
+                status: "preliminary",
+                markLeft: CoordinatePoint(lat: 60.1, lon: 24.1),
+                markRight: CoordinatePoint(lat: 60.2, lon: 24.2)
+            ),
+            side: .right
+        )
+
+        try await makeService().setCoursePosition(
+            target: target,
+            coordinate: CoordinatePoint(lat: 60.8, lon: 24.8),
+            accessToken: "manage-token-1",
+            startId: "start-1"
+        )
+
+        wait(for: [fetchedCurrentLine, inspectedWrite], timeout: 1.0)
+    }
+
     func testSetCoursePositionThrowsWhenUntouchedLineEndpointIsMissing() async throws {
         let service = makeService()
         let target = SetPositionTarget.finishLine(
