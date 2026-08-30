@@ -17,8 +17,12 @@ final class CourseCoordinateEditorController: ObservableObject {
     @Published var isPositionActionMenuExpanded = false
     @Published var isBuoyPickerExpanded = false
     @Published var selectedBuoyId: String?
+    @Published private(set) var hasPendingCoordinateChange = false
+
+    private var baselineCoordinate: CoordinatePoint?
 
     func resetForNewItem() {
+        baselineCoordinate = nil
         lat = DMSCoordinate()
         lon = DMSCoordinate(hemisphere: "E")
         latEntryState = DMSFieldEntryState()
@@ -32,12 +36,25 @@ final class CourseCoordinateEditorController: ObservableObject {
         isPositionActionMenuExpanded = false
         isBuoyPickerExpanded = false
         selectedBuoyId = nil
+        hasPendingCoordinateChange = false
     }
 
     func prefill(coordinate: CoordinatePoint?) {
         resetForNewItem()
-        guard let coordinate else { return }
+        guard let coordinate else {
+            baselineCoordinate = nil
+            hasPendingCoordinateChange = false
+            return
+        }
+
         applyCoordinate(coordinate)
+        baselineCoordinate = displayNormalizedCoordinateSnapshot()
+        hasPendingCoordinateChange = false
+    }
+
+    func markCurrentCoordinateAsSaved() {
+        baselineCoordinate = displayNormalizedCoordinateSnapshot()
+        hasPendingCoordinateChange = false
     }
 
     func validationError(locationManager: LocationDataManager) -> String? {
@@ -53,6 +70,10 @@ final class CourseCoordinateEditorController: ObservableObject {
         locationManager: LocationDataManager,
         persistChanges: Bool = true
     ) -> CourseCoordinateResolution<CoordinatePoint> {
+        guard positionInputMode != .copyFromBuoy else {
+            return .failure(NSLocalizedString("course_edit_buoy_selection_required_error", comment: ""))
+        }
+
         switch coordinateEntryMode {
         case .dms:
             guard latEntryState.isComplete, lonEntryState.isComplete else {
@@ -133,12 +154,13 @@ final class CourseCoordinateEditorController: ObservableObject {
             return NSLocalizedString("set_position_error_location_permission_required", comment: "")
         }
 
-        guard let coordinate = currentLocationPoint(from: locationManager) else {
-            return NSLocalizedString("set_position_error_location_unavailable", comment: "")
+        switch locationManager.coursePositionLocationReadiness() {
+        case let .ready(coordinate):
+            applyCoordinate(coordinate)
+            return nil
+        case .unavailable, .stale, .inaccurate:
+            return locationManager.coursePositionLocationReadiness().errorMessage
         }
-
-        applyCoordinate(coordinate)
-        return nil
     }
 
     func handleCopyFromBuoyAction() {
@@ -197,6 +219,16 @@ final class CourseCoordinateEditorController: ObservableObject {
         applyCoordinate(coordinate)
     }
 
+    func handleLatitudeEntryStateChanged(_ state: DMSFieldEntryState) {
+        latEntryState = state
+        refreshPendingCoordinateChange()
+    }
+
+    func handleLongitudeEntryStateChanged(_ state: DMSFieldEntryState) {
+        lonEntryState = state
+        refreshPendingCoordinateChange()
+    }
+
     func syncCoordinateBinding(
         from text: String,
         field: CourseCoordinateEditorField,
@@ -231,6 +263,7 @@ final class CourseCoordinateEditorController: ObservableObject {
         positionInputMode = .coordinateEntry
         isBuoyPickerExpanded = false
         isPositionActionMenuExpanded = false
+        refreshPendingCoordinateChange()
     }
 
     private func syncDecimalCoordinateTexts() {
@@ -250,6 +283,8 @@ final class CourseCoordinateEditorController: ObservableObject {
             lon = DMSCoordinate(from: parsed, isLat: false)
             lonEntryState = entryState(for: lon)
         }
+
+        refreshPendingCoordinateChange()
     }
 
     private func syncBearingDistanceCoordinate(origin: CoordinatePoint?) {
@@ -269,6 +304,7 @@ final class CourseCoordinateEditorController: ObservableObject {
         latEntryState = entryState(for: lat)
         lonEntryState = entryState(for: lon)
         syncDecimalCoordinateTexts()
+        refreshPendingCoordinateChange()
     }
 
     private func syncBearingDistanceTexts(origin: CoordinatePoint?) {
@@ -299,8 +335,10 @@ final class CourseCoordinateEditorController: ObservableObject {
     }
 
     private func currentLocationPoint(from locationManager: LocationDataManager) -> CoordinatePoint? {
-        guard let coordinate = locationManager.latestLocation?.coordinate else { return nil }
-        return CoordinatePoint(lat: coordinate.latitude, lon: coordinate.longitude)
+        guard case let .ready(coordinate) = locationManager.coursePositionLocationReadiness() else {
+            return nil
+        }
+        return coordinate
     }
 
     private func locationAuthorizationIsValid(_ locationManager: LocationDataManager) -> Bool {
@@ -320,6 +358,47 @@ final class CourseCoordinateEditorController: ObservableObject {
             minutesText: String(format: "%02d", coordinate.minutes),
             secondsText: secondsText
         )
+    }
+
+    private func refreshPendingCoordinateChange() {
+        guard hasAnyCoordinateEntry else {
+            hasPendingCoordinateChange = false
+            return
+        }
+
+        hasPendingCoordinateChange = !coordinatesEqual(displayNormalizedCoordinateSnapshot(), baselineCoordinate)
+    }
+
+    private var hasAnyCoordinateEntry: Bool {
+        latEntryState.hasAnyEntry || lonEntryState.hasAnyEntry
+    }
+
+    private func currentCoordinateSnapshot() -> CoordinatePoint? {
+        guard hasAnyCoordinateEntry else { return nil }
+        return CoordinatePoint(lat: lat.toDecimal(), lon: lon.toDecimal())
+    }
+
+    private func displayNormalizedCoordinateSnapshot() -> CoordinatePoint? {
+        guard hasAnyCoordinateEntry else { return nil }
+
+        var normalizedLat = lat
+        var normalizedLon = lon
+        normalizedLat.seconds = (normalizedLat.seconds * 10).rounded() / 10
+        normalizedLon.seconds = (normalizedLon.seconds * 10).rounded() / 10
+
+        return CoordinatePoint(lat: normalizedLat.toDecimal(), lon: normalizedLon.toDecimal())
+    }
+
+    private func coordinatesEqual(_ lhs: CoordinatePoint?, _ rhs: CoordinatePoint?) -> Bool {
+        switch (lhs, rhs) {
+        case (.none, .none):
+            return true
+        case let (.some(lhsValue), .some(rhsValue)):
+            return abs(lhsValue.lat - rhsValue.lat) < 0.000_000_5
+                && abs(lhsValue.lon - rhsValue.lon) < 0.000_000_5
+        default:
+            return false
+        }
     }
 
     private func clipboardCoordinate(from text: String) -> CoordinatePoint? {
@@ -365,6 +444,26 @@ struct CourseCoordinateEditorSection: View {
 
     private var hasBuoyCopyOption: Bool {
         !copyableBuoys.isEmpty
+    }
+
+    private var hasPendingCoordinateChange: Bool {
+        controller.hasPendingCoordinateChange
+    }
+
+    private var fieldBackgroundColor: Color {
+        hasPendingCoordinateChange ? Theme.FormField.pendingBackground : Theme.FormField.background
+    }
+
+    private var fieldBorderColor: Color {
+        hasPendingCoordinateChange ? Theme.FormField.pendingBorder : Theme.FormField.borderDefault
+    }
+
+    private var fieldForegroundColor: Color {
+        hasPendingCoordinateChange ? Theme.FormField.pendingForeground : Theme.Colors.textPrimary
+    }
+
+    private var fieldSecondaryForegroundColor: Color {
+        Theme.Colors.textSecondary
     }
 
     private var selectedBuoyPickerTitle: String {
@@ -414,7 +513,9 @@ struct CourseCoordinateEditorSection: View {
 
     private var buoySelectorButton: some View {
         SplitActionButton(
-            variant: .outlined(accentColor: Theme.RaceManager.primaryColor),
+            variant: hasPendingCoordinateChange
+                ? .filled(backgroundColor: Theme.FormField.pendingBackground, foregroundColor: Theme.FormField.pendingForeground)
+                : .outlined(accentColor: Theme.RaceManager.primaryColor),
             isEnabled: true,
             isExpanded: controller.isBuoyPickerExpanded,
             primaryAccessibilityIdentifier: "course_edit_buoy_selector_button",
@@ -426,6 +527,7 @@ struct CourseCoordinateEditorSection: View {
                 Spacer()
                 Text(selectedBuoyPickerTitle)
                     .font(Theme.Typography.button)
+                    .foregroundStyle(hasPendingCoordinateChange ? Theme.FormField.pendingForeground : Theme.RaceManager.primaryColor)
                     .multilineTextAlignment(.center)
                 Spacer()
             }
@@ -531,8 +633,9 @@ struct CourseCoordinateEditorSection: View {
                 isLatitude: true,
                 value: $controller.lat,
                 accessibilityIdentifier: "\(accessibilityPrefix)_dms_lat",
+                isPendingSaveHighlight: hasPendingCoordinateChange,
                 onBeginEditing: onLatitudeEditingBegan,
-                onEntryStateChanged: { controller.latEntryState = $0 }
+                onEntryStateChanged: { controller.handleLatitudeEntryStateChanged($0) }
             )
 
             CourseDMSField(
@@ -540,8 +643,9 @@ struct CourseCoordinateEditorSection: View {
                 isLatitude: false,
                 value: $controller.lon,
                 accessibilityIdentifier: "\(accessibilityPrefix)_dms_lon",
+                isPendingSaveHighlight: hasPendingCoordinateChange,
                 onBeginEditing: onLongitudeEditingBegan,
-                onEntryStateChanged: { controller.lonEntryState = $0 }
+                onEntryStateChanged: { controller.handleLongitudeEntryStateChanged($0) }
             )
 
         case .decimal:
@@ -626,22 +730,24 @@ struct CourseCoordinateEditorSection: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(AppFont.fixed(12, weight: .semibold))
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .foregroundStyle(fieldSecondaryForegroundColor)
 
             TextField(placeholder, text: text)
                 .font(AppFont.fixed(17, weight: .semibold).monospacedDigit())
-                .foregroundStyle(Theme.Colors.textPrimary)
+                .foregroundStyle(fieldForegroundColor)
                 .keyboardType(.decimalPad)
                 .textInputAutocapitalization(.never)
                 .focused($focusedField, equals: field)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Theme.FormField.background)
+                .background(fieldBackgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.FormField.cornerRadius, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.FormField.cornerRadius, style: .continuous)
                         .stroke(
-                            focusedField == field ? Theme.FormField.borderFocused : Theme.FormField.borderDefault,
+                            focusedField == field
+                                ? (hasPendingCoordinateChange ? Theme.FormField.pendingForeground : Theme.FormField.borderFocused)
+                                : fieldBorderColor,
                             lineWidth: 1
                         )
                 )

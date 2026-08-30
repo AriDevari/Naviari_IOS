@@ -92,7 +92,6 @@ enum DMSSecondsTextCodec {
 
     static func displayString(for seconds: Double, locale: Locale = .autoupdatingCurrent) -> String {
         let roundedSeconds = (seconds * 10).rounded() / 10
-        guard roundedSeconds != 0 else { return "" }
 
         let formatter = NumberFormatter()
         formatter.locale = locale
@@ -163,6 +162,7 @@ struct CourseDMSField: View {
     @Binding var value: DMSCoordinate
     /// Accessibility identifier prefix for the container (e.g. "course_dms_lat").
     var accessibilityIdentifier: String = "course_dms"
+    var isPendingSaveHighlight: Bool = false
     var onBeginEditing: () -> Void = {}
     var onEntryStateChanged: (DMSFieldEntryState) -> Void = { _ in }
 
@@ -175,17 +175,37 @@ struct CourseDMSField: View {
 
     private var hemiOptions: [String] { isLatitude ? ["N", "S"] : ["E", "W"] }
 
+    private var containerBackgroundColor: Color {
+        Theme.FormField.background
+    }
+
+    private var fieldBackgroundColor: Color {
+        isPendingSaveHighlight ? Theme.FormField.pendingNumericBackground : Theme.FormField.numericBackground
+    }
+
+    private var primaryForegroundColor: Color {
+        isPendingSaveHighlight ? Theme.FormField.pendingForeground : Theme.Colors.textPrimary
+    }
+
+    private var secondaryForegroundColor: Color {
+        Theme.Colors.textSecondary
+    }
+
+    private var borderColor: Color {
+        Theme.FormField.borderDefault
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Field header: label on left, hint on right.
             HStack {
                 Text(label)
                     .font(AppFont.fixed(12, weight: .semibold))
-                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .foregroundStyle(secondaryForegroundColor)
                 Spacer()
                 Text("deg · min · sec")
                     .font(AppFont.fixed(11, weight: .medium))
-                    .foregroundStyle(Theme.Colors.textSecondary.opacity(0.6))
+                    .foregroundStyle(secondaryForegroundColor.opacity(0.82))
             }
 
             // DMS row.
@@ -236,10 +256,10 @@ struct CourseDMSField: View {
             }
         }
         .padding(12)
-        .background(Theme.FormField.background)
+        .background(containerBackgroundColor)
         .overlay(
             RoundedRectangle(cornerRadius: Theme.FormField.cornerRadius, style: .continuous)
-                .stroke(Theme.FormField.borderDefault, lineWidth: 1)
+            .stroke(borderColor, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: Theme.FormField.cornerRadius, style: .continuous))
         .accessibilityElement(children: .contain)
@@ -263,14 +283,14 @@ struct CourseDMSField: View {
             .keyboardType(.numberPad)
             .multilineTextAlignment(.center)
             .font(.system(size: 17, weight: .bold).monospacedDigit())
-            .foregroundStyle(Theme.Colors.textPrimary)
+            .foregroundStyle(primaryForegroundColor)
             .padding(.vertical, 8)
             .padding(.horizontal, 6)
-            .background(Theme.FormField.numericBackground)
+            .background(fieldBackgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Theme.FormField.borderDefault, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 1)
             )
     }
 
@@ -280,14 +300,14 @@ struct CourseDMSField: View {
             .keyboardType(.decimalPad)
             .multilineTextAlignment(.center)
             .font(.system(size: 17, weight: .bold).monospacedDigit())
-            .foregroundStyle(Theme.Colors.textPrimary)
+            .foregroundStyle(primaryForegroundColor)
             .padding(.vertical, 8)
             .padding(.horizontal, 6)
-            .background(Theme.FormField.numericBackground)
+            .background(fieldBackgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Theme.FormField.borderDefault, lineWidth: 1)
+                    .stroke(borderColor, lineWidth: 1)
             )
     }
 
@@ -295,7 +315,7 @@ struct CourseDMSField: View {
     private func separatorLabel(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(Theme.Colors.textSecondary)
+            .foregroundStyle(secondaryForegroundColor)
             .padding(.horizontal, 2)
     }
 
@@ -309,7 +329,7 @@ struct CourseDMSField: View {
                         .frame(width: 30, height: 30)
                         .background(
                             Circle()
-                                .fill(value.hemisphere == option ? Theme.Colors.brandNavy : Color.clear)
+                                .fill(hemisphereBackgroundColor(for: option))
                         )
                 }
                 .buttonStyle(.plain)
@@ -326,7 +346,7 @@ struct CourseDMSField: View {
 
     private func syncTextFromBinding() {
         let newDegText = value.degrees == 0 ? "" : "\(value.degrees)"
-        let newMinText = value.minutes == 0 ? "" : "\(value.minutes)"
+        let newMinText = "\(value.minutes)"
         let newSecText = DMSSecondsTextCodec.displayString(for: value.seconds)
 
         if degText != newDegText { degText = newDegText }
@@ -348,6 +368,10 @@ struct CourseDMSField: View {
     private func stripNonDigits(_ input: String, maxLen: Int) -> String {
         let digits = input.filter(\.isNumber)
         return String(digits.prefix(maxLen))
+    }
+
+    private func hemisphereBackgroundColor(for option: String) -> Color {
+        return value.hemisphere == option ? Theme.Colors.brandNavy : Color.clear
     }
 
 }

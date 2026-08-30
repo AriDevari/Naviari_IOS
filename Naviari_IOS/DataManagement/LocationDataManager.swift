@@ -8,6 +8,26 @@
 import CoreLocation
 import Foundation
 
+enum CoursePositionLocationReadiness {
+    case ready(CoordinatePoint)
+    case unavailable
+    case stale
+    case inaccurate
+
+    var errorMessage: String? {
+        switch self {
+        case .ready:
+            return nil
+        case .unavailable:
+            return NSLocalizedString("set_position_error_location_unavailable", comment: "")
+        case .stale:
+            return NSLocalizedString("set_position_error_location_stale", comment: "")
+        case .inaccurate:
+            return NSLocalizedString("set_position_error_location_inaccurate", comment: "")
+        }
+    }
+}
+
 /// Centralizes Core Location configuration and exposes both raw locations and 1 Hz “accepted” samples for telemetry components.
 @MainActor
 final class LocationDataManager: NSObject, ObservableObject {
@@ -30,6 +50,9 @@ final class LocationDataManager: NSObject, ObservableObject {
     private let bufferSize = 256
     private let acceptedBufferSize = 600
     private var lastAcceptedTimestamp: TimeInterval = 0
+
+    private let coursePositionMaximumLocationAge: TimeInterval = 15
+    private let coursePositionMaximumHorizontalAccuracy: CLLocationAccuracy = 100
 
     override init() {
         super.init()
@@ -62,6 +85,27 @@ final class LocationDataManager: NSObject, ObservableObject {
     func stop() {
         manager.stopUpdatingLocation()
         isUpdating = false
+    }
+
+    /// Returns a recent, usable GPS coordinate for setting a fixed course position.
+    /// This intentionally does not use the telemetry sample buffer: position setting
+    /// must be based on the latest Core Location reading, not a delayed broadcast sample.
+    func coursePositionLocationReadiness(now: Date = Date()) -> CoursePositionLocationReadiness {
+        guard let location = latestLocation else {
+            return .unavailable
+        }
+
+        let age = now.timeIntervalSince(location.timestamp)
+        guard age >= -1, age <= coursePositionMaximumLocationAge else {
+            return .stale
+        }
+
+        let accuracy = location.horizontalAccuracy
+        guard accuracy >= 0, accuracy <= coursePositionMaximumHorizontalAccuracy else {
+            return .inaccurate
+        }
+
+        return .ready(CoordinatePoint(lat: location.coordinate.latitude, lon: location.coordinate.longitude))
     }
 
     /// Returns true when Info.plist enables background `location` mode.
@@ -134,11 +178,19 @@ extension LocationDataManager {
     func injectTestLocation(
         latitude: Double,
         longitude: Double,
-        authorizationStatus: CLAuthorizationStatus = .authorizedWhenInUse
+        authorizationStatus: CLAuthorizationStatus = .authorizedWhenInUse,
+        accuracy: CLLocationAccuracy = 5,
+        timestamp: Date = Date()
     ) {
         self.authorizationStatus = authorizationStatus
-        latestLocation = CLLocation(latitude: latitude, longitude: longitude)
-        lastAccuracy = 5
+        latestLocation = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            altitude: 0,
+            horizontalAccuracy: accuracy,
+            verticalAccuracy: 0,
+            timestamp: timestamp
+        )
+        lastAccuracy = accuracy
         lastErrorMessage = nil
         isUpdating = false
     }

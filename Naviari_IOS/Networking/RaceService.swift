@@ -259,6 +259,7 @@ struct RaceService {
         target: SetPositionTarget,
         coordinate: CoordinatePoint,
         accessToken: String,
+        startId: String? = nil,
         updatedBy: String? = "ios-set-position"
     ) async throws {
         switch target {
@@ -280,11 +281,16 @@ struct RaceService {
             )
 
         case let .startLine(lineTarget, side):
+            let refreshedTarget = try await refreshedLineTarget(
+                fallback: lineTarget,
+                startId: startId,
+                isStartLine: true
+            )
             let request = try linePositionRequest(
-                lineTarget: lineTarget,
+                lineTarget: refreshedTarget,
                 selectedSide: side,
                 coordinate: coordinate,
-                status: target.nextLineStatus(),
+                status: target.nextLineStatus(currentStatus: refreshedTarget.status),
                 updatedBy: updatedBy
             )
             _ = try await performCourseWrite(
@@ -294,11 +300,16 @@ struct RaceService {
             )
 
         case let .finishLine(lineTarget, side):
+            let refreshedTarget = try await refreshedLineTarget(
+                fallback: lineTarget,
+                startId: startId,
+                isStartLine: false
+            )
             let request = try linePositionRequest(
-                lineTarget: lineTarget,
+                lineTarget: refreshedTarget,
                 selectedSide: side,
                 coordinate: coordinate,
-                status: target.nextLineStatus(),
+                status: target.nextLineStatus(currentStatus: refreshedTarget.status),
                 updatedBy: updatedBy
             )
             _ = try await performCourseWrite(
@@ -307,6 +318,41 @@ struct RaceService {
                 payload: request
             )
         }
+    }
+
+    /// Loads the current line immediately before replacing one endpoint so an older
+    /// screen snapshot can never write a stale opposite endpoint back to the server.
+    private func refreshedLineTarget(
+        fallback: CourseLinePositionTarget,
+        startId: String?,
+        isStartLine: Bool
+    ) async throws -> CourseLinePositionTarget {
+        guard let startId, !startId.isEmpty else {
+            return fallback
+        }
+
+        let response = try await fetchStartDetail(startId: startId)
+        let line = isStartLine ? response.course?.start_line : response.course?.finish_line
+
+        guard let line, line.id == fallback.lineId else {
+            throw RaceServiceError.invalidRequest(
+                message: NSLocalizedString("set_position_error_line_refresh_failed", comment: "")
+            )
+        }
+
+        return CourseLinePositionTarget(
+            lineId: line.id,
+            name: line.name ?? fallback.name,
+            description: line.description ?? fallback.description,
+            status: line.status ?? fallback.status,
+            markLeft: coordinatePoint(lat: line.mark_left_lat, lon: line.mark_left_lon),
+            markRight: coordinatePoint(lat: line.mark_right_lat, lon: line.mark_right_lon)
+        )
+    }
+
+    private func coordinatePoint(lat: Double?, lon: Double?) -> CoordinatePoint? {
+        guard let lat, let lon else { return nil }
+        return CoordinatePoint(lat: lat, lon: lon)
     }
 
     // MARK: - Course mark write methods (S1)

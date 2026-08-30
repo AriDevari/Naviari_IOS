@@ -96,6 +96,16 @@ enum Theme {
         static let borderDefault = Color(red: 239 / 255, green: 239 / 255, blue: 242 / 255)
         /// Focused border colour for fields (#D6D7DC).
         static let borderFocused = Color(red: 214 / 255, green: 215 / 255, blue: 220 / 255)
+        /// Pink pending-save background for coordinate controls.
+        static let pendingBackground = Theme.RaceManager.primaryColor
+        /// Pink pending-save fill for coordinate input boxes.
+        static let pendingNumericBackground = Theme.RaceManager.primaryColor
+        /// Foreground colour for pending-save fields.
+        static let pendingForeground = Color.white
+        /// Secondary foreground for pending-save hints and labels.
+        static let pendingForegroundMuted = Color.white.opacity(0.84)
+        /// Border colour for pending-save fields.
+        static let pendingBorder = Color.white.opacity(0.58)
         /// Standard field corner radius (12 pt).
         static let cornerRadius: CGFloat = 12
     }

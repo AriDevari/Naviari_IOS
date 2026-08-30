@@ -413,6 +413,8 @@ struct CourseLineEditView: View {
                 try await raceService.updateFinishLine(payload, accessToken: accessToken)
             }
 
+            leftCoordinateEditor.markCurrentCoordinateAsSaved()
+            rightCoordinateEditor.markCurrentCoordinateAsSaved()
             onSaved(.saved(activeItemId: currentLine.id))
         } catch {
             saveError = error.localizedDescription.isEmpty

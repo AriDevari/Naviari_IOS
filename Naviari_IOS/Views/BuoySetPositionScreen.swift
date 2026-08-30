@@ -72,11 +72,13 @@ struct BuoySetPositionScreen: View {
         }
     }
 
+    private var locationReadiness: CoursePositionLocationReadiness {
+        locationManager.coursePositionLocationReadiness()
+    }
+
     private var latestCoordinate: CoordinatePoint? {
-        guard let coordinate = locationManager.latestLocation?.coordinate else {
-            return nil
-        }
-        return CoordinatePoint(lat: coordinate.latitude, lon: coordinate.longitude)
+        guard case let .ready(coordinate) = locationReadiness else { return nil }
+        return coordinate
     }
 
     private var locationAuthorizationIsValid: Bool {
@@ -99,8 +101,8 @@ struct BuoySetPositionScreen: View {
                 Text("set_position_error_location_permission_required")
                     .font(AppFont.textStyle(.footnote))
                     .foregroundStyle(Theme.Colors.error)
-            } else if latestCoordinate == nil {
-                Text("set_position_error_location_unavailable")
+            } else if let errorMessage = locationReadiness.errorMessage {
+                Text(errorMessage)
                     .font(AppFont.textStyle(.footnote))
                     .foregroundStyle(Theme.Colors.error)
             }
@@ -113,8 +115,12 @@ struct BuoySetPositionScreen: View {
             submissionError = NSLocalizedString("set_position_error_location_permission_required", comment: "")
             return
         }
-        guard let coordinate = latestCoordinate else {
-            submissionError = NSLocalizedString("set_position_error_location_unavailable", comment: "")
+        let coordinate: CoordinatePoint
+        switch locationReadiness {
+        case let .ready(value):
+            coordinate = value
+        case .unavailable, .stale, .inaccurate:
+            submissionError = locationReadiness.errorMessage
             return
         }
 

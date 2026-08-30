@@ -213,7 +213,10 @@
 "set_position_error_manage_token_required" = "Hallintakoodi vaaditaan.";
 "set_position_error_location_permission_required" = "Sijaintilupa vaaditaan.";
 "set_position_error_location_unavailable" = "Nykyinen sijainti ei ole vielä saatavilla.";
+"set_position_error_location_stale" = "Odotetaan tuoretta GPS-sijaintia. Yritä hetken kuluttua uudelleen.";
+"set_position_error_location_inaccurate" = "GPS-tarkkuus on liian heikko radan sijainnin asettamiseen. Odota parempaa sijaintia.";
 "set_position_error_line_endpoint_missing" = "Toinen linjan päätepiste puuttuu. Päivitä ratatiedot ja yritä uudelleen.";
+"set_position_error_line_refresh_failed" = "Nykyistä linjaa ei voitu päivittää. Sijaintia ei muutettu.";
 "set_position_error_save_failed" = "Sijainnin asettaminen epäonnistui.";
 "set_position_success_mark" = "Sijainti päivitetty.";
 "set_position_success_start_left" = "Lähtölinjan vasen pää päivitetty.";
@@ -246,6 +249,7 @@
 "course_edit_position_subtitle" = "Syötä koordinaatit tai hae GPS:llä.";
 "course_edit_copy_from_buoy_action" = "Kopioi poijusta";
 "course_edit_select_buoy_button" = "Valitse poiju";
+"course_edit_buoy_selection_required_error" = "Valitse poiju ennen kopioidun sijainnin tallentamista.";
 "course_edit_lat_label" = "Lat";
 "course_edit_lon_label" = "Lon";
 "course_edit_use_gps_button" = "Käytä nykyistä GPS-sijaintia";

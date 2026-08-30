@@ -391,6 +391,7 @@ struct BuoyEditorView: View {
             return
         }
 
+        coordinateEditor.markCurrentCoordinateAsSaved()
         onSaved(.saved(savedBuoy))
     }
 
