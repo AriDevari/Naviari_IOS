@@ -23,6 +23,7 @@ struct Naviari_IOSApp: App {
     @StateObject private var boatMetricsUploader = BoatMetricsUploader()
     @Environment(\.scenePhase) private var scenePhase
     private let uiTestScenario = CourseEditUITestScenario.current
+    private let startDetailCourseReplacementScenario = StartDetailCourseReplacementUITestScenario.current
     private let raceCourseSectionScenario = RaceCourseSectionUITestScenario.current
     private let raceDetailScreenScenario = RaceDetailScreenUITestScenario.current
     private let buoySectionScenario = BuoySectionUITestScenario.current
@@ -31,6 +32,7 @@ struct Naviari_IOSApp: App {
     /// see `false` here, so all schedulers and managers boot normally.
     private var isUITestActive: Bool {
         uiTestScenario != nil
+            || startDetailCourseReplacementScenario != nil
             || raceCourseSectionScenario != nil
             || raceDetailScreenScenario != nil
             || buoySectionScenario != nil
@@ -38,15 +40,23 @@ struct Naviari_IOSApp: App {
 
     init() {
         if CourseEditUITestScenario.current == nil
+            && StartDetailCourseReplacementUITestScenario.current == nil
             && RaceCourseSectionUITestScenario.current == nil
             && RaceDetailScreenUITestScenario.current == nil
             && BuoySectionUITestScenario.current == nil {
             BoatMetricsBackgroundScheduler.shared.register()
         }
+        if StartDetailCourseReplacementUITestScenario.current != nil {
+            StartDetailCourseReplacementUITestURLProtocol.reset()
+            URLProtocol.registerClass(StartDetailCourseReplacementUITestURLProtocol.self)
+            UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
+            UserDefaults.standard.removeObject(forKey: "participation_tokens")
+            UserDefaults.standard.removeObject(forKey: "participation_records")
+        }
         // Register the RaceDetailScreen URLProtocol up front so the
         // intercept is active before any `URLSession.shared` request fires.
         if let scenario = RaceDetailScreenUITestScenario.current {
-            RaceDetailScreenUITestURLProtocol.activeScenario = scenario
+            RaceDetailScreenUITestURLProtocol.reset(for: scenario)
             URLProtocol.registerClass(RaceDetailScreenUITestURLProtocol.self)
             UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
             UserDefaults.standard.removeObject(forKey: "participation_tokens")

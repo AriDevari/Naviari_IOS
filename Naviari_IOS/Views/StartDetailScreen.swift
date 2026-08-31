@@ -46,6 +46,7 @@ struct StartDetailScreen: View {
     @State private var templateCopyError: String?
     @State private var isTemplateCopying = false
     @State private var showTemplatePicker = false
+    @State private var showCourseChangeConfirmation = false
     @State private var templateButtonFrame: CGRect = .zero
     @State private var showCodeModal = false
     @State private var showParticipationCodeModal = false
@@ -339,6 +340,8 @@ struct StartDetailScreen: View {
                                                 handleAddAfter(itemId: itemId)
                                             }
                                         )
+
+                                        courseChangeActionSection
                                     } else if isCourseLoading {
                                         ProgressView()
                                             .padding()
@@ -474,10 +477,16 @@ struct StartDetailScreen: View {
                         await loadStoredManageAccess()
 
                         if let pendingTemplate {
-                            await MainActor.run {
-                                pendingTemplateSelection = nil
+                            if loadedCourse != nil {
+                                await MainActor.run {
+                                    showCourseChangeConfirmation = true
+                                }
+                            } else {
+                                await MainActor.run {
+                                    pendingTemplateSelection = nil
+                                }
+                                await copyTemplateToStart(pendingTemplate)
                             }
-                            await copyTemplateToStart(pendingTemplate)
                         } else if let pendingEditTarget {
                             await MainActor.run {
                                 pendingCourseItemEditTarget = nil
@@ -497,6 +506,7 @@ struct StartDetailScreen: View {
                     }
                 },
                 onCancel: {
+                    pendingTemplateSelection = nil
                     pendingCourseItemEditTarget = nil
                     pendingBuoyManageAction = nil
                     pendingManageNavigationTarget = nil
@@ -546,8 +556,7 @@ struct StartDetailScreen: View {
                     templates: courseTemplates,
                     optionIdentifierPrefix: "start_detail_course_template_option_",
                     onTemplateSelected: { template in
-                        dismissTemplatePicker()
-                        Task { await copyTemplateToStart(template) }
+                        handleTemplateSelection(template)
                     }
                 )
             }
@@ -637,6 +646,63 @@ struct StartDetailScreen: View {
         .padding(.horizontal)
     }
 
+    @ViewBuilder
+    private var courseChangeActionSection: some View {
+        if loadedCourse != nil && canShowTemplateSelection {
+            VStack(alignment: .leading, spacing: 12) {
+                CourseTemplatePickerButton(
+                    isEnabled: !isTemplateLoading && !isTemplateCopying && !courseTemplates.isEmpty,
+                    isExpanded: showTemplatePicker,
+                    isCopying: isTemplateLoading || isTemplateCopying,
+                    titleKey: "start_detail_course_change_button",
+                    accessibilityIdentifier: "start_detail_course_change_button",
+                    onTap: toggleTemplatePicker
+                )
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: TemplatePickerButtonFramePreferenceKey.self,
+                            value: geometry.frame(in: .named(Self.templatePickerCoordinateSpace))
+                        )
+                    }
+                )
+                .accessibilityHint(Text("start_detail_course_change_confirm_message"))
+
+                if let templateLoadError, !templateLoadError.isEmpty {
+                    Text(templateLoadError)
+                        .font(AppFont.textStyle(.footnote))
+                        .foregroundStyle(Theme.Colors.error)
+                }
+
+                if let templateCopyError, !templateCopyError.isEmpty {
+                    Text(templateCopyError)
+                        .font(AppFont.textStyle(.footnote))
+                        .foregroundStyle(Theme.Colors.error)
+                }
+
+                if !isTemplateLoading && courseTemplates.isEmpty {
+                    Text("start_detail_course_template_empty")
+                        .font(AppFont.textStyle(.footnote))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+            }
+            .padding(.horizontal)
+            .alert(
+                Text("start_detail_course_change_confirm_title"),
+                isPresented: $showCourseChangeConfirmation
+            ) {
+                Button("actions_cancel", role: .cancel) {
+                    pendingTemplateSelection = nil
+                }
+                Button("start_detail_course_change_confirm_action", role: .destructive) {
+                    confirmPendingTemplateChange()
+                }
+            } message: {
+                Text("start_detail_course_change_confirm_message")
+            }
+        }
+    }
+
     private func rehearsalActiveMessage(at referenceDate: Date) -> String {
         let baseText = rehearsalDeepLinkedMarkdown(
             NSLocalizedString("start_detail_rehearsal_active_message", comment: "")
@@ -685,9 +751,9 @@ struct StartDetailScreen: View {
             if let course = response.course {
                 loadedCourse = course
                 courseItems = CourseTimelineItem.buildTimeline(from: course)
-                courseTemplates = []
                 templateLoadError = nil
                 pruneCourseTimelineUIState()
+                await loadCourseTemplatesIfNeeded(force: false)
             } else {
                 loadedCourse = nil
                 courseItems = []
@@ -776,6 +842,7 @@ struct StartDetailScreen: View {
 
         isTemplateCopying = true
         templateCopyError = nil
+        showCourseChangeConfirmation = false
         defer { isTemplateCopying = false }
 
         do {
@@ -792,8 +859,8 @@ struct StartDetailScreen: View {
             dismissTemplatePicker()
             activeCourseItemId = nil
             activeLineSubIndexByItemId = [:]
-            courseTemplates = []
             templateLoadError = nil
+            pendingTemplateSelection = nil
             viewModel.requestCourseRefresh(for: startId)
             userNotifications.show(
                 message: NSLocalizedString("start_detail_course_template_copy_success", comment: ""),
@@ -803,6 +870,34 @@ struct StartDetailScreen: View {
             templateCopyError = error.localizedDescription.isEmpty
                 ? NSLocalizedString("start_detail_course_template_copy_error", comment: "")
                 : error.localizedDescription
+        }
+    }
+
+    private func handleTemplateSelection(_ template: RaceCourse) {
+        dismissTemplatePicker()
+
+        guard loadedCourse != nil else {
+            Task { await copyTemplateToStart(template) }
+            return
+        }
+
+        pendingTemplateSelection = template
+
+        guard hasReusableToken else {
+            showCodeModal = true
+            return
+        }
+
+        showCourseChangeConfirmation = true
+    }
+
+    private func confirmPendingTemplateChange() {
+        guard let pendingTemplateSelection else { return }
+        Task {
+            await MainActor.run {
+                self.pendingTemplateSelection = nil
+            }
+            await copyTemplateToStart(pendingTemplateSelection)
         }
     }
 

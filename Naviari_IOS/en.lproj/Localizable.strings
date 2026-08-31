@@ -170,6 +170,10 @@
 "start_detail_course_template_error" = "Failed to load course templates.";
 "start_detail_course_template_copy_error" = "Failed to copy the selected course template.";
 "start_detail_course_template_copy_success" = "Course template copied to this start.";
+"start_detail_course_change_button" = "Change course";
+"start_detail_course_change_confirm_title" = "Change course for this start?";
+"start_detail_course_change_confirm_message" = "The selected course will replace the course currently used by this start.";
+"start_detail_course_change_confirm_action" = "Change course";
 "start_detail_course_template_unnamed" = "Course template";
 "start_detail_course_template_length_nm_format" = "%.1f nm";
 "start_detail_course_template_length_km_format" = "%.1f km";
@@ -276,6 +280,10 @@
 "race_course_none_set_hint" = "No course assigned to starts";
 "race_course_no_templates" = "No course templates available";
 "race_course_mixed_hint" = "Courses are set at start level";
+"race_course_change_all_button" = "Change course for all starts";
+"race_course_change_all_confirm_title" = "Change course for all starts?";
+"race_course_change_all_confirm_message" = "The selected course will replace the current course assignment for every start in this race. All starts will use the same shared course.";
+"race_course_change_all_confirm_action" = "Change for all starts";
 "race_course_copy_error_title" = "Course assignment incomplete";
 "race_course_copy_partial_message" = "%d of %d starts were updated. Some starts could not be assigned a course.";
 "race_course_manage_code_hint" = "Enter the race or series management code to assign a course to all starts. A start-level code is not accepted here.";

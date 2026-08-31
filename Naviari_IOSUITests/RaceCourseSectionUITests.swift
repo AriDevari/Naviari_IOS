@@ -142,6 +142,17 @@ final class RaceCourseSectionUITests: XCTestCase {
         )
     }
 
+    func testRaceCourseSectionView_stateC_pickerRevealsTemplateOptions() {
+        launch(scenario: "C")
+
+        let picker = app.buttons["race_course_change_all_button"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        picker.tap()
+
+        let firstTemplate = app.buttons["race_course_template_button_uitest-tpl-1"]
+        XCTAssertTrue(firstTemplate.waitForExistence(timeout: 5))
+    }
+
     // MARK: - State C — Mixed label not present
 
     func testRaceCourseSectionView_stateC_mixedLabelNotVisible() {

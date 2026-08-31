@@ -170,6 +170,10 @@
 "start_detail_course_template_error" = "Det gick inte att hämta banmallar.";
 "start_detail_course_template_copy_error" = "Det gick inte att kopiera den valda banmallen.";
 "start_detail_course_template_copy_success" = "Banmallen kopierades till denna start.";
+"start_detail_course_change_button" = "Byt bana";
+"start_detail_course_change_confirm_title" = "Byta bana för denna start?";
+"start_detail_course_change_confirm_message" = "Den valda banan ersätter banan som den här starten använder just nu.";
+"start_detail_course_change_confirm_action" = "Byt bana";
 "start_detail_course_template_unnamed" = "Banmall";
 "start_detail_course_template_length_nm_format" = "%.1f nm";
 "start_detail_course_template_length_km_format" = "%.1f km";
@@ -276,6 +280,10 @@
 "race_course_none_set_hint" = "Ingen bana har tilldelats starter";
 "race_course_no_templates" = "Inga banmallar tillgängliga";
 "race_course_mixed_hint" = "Banor har angetts på startsnivå";
+"race_course_change_all_button" = "Byt bana för alla starter";
+"race_course_change_all_confirm_title" = "Byta bana för alla starter?";
+"race_course_change_all_confirm_message" = "Den valda banan ersätter den nuvarande bantilldelningen för varje start i den här tävlingen. Alla starter använder samma gemensamma bana.";
+"race_course_change_all_confirm_action" = "Byt för alla starter";
 "race_course_copy_error_title" = "Bantilldelning ofullständig";
 "race_course_copy_partial_message" = "%d av %d starter uppdaterades. Några starter kunde inte tilldelas en bana.";
 "race_course_manage_code_hint" = "Ange tävlings- eller seriehanteringskoden för att tilldela en bana till alla starter. En startnivåkod accepteras inte här.";

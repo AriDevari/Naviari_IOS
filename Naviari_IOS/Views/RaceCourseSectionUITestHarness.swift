@@ -95,6 +95,7 @@ struct RaceCourseSectionUITestHarnessView: View {
                     isTemplateLoading: isTemplateLoading,
                     isCopyLoading: isCopyLoading,
                     preferredActiveItemId: nil,
+                    onTemplatePickerOpening: {},
                     onTemplateSelected: { _ in },
                     onEditCourse: { _, _ in },
                     onAddAfter: { _, _ in },
@@ -125,9 +126,9 @@ struct RaceCourseSectionUITestHarnessView: View {
 
     private var templates: [RaceCourse] {
         switch scenario {
-        case .stateATemplates, .stateACopyLoading:
+        case .stateATemplates, .stateACopyLoading, .stateCAllSame:
             return RaceCourseSectionUITestFixtures.templates
-        case .stateAEmpty, .stateALoading, .stateBMixed, .stateCAllSame, .loading, .error:
+        case .stateAEmpty, .stateALoading, .stateBMixed, .loading, .error:
             return []
         }
     }

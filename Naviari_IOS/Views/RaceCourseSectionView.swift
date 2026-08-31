@@ -26,6 +26,7 @@ struct RaceCourseSectionView: View {
     let isTemplateLoading: Bool
     let isCopyLoading: Bool
     let preferredActiveItemId: String?
+    let onTemplatePickerOpening: () -> Void
     let onTemplateSelected: (RaceCourse) -> Void
     let onEditCourse: (RaceCourse, String) -> Void
     let onAddAfter: (RaceCourse, String) -> Void
@@ -97,22 +98,32 @@ struct RaceCourseSectionView: View {
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .accessibilityIdentifier("race_course_no_templates_label")
         } else {
-            templatePicker
+            templatePicker(
+                titleKey: "start_detail_course_template_button",
+                accessibilityIdentifier: "race_course_template_picker_button",
+                loadsTemplatesOnExpand: false
+            )
         }
     }
 
-    private var templatePicker: some View {
+    private func templatePicker(
+        titleKey: LocalizedStringKey,
+        accessibilityIdentifier: String,
+        loadsTemplatesOnExpand: Bool
+    ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             CourseTemplatePickerButton(
                 isEnabled: !isCopyLoading,
                 isExpanded: showTemplatePicker,
                 isCopying: isCopyLoading,
-                titleKey: "start_detail_course_template_button",
-                accessibilityIdentifier: "race_course_template_picker_button",
-                onTap: toggleTemplatePicker
+                titleKey: titleKey,
+                accessibilityIdentifier: accessibilityIdentifier,
+                onTap: {
+                    toggleTemplatePicker(loadsTemplatesOnExpand: loadsTemplatesOnExpand)
+                }
             )
 
-            if showTemplatePicker {
+            if showTemplatePicker, !templates.isEmpty {
                 CourseTemplatePickerDropdown(
                     templates: templates,
                     optionIdentifierPrefix: "race_course_template_button_",
@@ -122,10 +133,16 @@ struct RaceCourseSectionView: View {
         }
     }
 
-    private func toggleTemplatePicker() {
-        guard !templates.isEmpty, !isCopyLoading else { return }
+    private func toggleTemplatePicker(loadsTemplatesOnExpand: Bool) {
+        guard !isCopyLoading else { return }
+
+        let isOpening = !showTemplatePicker
         withAnimation(.easeInOut(duration: 0.18)) {
             showTemplatePicker.toggle()
+        }
+
+        if isOpening, loadsTemplatesOnExpand, templates.isEmpty, !isTemplateLoading {
+            onTemplatePickerOpening()
         }
     }
 
@@ -139,11 +156,38 @@ struct RaceCourseSectionView: View {
     // MARK: - State B
 
     private var stateBContent: some View {
-        Text("race_course_mixed_hint")
-            .font(AppFont.textStyle(.body))
-            .foregroundStyle(Theme.Colors.textSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityIdentifier("race_course_mixed_label")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("race_course_mixed_hint")
+                .font(AppFont.textStyle(.body))
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("race_course_mixed_label")
+
+            CourseTemplatePickerButton(
+                isEnabled: !isTemplateLoading && !isCopyLoading,
+                isExpanded: showTemplatePicker,
+                isCopying: isTemplateLoading || isCopyLoading,
+                titleKey: "race_course_change_all_button",
+                accessibilityIdentifier: "race_course_change_all_button",
+                onTap: {
+                    toggleTemplatePicker(loadsTemplatesOnExpand: true)
+                }
+            )
+            .accessibilityHint(Text("race_course_change_all_confirm_message"))
+
+            if showTemplatePicker, !templates.isEmpty {
+                CourseTemplatePickerDropdown(
+                    templates: templates,
+                    optionIdentifierPrefix: "race_course_template_button_",
+                    onTemplateSelected: handleTemplateSelection
+                )
+            } else if showTemplatePicker, !isTemplateLoading, templates.isEmpty {
+                Text("race_course_no_templates")
+                    .font(AppFont.textStyle(.body))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .accessibilityIdentifier("race_course_no_templates_label")
+            }
+        }
     }
 
     // MARK: - State C
@@ -151,32 +195,59 @@ struct RaceCourseSectionView: View {
     @ViewBuilder
     private func stateCContent(for course: RaceCourse) -> some View {
         let items = CourseTimelineItem.buildTimeline(from: course)
-        CourseTimelineView(
-            items: items,
-            activeItemId: $activeCourseItemId,
-            activeSubIndexByItemId: $activeLineSubIndexByItemId,
-            horizontalPadding: 0,
-            onPositionSelected: { _ in
-                // Position selection is not exposed at race level. Course-mark
-                // GPS capture remains a start-detail / mark-edit responsibility.
-            },
-            onEditSelected: { itemId in
-                onEditCourse(course, itemId)
-            },
-            onAddAfter: { itemId in
-                onAddAfter(course, itemId)
+        VStack(alignment: .leading, spacing: 12) {
+            CourseTimelineView(
+                items: items,
+                activeItemId: $activeCourseItemId,
+                activeSubIndexByItemId: $activeLineSubIndexByItemId,
+                horizontalPadding: 0,
+                onPositionSelected: { _ in
+                    // Position selection is not exposed at race level. Course-mark
+                    // GPS capture remains a start-detail / mark-edit responsibility.
+                },
+                onEditSelected: { itemId in
+                    onEditCourse(course, itemId)
+                },
+                onAddAfter: { itemId in
+                    onAddAfter(course, itemId)
+                }
+            )
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("race_course_timeline")
+            .onAppear {
+                applyPreferredActiveItemIdIfNeeded(from: items)
             }
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("race_course_timeline")
-        .onAppear {
-            applyPreferredActiveItemIdIfNeeded(from: items)
-        }
-        .onChange(of: preferredActiveItemId) { _, _ in
-            applyPreferredActiveItemIdIfNeeded(from: items)
-        }
-        .onChange(of: items.map(\.id)) { _, _ in
-            applyPreferredActiveItemIdIfNeeded(from: items)
+            .onChange(of: preferredActiveItemId) { _, _ in
+                applyPreferredActiveItemIdIfNeeded(from: items)
+            }
+            .onChange(of: items.map(\.id)) { _, _ in
+                applyPreferredActiveItemIdIfNeeded(from: items)
+            }
+
+            CourseTemplatePickerButton(
+                isEnabled: !isTemplateLoading && !isCopyLoading,
+                isExpanded: showTemplatePicker,
+                isCopying: isTemplateLoading || isCopyLoading,
+                titleKey: "race_course_change_all_button",
+                accessibilityIdentifier: "race_course_change_all_button",
+                onTap: {
+                    toggleTemplatePicker(loadsTemplatesOnExpand: true)
+                }
+            )
+            .accessibilityHint(Text("race_course_change_all_confirm_message"))
+
+            if showTemplatePicker, !templates.isEmpty {
+                CourseTemplatePickerDropdown(
+                    templates: templates,
+                    optionIdentifierPrefix: "race_course_template_button_",
+                    onTemplateSelected: handleTemplateSelection
+                )
+            } else if showTemplatePicker, !isTemplateLoading, templates.isEmpty {
+                Text("race_course_no_templates")
+                    .font(AppFont.textStyle(.body))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .accessibilityIdentifier("race_course_no_templates_label")
+            }
         }
     }
 
@@ -325,6 +396,7 @@ private enum RaceCourseSectionPreviewFixtures {
         isTemplateLoading: false,
         isCopyLoading: false,
         preferredActiveItemId: nil,
+        onTemplatePickerOpening: {},
         onTemplateSelected: { _ in },
         onEditCourse: { _, _ in },
         onAddAfter: { _, _ in },
@@ -340,6 +412,7 @@ private enum RaceCourseSectionPreviewFixtures {
         isTemplateLoading: true,
         isCopyLoading: false,
         preferredActiveItemId: nil,
+        onTemplatePickerOpening: {},
         onTemplateSelected: { _ in },
         onEditCourse: { _, _ in },
         onAddAfter: { _, _ in },
@@ -355,6 +428,7 @@ private enum RaceCourseSectionPreviewFixtures {
         isTemplateLoading: false,
         isCopyLoading: true,
         preferredActiveItemId: nil,
+        onTemplatePickerOpening: {},
         onTemplateSelected: { _ in },
         onEditCourse: { _, _ in },
         onAddAfter: { _, _ in },
@@ -370,6 +444,7 @@ private enum RaceCourseSectionPreviewFixtures {
         isTemplateLoading: false,
         isCopyLoading: false,
         preferredActiveItemId: nil,
+        onTemplatePickerOpening: {},
         onTemplateSelected: { _ in },
         onEditCourse: { _, _ in },
         onAddAfter: { _, _ in },
@@ -385,6 +460,7 @@ private enum RaceCourseSectionPreviewFixtures {
         isTemplateLoading: false,
         isCopyLoading: false,
         preferredActiveItemId: nil,
+        onTemplatePickerOpening: {},
         onTemplateSelected: { _ in },
         onEditCourse: { _, _ in },
         onAddAfter: { _, _ in },
@@ -400,6 +476,7 @@ private enum RaceCourseSectionPreviewFixtures {
         isTemplateLoading: false,
         isCopyLoading: false,
         preferredActiveItemId: nil,
+        onTemplatePickerOpening: {},
         onTemplateSelected: { _ in },
         onEditCourse: { _, _ in },
         onAddAfter: { _, _ in },
@@ -415,6 +492,7 @@ private enum RaceCourseSectionPreviewFixtures {
         isTemplateLoading: false,
         isCopyLoading: false,
         preferredActiveItemId: nil,
+        onTemplatePickerOpening: {},
         onTemplateSelected: { _ in },
         onEditCourse: { _, _ in },
         onAddAfter: { _, _ in },

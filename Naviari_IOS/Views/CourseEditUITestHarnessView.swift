@@ -32,6 +32,35 @@ enum CourseEditUITestScenario {
     }
 }
 
+enum StartDetailCourseReplacementUITestScenario: Equatable {
+    case assignedCourse
+
+    static var current: StartDetailCourseReplacementUITestScenario? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard value(for: "-UITestStartDetailCourseReplacementScenario", in: arguments) != nil else {
+            return nil
+        }
+        return .assignedCourse
+    }
+
+    static var hasCachedManageToken: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return value(for: "-UITestStartDetailCourseReplacementHasToken", in: arguments) == "1"
+    }
+
+    static var shouldFailCopyRequest: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return value(for: "-UITestStartDetailCourseReplacementCopyFails", in: arguments) == "1"
+    }
+
+    private static func value(for flag: String, in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else {
+            return nil
+        }
+        return arguments[index + 1]
+    }
+}
+
 struct CourseEditUITestHarnessView: View {
     let scenario: CourseEditUITestScenario
 
@@ -169,6 +198,120 @@ struct CourseEditUITestHarnessView: View {
     }
 }
 
+struct StartDetailCourseReplacementUITestHarnessView: View {
+    let scenario: StartDetailCourseReplacementUITestScenario
+
+    @EnvironmentObject private var userNotifications: UserNotifications
+    @StateObject private var browser = RaceBrowserViewModel()
+    @State private var isPrepared = false
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottomLeading) {
+                if isPrepared {
+                    StartDetailScreen(
+                        raceSummary: harnessSummary,
+                        start: harnessStart,
+                        onParticipate: {},
+                        onSetStartTime: {},
+                        onShowTimer: {},
+                        onSetPositionTarget: { _ in }
+                    )
+                } else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+
+                debugOverlay
+            }
+        }
+        .environmentObject(browser)
+        .environmentObject(userNotifications)
+        .task {
+            guard !isPrepared else { return }
+            prepareHarness()
+            isPrepared = true
+        }
+    }
+
+    private var harnessSummary: RaceSummary {
+        RaceSummary(
+            race: Race(
+                rawId: Self.raceId,
+                name: "UITest Start Detail Race",
+                description: nil,
+                status: "scheduled",
+                scheduledUTC: nil,
+                actualUTC: nil,
+                date: nil,
+                slug: nil,
+                parentSeriesId: Self.seriesId,
+                starts: nil,
+                imageId: nil
+            ),
+            seriesName: "UITest Start Detail Series",
+            seriesId: Self.seriesId,
+            seriesImageId: nil,
+            raceImageId: nil
+        )
+    }
+
+    private var harnessStart: RaceStart {
+        RaceStart(
+            rawId: Self.startId,
+            name: "UITest Start Detail Start",
+            status: "scheduled",
+            scheduledUTC: ISO8601DateFormatter().string(from: Date().addingTimeInterval(3600)),
+            actualUTC: nil,
+            description: nil,
+            className: nil,
+            slug: nil,
+            imageId: nil,
+            iconKey: nil,
+            iconColor: nil
+        )
+    }
+
+    @ViewBuilder
+    private var debugOverlay: some View {
+        TimelineView(.periodic(from: .now, by: 0.2)) { _ in
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(StartDetailCourseReplacementUITestURLProtocol.copyRequestCount)")
+                    .accessibilityIdentifier("start_detail_course_copy_request_count")
+                Text("\(StartDetailCourseReplacementUITestURLProtocol.manageLoginRequestCount)")
+                    .accessibilityIdentifier("start_detail_course_manage_login_count")
+                Text("\(browser.courseRefreshToken(for: Self.startId))")
+                    .accessibilityIdentifier("start_detail_course_refresh_request_count")
+            }
+            .font(AppFont.textStyle(.caption2, weight: .semibold))
+            .padding(8)
+            .background(Theme.Colors.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.CornerRadius.rowCard, style: .continuous))
+            .padding(.leading, 12)
+            .padding(.bottom, 12)
+        }
+    }
+
+    private func prepareHarness() {
+        UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
+        UserDefaults.standard.removeObject(forKey: "participation_tokens")
+        UserDefaults.standard.removeObject(forKey: "participation_records")
+
+        if StartDetailCourseReplacementUITestScenario.hasCachedManageToken {
+            ManageAccessStorage.shared.saveToken(
+                token: StartDetailCourseReplacementUITestURLProtocol.validManageToken,
+                startId: Self.startId,
+                raceId: Self.raceId,
+                seriesId: Self.seriesId
+            )
+        }
+    }
+
+    static let startId = "uitest-start-detail-start"
+    static let raceId = "uitest-start-detail-race"
+    static let seriesId = "uitest-start-detail-series"
+}
+
 private enum CodeEntryUITestScreen: String {
     case startDetail
     case startDetailSetStartTime
@@ -274,6 +417,273 @@ private struct StartDetailCodeEntryHarnessView: View {
             iconKey: nil,
             iconColor: nil
         )
+    }
+}
+
+final class StartDetailCourseReplacementUITestURLProtocol: URLProtocol {
+    static let validManageToken = "uitest-manage-token"
+
+    private static let lock = NSLock()
+    private static var copyRequestCountStorage = 0
+    private static var manageLoginRequestCountStorage = 0
+    private static var currentCourseJSONStorage = initialCourseJSON()
+
+    static var copyRequestCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return copyRequestCountStorage
+    }
+
+    static var manageLoginRequestCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return manageLoginRequestCountStorage
+    }
+
+    static func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+        copyRequestCountStorage = 0
+        manageLoginRequestCountStorage = 0
+        currentCourseJSONStorage = initialCourseJSON()
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        guard let path = request.url?.path else { return false }
+        if path == "/api/courses" { return true }
+        if path == "/api/access/login" { return true }
+        if path == "/api/starts/id/\(StartDetailCourseReplacementUITestHarnessView.startId)" { return true }
+        if path == "/api/starts/\(StartDetailCourseReplacementUITestHarnessView.startId)/course-copy" { return true }
+        return false
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
+
+    override func startLoading() {
+        guard let url = request.url else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badURL))
+            return
+        }
+
+        let path = url.path
+        let statusCode: Int
+        let body: Data
+
+        switch path {
+        case "/api/courses":
+            statusCode = 200
+            body = Self.templatesJSON()
+        case "/api/access/login":
+            statusCode = 200
+            body = Self.manageLoginJSON()
+        case "/api/starts/id/\(StartDetailCourseReplacementUITestHarnessView.startId)":
+            statusCode = 200
+            body = Self.startDetailJSON()
+        case "/api/starts/\(StartDetailCourseReplacementUITestHarnessView.startId)/course-copy":
+            if StartDetailCourseReplacementUITestScenario.shouldFailCopyRequest {
+                Self.recordCopyAttempt()
+                statusCode = 500
+                body = Data("{\"error\":\"UITest synthetic copy failure\"}".utf8)
+            } else {
+                statusCode = 201
+                body = Self.copyCourseJSON()
+            }
+        default:
+            statusCode = 404
+            body = Data("{}".utf8)
+        }
+
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private static func startDetailJSON() -> Data {
+        lock.lock()
+        let currentCourseJSON = currentCourseJSONStorage
+        lock.unlock()
+
+        let json = """
+        {
+          "ok": true,
+          "start": {
+            "id": "\(StartDetailCourseReplacementUITestHarnessView.startId)",
+            "name": "UITest Start Detail Start",
+            "status": "scheduled",
+            "scheduled_utc": "2030-01-01T10:00:00Z",
+            "actual_utc": null,
+            "description": null,
+            "class_name": null,
+            "slug": null,
+            "image_id": null,
+            "icon_key": null,
+            "icon_color": null
+          },
+          "course": \(currentCourseJSON)
+        }
+        """
+        return Data(json.utf8)
+    }
+
+    private static func templatesJSON() -> Data {
+        let json = """
+        {
+          "courses": [
+            \(templateJSON(id: "uitest-start-detail-template-a", name: "Replacement Alpha")),
+            \(templateJSON(id: "uitest-start-detail-template-replacement", name: "Replacement Bravo"))
+          ]
+        }
+        """
+        return Data(json.utf8)
+    }
+
+    private static func manageLoginJSON() -> Data {
+        lock.lock()
+        manageLoginRequestCountStorage += 1
+        lock.unlock()
+        return Data("{\"token\":\"\(validManageToken)\"}".utf8)
+    }
+
+    private static func copyCourseJSON() -> Data {
+        recordCopyAttempt()
+        lock.lock()
+        currentCourseJSONStorage = replacementCourseJSON()
+        let currentCourseJSON = currentCourseJSONStorage
+        lock.unlock()
+
+        let json = """
+        {
+          "ok": true,
+          "startId": "\(StartDetailCourseReplacementUITestHarnessView.startId)",
+          "course": \(currentCourseJSON)
+        }
+        """
+        return Data(json.utf8)
+    }
+
+    private static func recordCopyAttempt() {
+        lock.lock()
+        copyRequestCountStorage += 1
+        lock.unlock()
+    }
+
+    private static func templateJSON(id: String, name: String) -> String {
+        """
+        {
+          "id": "\(id)",
+          "name": "\(name)",
+          "description": null,
+          "series_id": "\(StartDetailCourseReplacementUITestHarnessView.seriesId)",
+          "total_length_m": 1852,
+          "total_length_nm": 1.0,
+          "is_template": true,
+          "template_source_id": null,
+          "start_line": null,
+          "finish_line": null,
+          "course_marks": []
+        }
+        """
+    }
+
+    private static func initialCourseJSON() -> String {
+        fullCourseJSON(
+            id: "uitest-start-detail-course-assigned",
+            name: "Assigned Course",
+            startLineName: "Assigned Start Line",
+            markName: "Assigned Mark 1",
+            finishLineName: "Assigned Finish Line"
+        )
+    }
+
+    private static func replacementCourseJSON() -> String {
+        fullCourseJSON(
+            id: "uitest-start-detail-course-replacement",
+            name: "Replacement Course",
+            startLineName: "Replacement Start Line",
+            markName: "Replacement Mark 1",
+            finishLineName: "Replacement Finish Line"
+        )
+    }
+
+    private static func fullCourseJSON(
+        id: String,
+        name: String,
+        startLineName: String,
+        markName: String,
+        finishLineName: String
+    ) -> String {
+        """
+        {
+          "id": "\(id)",
+          "name": "\(name)",
+          "description": null,
+          "series_id": "\(StartDetailCourseReplacementUITestHarnessView.seriesId)",
+          "total_length_m": 3704,
+          "total_length_nm": 2.0,
+          "is_template": false,
+          "template_source_id": "uitest-start-detail-template-replacement",
+          "start_line": {
+            "id": "\(id)-start-line",
+            "name": "\(startLineName)",
+            "description": null,
+            "status": "preliminary",
+            "mark_left_lat": 60.17,
+            "mark_left_lon": 24.94,
+            "mark_right_lat": 60.16,
+            "mark_right_lon": 24.95,
+            "midpoint_lat": null,
+            "midpoint_lon": null,
+            "length_m": 120,
+            "bearing_deg": 270,
+            "distance_to_first_mark_m": 300,
+            "bearing_to_first_mark_rad": 1.57,
+            "updated_at": null
+          },
+          "finish_line": {
+            "id": "\(id)-finish-line",
+            "name": "\(finishLineName)",
+            "description": null,
+            "status": "preliminary",
+            "mark_left_lat": 60.20,
+            "mark_left_lon": 24.98,
+            "mark_right_lat": 60.19,
+            "mark_right_lon": 24.99,
+            "midpoint_lat": null,
+            "midpoint_lon": null,
+            "length_m": 110,
+            "bearing_deg": 90,
+            "distance_to_first_mark_m": null,
+            "bearing_to_first_mark_rad": null,
+            "updated_at": null
+          },
+          "course_marks": [
+            {
+              "id": "\(id)-mark-1",
+              "sequence": 1,
+              "name": "\(markName)",
+              "description": null,
+              "rounding_side": "port",
+              "type": "mark",
+              "status": "preliminary",
+              "mark_lat": 60.18,
+              "mark_lon": 24.96,
+              "distance_to_next_m": 850,
+              "bearing_to_next_rad": 0.78,
+              "updated_at": null
+            }
+          ]
+        }
+        """
     }
 }
 

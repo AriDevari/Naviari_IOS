@@ -20,6 +20,7 @@ struct RaceDetailScreen: View {
 
     @State private var showCodeModal = false
     @State private var pendingTemplate: RaceCourse?
+    @State private var showCourseChangeConfirmation = false
     @State private var pendingCourseItemEditTarget: CourseItemEditTarget?
     @State private var pendingBuoyManageAction: PendingBuoyManageAction?
     @State private var courseItemEditTarget: CourseItemEditTarget?
@@ -32,14 +33,19 @@ struct RaceDetailScreen: View {
     private let accessService = ParticipationService()
     private let storage = ManageAccessStorage.shared
 
-    init(summary: RaceSummary, onSelectStart: @escaping (RaceStart) -> Void) {
+    init(
+        summary: RaceSummary,
+        onSelectStart: @escaping (RaceStart) -> Void,
+        initialCourseTemplates: [RaceCourse] = []
+    ) {
         self.summary = summary
         self.onSelectStart = onSelectStart
         let raceId = summary.race.rawId ?? summary.race.slug ?? summary.id
         _courseViewModel = StateObject(
             wrappedValue: RaceDetailViewModel(
                 raceId: raceId,
-                seriesId: summary.seriesId
+                seriesId: summary.seriesId,
+                initialCourseTemplates: initialCourseTemplates
             )
         )
         _buoyViewModel = StateObject(
@@ -171,12 +177,14 @@ struct RaceDetailScreen: View {
                                 isTemplateLoading: courseViewModel.isLoadingTemplates,
                                 isCopyLoading: courseViewModel.isCopying,
                                 preferredActiveItemId: preferredActiveCourseItemId,
+                                onTemplatePickerOpening: handleTemplatePickerOpening,
                                 onTemplateSelected: handleTemplateSelected,
                                 onEditCourse: handleEditCourse,
                                 onAddAfter: handleAddAfter,
                                 onRetry: handleRetry
                             )
                         }
+                        .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("race_course_section")
                     }
 
@@ -225,6 +233,19 @@ struct RaceDetailScreen: View {
                 )
             )
         }
+        .alert(
+            Text("race_course_change_all_confirm_title"),
+            isPresented: $showCourseChangeConfirmation
+        ) {
+            Button("actions_cancel", role: .cancel) {
+                pendingTemplate = nil
+            }
+            Button("race_course_change_all_confirm_action", role: .destructive) {
+                confirmPendingTemplateCopy()
+            }
+        } message: {
+            Text("race_course_change_all_confirm_message")
+        }
         .sheet(isPresented: $showCodeModal) {
             CodeEntryView(
                 titleKey: "set_start_time_manage_code_title",
@@ -253,8 +274,11 @@ struct RaceDetailScreen: View {
                         courseViewModel.reloadToken()
 
                         if let pendingTemplateLocal {
-                            pendingTemplate = nil
-                            await performTemplateCopy(template: pendingTemplateLocal, accessToken: token)
+                            pendingTemplate = pendingTemplateLocal
+                            guard courseViewModel.hasValidRaceLevelToken else {
+                                return
+                            }
+                            showCourseChangeConfirmation = true
                         } else if let pendingEditLocal {
                             pendingCourseItemEditTarget = nil
                             courseItemEditTarget = pendingEditLocal
@@ -311,9 +335,8 @@ struct RaceDetailScreen: View {
     }
 
     private func handleCourseStateChange(_ state: RaceCourseState) {
-        // Load templates when we transition to State A (no courses set) and
-        // a series id is available.
-        if case .noneSet = state {
+        switch state {
+        case .noneSet:
             guard let seriesIdentifier else { return }
             // Avoid re-fetching if templates already present or a load is
             // already in flight.
@@ -322,6 +345,24 @@ struct RaceDetailScreen: View {
                     await courseViewModel.loadTemplates(seriesId: seriesIdentifier)
                 }
             }
+        default:
+            break
+        }
+    }
+
+    private func handleTemplatePickerOpening() {
+        switch courseViewModel.courseState {
+        case .mixedSet, .allSameId:
+            break
+        default:
+            return
+        }
+        guard let seriesIdentifier else { return }
+        guard !courseViewModel.isLoadingTemplates else { return }
+        guard courseViewModel.courseTemplates.isEmpty else { return }
+
+        Task {
+            await courseViewModel.loadTemplates(seriesId: seriesIdentifier)
         }
     }
 
@@ -329,15 +370,37 @@ struct RaceDetailScreen: View {
 
     private func handleTemplateSelected(_ template: RaceCourse) {
         courseViewModel.reloadToken()
-        if courseViewModel.hasValidRaceLevelToken, let token = courseViewModel.storedToken {
-            Task {
-                await performTemplateCopy(template: template, accessToken: token)
-            }
+        pendingTemplate = template
+        showCourseChangeConfirmation = false
+
+        if courseViewModel.hasValidRaceLevelToken, courseViewModel.storedToken != nil {
+            showCourseChangeConfirmation = true
             return
         }
+
         pendingCourseItemEditTarget = nil
-        pendingTemplate = template
+        pendingBuoyManageAction = nil
         showCodeModal = true
+    }
+
+    private func confirmPendingTemplateCopy() {
+        guard let pendingTemplate else { return }
+
+        courseViewModel.reloadToken()
+        guard courseViewModel.hasValidRaceLevelToken,
+              let accessToken = courseViewModel.storedToken else {
+            showCourseChangeConfirmation = false
+            showCodeModal = true
+            return
+        }
+
+        Task {
+            await MainActor.run {
+                self.pendingTemplate = nil
+                self.showCourseChangeConfirmation = false
+            }
+            await performTemplateCopy(template: pendingTemplate, accessToken: accessToken)
+        }
     }
 
     private func handleEditCourse(_ course: RaceCourse, itemId: String) {

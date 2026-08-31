@@ -241,6 +241,44 @@ final class RaceDetailViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.hasValidRaceLevelToken)
     }
 
+    func testRaceMixedChangeCourse_ConfirmationCopiesSharedCourseAndReloadsState() async {
+        let starts = [makeStart(id: "start-1"), makeStart(id: "start-2")]
+        let counter = CallCounter()
+
+        configureCopyAndReloadHandler(
+            copyCounter: counter,
+            perStartCoursesAfter: ["start-1": "course-new", "start-2": "course-new"],
+            raceCopyResult: .success(linkedStartCount: 2, totalStartCount: 2)
+        )
+
+        let viewModel = makeViewModel()
+
+        await viewModel.copyTemplateToRace(
+            templateId: "template-1",
+            starts: starts,
+            accessToken: "manage-token"
+        )
+
+        XCTAssertEqual(counter.copyCallCount, 1)
+        XCTAssertEqual(viewModel.copySuccessCount, 2)
+        XCTAssertEqual(viewModel.copyFailureCount, 0)
+
+        switch viewModel.courseState {
+        case let .allSameId(course):
+            XCTAssertEqual(course.id, "course-new")
+        default:
+            XCTFail("Expected .allSameId after confirmed race replacement, got \(viewModel.courseState)")
+        }
+    }
+
+    func testRaceMixedChangeCourse_StartScopedTokenDoesNotAuthorizeRaceCopy() {
+        let viewModel = makeViewModel(raceId: "race-1", seriesId: "series-1")
+        viewModel._seedStoredTokenForTesting(scope: .start, scopeId: "start-1", token: "start-tok")
+
+        XCTAssertFalse(viewModel.storedTokenIsValidAtRaceLevel)
+        XCTAssertFalse(viewModel.hasValidRaceLevelToken)
+    }
+
     // MARK: - Helpers
 
     /// Thread-safe counter used to observe per-endpoint call counts from

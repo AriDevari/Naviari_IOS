@@ -170,6 +170,10 @@
 "start_detail_course_template_error" = "Ratapohjien nouto epäonnistui.";
 "start_detail_course_template_copy_error" = "Valitun ratapohjan kopiointi epäonnistui.";
 "start_detail_course_template_copy_success" = "Ratapohja kopioitiin tälle lähdölle.";
+"start_detail_course_change_button" = "Vaihda rata";
+"start_detail_course_change_confirm_title" = "Vaihdetaanko tämän lähdön rata?";
+"start_detail_course_change_confirm_message" = "Valittu rata korvaa tämän lähdön tällä hetkellä käyttämän radan.";
+"start_detail_course_change_confirm_action" = "Vaihda rata";
 "start_detail_course_template_unnamed" = "Ratapohja";
 "start_detail_course_template_length_nm_format" = "%.1f nm";
 "start_detail_course_template_length_km_format" = "%.1f km";
@@ -276,6 +280,10 @@
 "race_course_none_set_hint" = "Lähdöille ei ole asetettu rataa";
 "race_course_no_templates" = "Ei ratamalleja saatavilla";
 "race_course_mixed_hint" = "Radat on asetettu lähtötasolla";
+"race_course_change_all_button" = "Vaihda rata kaikille lähdöille";
+"race_course_change_all_confirm_title" = "Vaihdetaanko rata kaikille lähdöille?";
+"race_course_change_all_confirm_message" = "Valittu rata korvaa tämän kisan jokaisen lähdön nykyisen rata-asetuksen. Kaikki lähdöt käyttävät samaa yhteistä rataa.";
+"race_course_change_all_confirm_action" = "Vaihda kaikille lähdöille";
 "race_course_copy_error_title" = "Radan asettaminen epäonnistui osittain";
 "race_course_copy_partial_message" = "%d / %d lähtöä päivitettiin. Osalle lähdöistä ei voitu asettaa rataa.";
 "race_course_manage_code_hint" = "Syötä kisan tai sarjan hallintakoodi asettaaksesi radan kaikille lähdöille. Lähtötason koodi ei kelpaa tähän toimintoon.";

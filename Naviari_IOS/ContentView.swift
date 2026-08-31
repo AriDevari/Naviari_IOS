@@ -17,10 +17,12 @@ struct ContentView: View {
 
     var body: some View {
         let uiTestScenario = CourseEditUITestScenario.current
+        let startDetailCourseReplacementScenario = StartDetailCourseReplacementUITestScenario.current
         let raceCourseSectionScenario = RaceCourseSectionUITestScenario.current
         let raceDetailScreenScenario = RaceDetailScreenUITestScenario.current
         let buoySectionScenario = BuoySectionUITestScenario.current
         let isUITestActive = uiTestScenario != nil
+            || startDetailCourseReplacementScenario != nil
             || raceCourseSectionScenario != nil
             || raceDetailScreenScenario != nil
             || buoySectionScenario != nil
@@ -29,6 +31,8 @@ struct ContentView: View {
             Group {
                 if let buoySectionScenario {
                     BuoySectionUITestHarnessView(scenario: buoySectionScenario)
+                } else if let startDetailCourseReplacementScenario {
+                    StartDetailCourseReplacementUITestHarnessView(scenario: startDetailCourseReplacementScenario)
                 } else if let raceDetailScreenScenario {
                     RaceDetailScreenUITestHarnessView(scenario: raceDetailScreenScenario)
                 } else if let raceCourseSectionScenario {

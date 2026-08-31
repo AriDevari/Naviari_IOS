@@ -64,6 +64,7 @@ final class RaceDetailViewModel: ObservableObject {
     init(
         raceId: String,
         seriesId: String?,
+        initialCourseTemplates: [RaceCourse] = [],
         raceService: RaceService = RaceService(),
         manageAccessStorage: ManageAccessStorage = .shared
     ) {
@@ -71,6 +72,7 @@ final class RaceDetailViewModel: ObservableObject {
         self.seriesId = seriesId
         self.raceService = raceService
         self.manageAccessStorage = manageAccessStorage
+        self.courseTemplates = initialCourseTemplates
     }
 
     // MARK: - Test helpers
