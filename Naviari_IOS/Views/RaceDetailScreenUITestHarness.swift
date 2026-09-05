@@ -50,9 +50,25 @@ enum RaceDetailScreenUITestScenario: Equatable {
         return value(for: "-UITestRaceDetailHasStartToken", in: arguments) == "1"
     }
 
+    static var hasCachedSeriesLevelToken: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return value(for: "-UITestRaceDetailHasSeriesToken", in: arguments) == "1"
+    }
+
     static var shouldReturnPartialCopyResult: Bool {
         let arguments = ProcessInfo.processInfo.arguments
         return value(for: "-UITestRaceDetailPartialCopy", in: arguments) == "1"
+    }
+
+    static var shouldReturnRequestFailure: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return value(for: "-UITestRaceDetailRequestFailure", in: arguments) == "1"
+    }
+
+    static var manageLoginScope: ManageAccessScope {
+        let arguments = ProcessInfo.processInfo.arguments
+        let rawScope = value(for: "-UITestRaceDetailManageLoginScope", in: arguments) ?? "race"
+        return ManageAccessScope(rawValue: rawScope) ?? .race
     }
 
     static var current: RaceDetailScreenUITestScenario? {
@@ -164,21 +180,36 @@ struct RaceDetailScreenUITestHarnessView: View {
     private func prepareHarness() {
         RaceDetailScreenUITestURLProtocol.reset(for: scenario)
         UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
+        UserDefaults.standard.removeObject(forKey: "manage_access_tokens_v2")
+        UserDefaults.standard.removeObject(forKey: "manage_access_tokens_schema_version")
         UserDefaults.standard.removeObject(forKey: "participation_tokens")
 
         if RaceDetailScreenUITestScenario.hasCachedRaceLevelToken {
-            ManageAccessStorage.shared.saveToken(
-                token: RaceDetailScreenUITestURLProtocol.validManageToken,
-                startId: nil,
-                raceId: Self.raceId,
-                seriesId: Self.seriesId
+            ManageAccessStorage.shared.save(
+                loginResult: ManageAccessLoginResult(
+                    token: RaceDetailScreenUITestURLProtocol.validManageToken,
+                    scope: .race,
+                    scopeId: Self.raceId,
+                    role: "manage"
+                )
+            )
+        } else if RaceDetailScreenUITestScenario.hasCachedSeriesLevelToken {
+            ManageAccessStorage.shared.save(
+                loginResult: ManageAccessLoginResult(
+                    token: RaceDetailScreenUITestURLProtocol.validManageToken,
+                    scope: .series,
+                    scopeId: Self.seriesId,
+                    role: "manage"
+                )
             )
         } else if RaceDetailScreenUITestScenario.hasCachedStartLevelToken {
-            ManageAccessStorage.shared.saveToken(
-                token: RaceDetailScreenUITestURLProtocol.validManageToken,
-                startId: Self.startIdA,
-                raceId: nil,
-                seriesId: nil
+            ManageAccessStorage.shared.save(
+                loginResult: ManageAccessLoginResult(
+                    token: RaceDetailScreenUITestURLProtocol.validManageToken,
+                    scope: .start,
+                    scopeId: Self.startIdA,
+                    role: "manage"
+                )
             )
         }
     }
@@ -304,7 +335,7 @@ final class RaceDetailScreenUITestURLProtocol: URLProtocol {
             statusCode = 200
         } else if path == "/api/races/\(RaceDetailScreenUITestHarnessView.raceId)/course-copy" {
             responseBody = Self.copyCourseJSON()
-            statusCode = 201
+            statusCode = RaceDetailScreenUITestScenario.shouldReturnRequestFailure ? 500 : 201
         } else {
             responseBody = Data("{}".utf8)
             statusCode = 200
@@ -365,7 +396,29 @@ final class RaceDetailScreenUITestURLProtocol: URLProtocol {
         lock.lock()
         manageLoginRequestCountStorage += 1
         lock.unlock()
-        return Data("{\"token\":\"\(validManageToken)\"}".utf8)
+
+        let scope = RaceDetailScreenUITestScenario.manageLoginScope
+        let scopeId: String
+        switch scope {
+        case .race:
+            scopeId = RaceDetailScreenUITestHarnessView.raceId
+        case .series:
+            scopeId = RaceDetailScreenUITestHarnessView.seriesId
+        case .start:
+            scopeId = startIdA
+        }
+
+        let json = """
+        {
+          "token": "\(validManageToken)",
+          "entity": {
+            "type": "\(scope.rawValue)",
+            "id": "\(scopeId)"
+          },
+          "role": "manage"
+        }
+        """
+        return Data(json.utf8)
     }
 
     private static func coursesJSON() -> Data {
@@ -390,7 +443,15 @@ final class RaceDetailScreenUITestURLProtocol: URLProtocol {
     private static func copyCourseJSON() -> Data {
         lock.lock()
         copyRequestCountStorage += 1
-        if RaceDetailScreenUITestScenario.shouldReturnPartialCopyResult {
+        let shouldReturnRequestFailure = RaceDetailScreenUITestScenario.shouldReturnRequestFailure
+        let shouldReturnPartialCopyResult = RaceDetailScreenUITestScenario.shouldReturnPartialCopyResult
+
+        if shouldReturnRequestFailure {
+            lock.unlock()
+            return Data(#"{"error":"Temporary course update failure."}"#.utf8)
+        }
+
+        if shouldReturnPartialCopyResult {
             courseJSONByStartIdStorage[startIdA] = replacementSharedCourseJSON()
             courseJSONByStartIdStorage[startIdB] = nil
         } else {
@@ -399,7 +460,7 @@ final class RaceDetailScreenUITestURLProtocol: URLProtocol {
         }
         lock.unlock()
 
-        let linkedStartCount = RaceDetailScreenUITestScenario.shouldReturnPartialCopyResult ? 1 : 2
+        let linkedStartCount = shouldReturnPartialCopyResult ? 1 : 2
         let json = """
         {
           "ok": true,

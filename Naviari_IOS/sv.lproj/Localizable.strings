@@ -20,6 +20,7 @@
 "close_button" = "Stäng";
 "back_button" = "Tillbaka";
 "actions_cancel" = "Avbryt";
+"actions_ok" = "OK";
 "participate_button" = "Starta GPS-sändning";
 "participate_title" = "GPS-sändning";
 "participate_rehearsal_button" = "Testsändning";
@@ -286,7 +287,16 @@
 "race_course_change_all_confirm_action" = "Byt för alla starter";
 "race_course_copy_error_title" = "Bantilldelning ofullständig";
 "race_course_copy_partial_message" = "%d av %d starter uppdaterades. Några starter kunde inte tilldelas en bana.";
+"race_course_copy_request_failed_title" = "Banuppdateringen misslyckades";
+"race_course_copy_request_failed_message" = "Den nuvarande bantilldelningen ändrades inte. Kontrollera anslutningen och försök igen.";
+"race_course_copy_request_failed_message_with_detail" = "Den nuvarande bantilldelningen ändrades inte. Kontrollera anslutningen och försök igen. %@";
 "race_course_manage_code_hint" = "Ange tävlings- eller seriehanteringskoden för att tilldela en bana till alla starter. En startnivåkod accepteras inte här.";
+"manage_code_scope_invalid_race_course" = "Den här koden kan inte hantera den här tävlingen.";
+"manage_code_scope_invalid_race_buoy" = "Den här koden kan inte hantera bojar för den här tävlingen.";
+"manage_code_scope_invalid_start_course" = "Den här koden kan inte hantera den här starten.";
+"manage_code_scope_invalid_generic" = "Den här koden kan inte hantera den här åtgärden.";
+"manage_code_role_invalid" = "Den här koden är inte en administrationskod.";
+"manage_code_login_invalid_response" = "Svaret för administrationskoden var ogiltigt. Försök igen.";
 
 // --- Buoys MVP ---
 "buoy_section_title" = "Bojar";

@@ -201,7 +201,7 @@ struct ParticipateView: View {
             InfoHelpView(titleKey: infoTitleKey, bodyKey: infoBodyKey)
         }
         .sheet(isPresented: $showCodeModal) {
-            CodeEntryView(
+            CodeEntryView<String>(
                 titleKey: "participate_code_modal_title",
                 messageKey: "participate_code_modal_message",
                 verifyButtonKey: "participate_code_verify_button",
@@ -219,6 +219,7 @@ struct ParticipateView: View {
                     )
                     showCodeModal = false
                     Task { await loadStoredParticipation() }
+                    return nil
                 },
                 onCancel: {
                     showCodeModal = false

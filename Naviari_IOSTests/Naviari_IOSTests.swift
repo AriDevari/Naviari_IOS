@@ -301,7 +301,7 @@ final class Naviari_IOSTests: XCTestCase {
             inspectedRequest.fulfill()
 
             let payload = """
-            {"ok":true,"token":"manage-token-1"}
+            {"ok":true,"token":"manage-token-1","entity":{"type":"race","id":"race-1"},"role":"manage"}
             """.data(using: .utf8)!
             let response = HTTPURLResponse(url: request.url!, statusCode: 201, httpVersion: nil, headerFields: nil)!
             return (response, payload)
@@ -932,9 +932,9 @@ final class Naviari_IOSTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let storage = ManageAccessStorage(userDefaults: defaults)
-        storage.saveToken(token: "series-token", startId: nil, raceId: nil, seriesId: "series-1")
-        storage.saveToken(token: "race-token", startId: nil, raceId: "race-1", seriesId: nil)
-        storage.saveToken(token: "start-token", startId: "start-1", raceId: nil, seriesId: nil)
+        storage.save(loginResult: ManageAccessLoginResult(token: "series-token", scope: .series, scopeId: "series-1", role: "manage"))
+        storage.save(loginResult: ManageAccessLoginResult(token: "race-token", scope: .race, scopeId: "race-1", role: "manage"))
+        storage.save(loginResult: ManageAccessLoginResult(token: "start-token", scope: .start, scopeId: "start-1", role: "manage"))
 
         let record = storage.loadToken(for: "start-1", raceId: "race-1", seriesId: "series-1")
         XCTAssertEqual(record?.scope, .start)
@@ -949,8 +949,8 @@ final class Naviari_IOSTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let storage = ManageAccessStorage(userDefaults: defaults)
-        storage.saveToken(token: "series-token", startId: nil, raceId: nil, seriesId: "series-1")
-        storage.saveToken(token: "race-token", startId: nil, raceId: "race-1", seriesId: nil)
+        storage.save(loginResult: ManageAccessLoginResult(token: "series-token", scope: .series, scopeId: "series-1", role: "manage"))
+        storage.save(loginResult: ManageAccessLoginResult(token: "race-token", scope: .race, scopeId: "race-1", role: "manage"))
 
         let raceFallback = storage.loadToken(for: "missing-start", raceId: "race-1", seriesId: "series-1")
         XCTAssertEqual(raceFallback?.scope, .race)
@@ -970,7 +970,7 @@ final class Naviari_IOSTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let storage = ManageAccessStorage(userDefaults: defaults)
-        storage.saveToken(token: "series-token", startId: nil, raceId: nil, seriesId: "series-1")
+        storage.save(loginResult: ManageAccessLoginResult(token: "series-token", scope: .series, scopeId: "series-1", role: "manage"))
 
         let record = storage.loadToken(for: "start-1", raceId: "race-1", seriesId: "series-2")
         XCTAssertNil(record)

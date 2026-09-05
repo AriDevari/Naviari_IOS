@@ -1,6 +1,38 @@
 import Foundation
 import OSLog
 
+enum RaceCourseCopyOutcome: Equatable {
+    case noResult
+    case complete(linkedStartCount: Int, totalStartCount: Int)
+    case partial(linkedStartCount: Int, totalStartCount: Int)
+    case requestFailed(detail: String?)
+
+    var logCategory: String {
+        switch self {
+        case .noResult:
+            return "no_result"
+        case .complete:
+            return "complete"
+        case .partial:
+            return "partial"
+        case .requestFailed:
+            return "request_failed"
+        }
+    }
+}
+
+private enum RaceCourseCopyFailureCategory: String {
+    case requestSetup = "request_setup"
+    case invalidRequest = "invalid_request"
+    case invalidResponse = "invalid_response"
+    case decoding = "decoding"
+    case http4xx = "http_4xx"
+    case http5xx = "http_5xx"
+    case httpOther = "http_other"
+    case network = "network"
+    case other = "other"
+}
+
 /// Owns race-level course state loading, template loading, and shared copy.
 ///
 /// This ViewModel exists separately from `RaceBrowserViewModel` because the
@@ -227,15 +259,16 @@ final class RaceDetailViewModel: ObservableObject {
 
     /// Copies one template once for the race and links that shared course to
     /// all starts in the race.
+    @discardableResult
     func copyTemplateToRace(
         templateId: String,
         starts: [RaceStart],
         accessToken: String
-    ) async {
+    ) async -> RaceCourseCopyOutcome {
         guard !starts.isEmpty else {
             copySuccessCount = 0
             copyFailureCount = 0
-            return
+            return .noResult
         }
 
         // Resolve the template once so per-start name/description parity
@@ -252,7 +285,7 @@ final class RaceDetailViewModel: ObservableObject {
         guard !identifiedStarts.isEmpty else {
             copySuccessCount = 0
             copyFailureCount = 0
-            return
+            return .noResult
         }
 
         isCopying = true
@@ -271,13 +304,31 @@ final class RaceDetailViewModel: ObservableObject {
             )
             copySuccessCount = result.linkedStartCount
             copyFailureCount = max(0, result.totalStartCount - result.linkedStartCount)
-        } catch {
-            logger.error("copyTemplateToRace failed: \(error.localizedDescription, privacy: .public)")
-            copySuccessCount = 0
-            copyFailureCount = identifiedStarts.count
-        }
 
-        await loadCourseState(starts: starts)
+            let outcome: RaceCourseCopyOutcome
+            if result.linkedStartCount < result.totalStartCount {
+                outcome = .partial(
+                    linkedStartCount: result.linkedStartCount,
+                    totalStartCount: result.totalStartCount
+                )
+                logger.notice("raceCourseCopy outcome=\(outcome.logCategory, privacy: .public)")
+            } else {
+                outcome = .complete(
+                    linkedStartCount: result.linkedStartCount,
+                    totalStartCount: result.totalStartCount
+                )
+                logger.info("raceCourseCopy outcome=\(outcome.logCategory, privacy: .public)")
+            }
+
+            await loadCourseState(starts: starts)
+            return outcome
+        } catch {
+            let failureCategory = Self.copyFailureCategory(for: error)
+            logger.error("raceCourseCopy outcome=request_failed category=\(failureCategory.rawValue, privacy: .public)")
+            copySuccessCount = 0
+            copyFailureCount = 0
+            return .requestFailed(detail: Self.copyFailureDetail(from: error))
+        }
     }
 
     // MARK: - Helpers
@@ -290,5 +341,50 @@ final class RaceDetailViewModel: ObservableObject {
             return nil
         }
         return trimmed
+    }
+
+    private static func copyFailureCategory(for error: Error) -> RaceCourseCopyFailureCategory {
+        if let raceServiceError = error as? RaceServiceError {
+            switch raceServiceError {
+            case .invalidURL, .missingRaceIdentifier:
+                return .requestSetup
+            case .invalidResponse:
+                return .invalidResponse
+            case .decodingFailed:
+                return .decoding
+            case .invalidRequest:
+                return .invalidRequest
+            case let .serverError(statusCode, _):
+                switch statusCode {
+                case 400 ..< 500:
+                    return .http4xx
+                case 500 ..< 600:
+                    return .http5xx
+                default:
+                    return .httpOther
+                }
+            }
+        }
+
+        if error is URLError {
+            return .network
+        }
+
+        return .other
+    }
+
+    private static func copyFailureDetail(from error: Error) -> String? {
+        if let raceServiceError = error as? RaceServiceError {
+            switch raceServiceError {
+            case let .invalidRequest(message):
+                return normalizedOptionalText(message)
+            case let .serverError(_, message):
+                return normalizedOptionalText(message)
+            default:
+                return nil
+            }
+        }
+
+        return nil
     }
 }

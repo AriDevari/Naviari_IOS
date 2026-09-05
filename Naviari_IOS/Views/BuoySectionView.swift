@@ -45,6 +45,7 @@ struct BuoySectionView: View {
             }
             .padding(.top, 8)
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(sectionAccessibilityIdentifier)
     }
 

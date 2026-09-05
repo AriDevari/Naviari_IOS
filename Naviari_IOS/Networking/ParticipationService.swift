@@ -74,6 +74,14 @@ struct ParticipationResult {
     let boatCode: String?
 }
 
+/// A server-authoritative management credential and its declared entity scope.
+struct ManageAccessLoginResult: Equatable {
+    let token: String
+    let scope: ManageAccessScope
+    let scopeId: String
+    let role: String
+}
+
 /// Handles participation code login and start-entry submissions.
 final class ParticipationService {
     private let session: URLSession
@@ -105,9 +113,41 @@ final class ParticipationService {
         return token
     }
 
-    /// Wrapper with explicit intent for management code validation flows.
+    /// Exchanges a management code for a validated, server-declared credential scope.
+    func exchangeManageCodeForLoginResult(_ code: String) async throws -> ManageAccessLoginResult {
+        var request = try makeRequest(path: "/api/access/login")
+        request.httpMethod = "POST"
+        request.httpBody = try JSONEncoder().encode(["code": code])
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let (data, response) = try await session.data(for: request)
+        try ParticipationService.validate(response: response, data: data)
+
+        let payload = try JSONDecoder().decode(ManageAccessLoginResponse.self, from: data)
+        let token = payload.token?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let scopeId = payload.entity?.id?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard payload.role == "manage" else {
+            throw ParticipationServiceError.invalidManageRole
+        }
+        guard
+            !token.isEmpty,
+            let entityType = payload.entity?.type,
+            let scope = ManageAccessScope(rawValue: entityType),
+            !scopeId.isEmpty
+        else {
+            throw ParticipationServiceError.invalidManageResponse
+        }
+
+        return ManageAccessLoginResult(
+            token: token,
+            scope: scope,
+            scopeId: scopeId,
+            role: "manage"
+        )
+    }
+
+    /// Compatibility wrapper for callers that have not yet adopted the typed management result.
     func exchangeManageCodeForToken(_ code: String) async throws -> String {
-        try await exchangeCodeForToken(code)
+        try await exchangeManageCodeForLoginResult(code).token
     }
 
     /// Creates or updates a start entry using the provided token and payload.
@@ -169,6 +209,17 @@ private struct LoginResponse: Decodable {
     let token: String?
 }
 
+private struct ManageAccessLoginResponse: Decodable {
+    struct Entity: Decodable {
+        let type: String?
+        let id: String?
+    }
+
+    let token: String?
+    let entity: Entity?
+    let role: String?
+}
+
 private struct ParticipationAPIResponse: Decodable {
     struct IdContainer: Decodable {
         let id: String?
@@ -183,6 +234,8 @@ private struct ParticipationAPIResponse: Decodable {
 enum ParticipationServiceError: LocalizedError {
     case invalidURL
     case invalidResponse
+    case invalidManageRole
+    case invalidManageResponse
     case serverError(status: Int, message: String?)
 
     var errorDescription: String? {
@@ -191,6 +244,10 @@ enum ParticipationServiceError: LocalizedError {
             return "Invalid server URL."
         case .invalidResponse:
             return "Invalid server response."
+        case .invalidManageRole:
+            return NSLocalizedString("manage_code_role_invalid", comment: "")
+        case .invalidManageResponse:
+            return NSLocalizedString("manage_code_login_invalid_response", comment: "")
         case let .serverError(status, message):
             if let message, !message.isEmpty {
                 return "Server error (\(status)): \(message)"

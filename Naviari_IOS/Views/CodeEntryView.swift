@@ -1,13 +1,16 @@
 import SwiftUI
 
-struct CodeEntryView: View {
+struct CodeEntryView<VerificationResult>: View {
     let titleKey: String
     let messageKey: String
     let verifyButtonKey: String
     let cancelButtonKey: String
     let accentColor: Color
-    let onVerify: (String) async throws -> String
-    let onSuccess: (String) -> Void
+    let onVerify: (String) async throws -> VerificationResult
+    /// Returns a localization key when the caller rejects an otherwise valid
+    /// result. Keeping this decision here preserves the code-entry sheet and
+    /// its accessible error label for insufficient management authority.
+    let onSuccess: (VerificationResult) -> String?
     let onCancel: () -> Void
 
     @State private var prefix = ""
@@ -25,8 +28,8 @@ struct CodeEntryView: View {
         verifyButtonKey: String,
         cancelButtonKey: String,
         accentColor: Color = AppUI.brandPrimary,
-        onVerify: @escaping (String) async throws -> String,
-        onSuccess: @escaping (String) -> Void,
+        onVerify: @escaping (String) async throws -> VerificationResult,
+        onSuccess: @escaping (VerificationResult) -> String?,
         onCancel: @escaping () -> Void
     ) {
         self.titleKey = titleKey
@@ -150,11 +153,15 @@ struct CodeEntryView: View {
         defer { isValidating = false }
 
         do {
-            let token = try await onVerify(code)
+            let result = try await onVerify(code)
+            let acceptanceErrorKey = onSuccess(result)
+            if let errorKey = acceptanceErrorKey {
+                error = NSLocalizedString(errorKey, comment: "")
+                return
+            }
             prefix = ""
             suffix = ""
             error = nil
-            onSuccess(token)
         } catch {
             attempts += 1
             self.error = error.localizedDescription
@@ -163,13 +170,13 @@ struct CodeEntryView: View {
 }
 
 #Preview {
-    CodeEntryView(
+    CodeEntryView<String>(
         titleKey: "participate_code_modal_title",
         messageKey: "participate_code_modal_message",
         verifyButtonKey: "participate_code_verify_button",
         cancelButtonKey: "back_button",
         onVerify: { _ in "preview-token" },
-        onSuccess: { _ in },
+        onSuccess: { _ in nil },
         onCancel: {}
     )
 }

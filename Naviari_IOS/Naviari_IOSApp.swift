@@ -24,32 +24,47 @@ struct Naviari_IOSApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let uiTestScenario = CourseEditUITestScenario.current
     private let startDetailCourseReplacementScenario = StartDetailCourseReplacementUITestScenario.current
+    private let startDetailCourseManagementScenario = StartDetailCourseManagementUITestScenario.current
     private let raceCourseSectionScenario = RaceCourseSectionUITestScenario.current
     private let raceDetailScreenScenario = RaceDetailScreenUITestScenario.current
     private let buoySectionScenario = BuoySectionUITestScenario.current
+    private let manageAccessContinuationScenario = ManageAccessContinuationUITestScenario.current
 
     /// True when any UITest harness is active. Production launches always
     /// see `false` here, so all schedulers and managers boot normally.
     private var isUITestActive: Bool {
         uiTestScenario != nil
             || startDetailCourseReplacementScenario != nil
+            || startDetailCourseManagementScenario != nil
             || raceCourseSectionScenario != nil
             || raceDetailScreenScenario != nil
             || buoySectionScenario != nil
+            || manageAccessContinuationScenario != nil
     }
 
     init() {
         if CourseEditUITestScenario.current == nil
             && StartDetailCourseReplacementUITestScenario.current == nil
+            && StartDetailCourseManagementUITestScenario.current == nil
             && RaceCourseSectionUITestScenario.current == nil
             && RaceDetailScreenUITestScenario.current == nil
-            && BuoySectionUITestScenario.current == nil {
+            && BuoySectionUITestScenario.current == nil
+            && ManageAccessContinuationUITestScenario.current == nil {
             BoatMetricsBackgroundScheduler.shared.register()
         }
         if StartDetailCourseReplacementUITestScenario.current != nil {
             StartDetailCourseReplacementUITestURLProtocol.reset()
             URLProtocol.registerClass(StartDetailCourseReplacementUITestURLProtocol.self)
             UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
+            UserDefaults.standard.removeObject(forKey: "participation_tokens")
+            UserDefaults.standard.removeObject(forKey: "participation_records")
+        }
+        if let scenario = StartDetailCourseManagementUITestScenario.current {
+            StartDetailCourseManagementUITestURLProtocol.reset(for: scenario)
+            URLProtocol.registerClass(StartDetailCourseManagementUITestURLProtocol.self)
+            UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
+            UserDefaults.standard.removeObject(forKey: "manage_access_tokens_v2")
+            UserDefaults.standard.removeObject(forKey: "manage_access_tokens_schema_version")
             UserDefaults.standard.removeObject(forKey: "participation_tokens")
             UserDefaults.standard.removeObject(forKey: "participation_records")
         }
@@ -60,6 +75,15 @@ struct Naviari_IOSApp: App {
             URLProtocol.registerClass(RaceDetailScreenUITestURLProtocol.self)
             UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
             UserDefaults.standard.removeObject(forKey: "participation_tokens")
+        }
+        if ManageAccessContinuationUITestScenario.current != nil {
+            ManageAccessContinuationUITestURLProtocol.reset()
+            URLProtocol.registerClass(ManageAccessContinuationUITestURLProtocol.self)
+            UserDefaults.standard.removeObject(forKey: "manage_access_tokens")
+            UserDefaults.standard.removeObject(forKey: "manage_access_tokens_v2")
+            UserDefaults.standard.removeObject(forKey: "manage_access_tokens_schema_version")
+            UserDefaults.standard.removeObject(forKey: "participation_tokens")
+            UserDefaults.standard.removeObject(forKey: "participation_records")
         }
         configureTypographyAppearance()
     }

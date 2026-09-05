@@ -27,14 +27,23 @@ final class RaceCourseSectionIntegrationUITests: XCTestCase {
     // MARK: - Helpers
 
     private func launch(scenario: String) {
-        launch(scenario: scenario, hasCachedRaceToken: false, hasCachedStartToken: false, partialCopy: false)
+        launch(
+            scenario: scenario,
+            hasCachedRaceToken: false,
+            hasCachedStartToken: false,
+            partialCopy: false,
+            manageLoginScope: nil,
+            requestFailure: false
+        )
     }
 
     private func launch(
         scenario: String,
         hasCachedRaceToken: Bool,
         hasCachedStartToken: Bool,
-        partialCopy: Bool
+        partialCopy: Bool,
+        manageLoginScope: String? = nil,
+        requestFailure: Bool = false
     ) {
         var arguments = [
             "-UITestRaceDetailScreenState", scenario
@@ -47,6 +56,12 @@ final class RaceCourseSectionIntegrationUITests: XCTestCase {
         }
         if partialCopy {
             arguments += ["-UITestRaceDetailPartialCopy", "1"]
+        }
+        if let manageLoginScope {
+            arguments += ["-UITestRaceDetailManageLoginScope", manageLoginScope]
+        }
+        if requestFailure {
+            arguments += ["-UITestRaceDetailRequestFailure", "1"]
         }
         arguments += [
             "-AppleLanguages", "(en)",
@@ -132,6 +147,59 @@ final class RaceCourseSectionIntegrationUITests: XCTestCase {
         )
     }
 
+    func testRaceStateAEligibleToken_SelectingTemplatePerformsCopyOnceWithoutConfirmation() {
+        launch(scenario: "A", hasCachedRaceToken: true, hasCachedStartToken: false, partialCopy: false)
+        waitForCourseSectionContainer()
+
+        let templateButton = templatePickerButton
+        XCTAssertTrue(templateButton.waitForExistence(timeout: 15))
+        templateButton.tap()
+
+        let firstTemplate = templateOption(at: 1)
+        XCTAssertTrue(firstTemplate.waitForExistence(timeout: 8))
+        firstTemplate.tap()
+
+        XCTAssertTrue(waitForLabel(copyRequestCountLabel, toEqual: "1", timeout: 10))
+        XCTAssertFalse(app.alerts["Change course for all starts?"].exists)
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "code_entry_modal").firstMatch.exists)
+
+        let timeline = app.descendants(matching: .any).matching(identifier: "race_course_timeline").firstMatch
+        XCTAssertTrue(timeline.waitForExistence(timeout: 10))
+        attachScreenshot(named: "state-a-direct-copy")
+    }
+
+    func testRaceStateAEligibleSeriesTokenAfterCodeEntry_PerformsCopyOnceWithoutConfirmation() {
+        launch(
+            scenario: "A",
+            hasCachedRaceToken: false,
+            hasCachedStartToken: false,
+            partialCopy: false,
+            manageLoginScope: "series",
+            requestFailure: false
+        )
+        waitForCourseSectionContainer()
+
+        let templateButton = templatePickerButton
+        XCTAssertTrue(templateButton.waitForExistence(timeout: 15))
+        templateButton.tap()
+
+        let firstTemplate = templateOption(at: 1)
+        XCTAssertTrue(firstTemplate.waitForExistence(timeout: 8))
+        firstTemplate.tap()
+
+        let codeModal = app.descendants(matching: .any).matching(identifier: "code_entry_modal").firstMatch
+        XCTAssertTrue(codeModal.waitForExistence(timeout: 8))
+        enterManageCodeAndVerify()
+
+        XCTAssertTrue(waitForLabel(copyRequestCountLabel, toEqual: "1", timeout: 10))
+        XCTAssertTrue(waitForLabel(manageLoginCountLabel, toEqual: "1", timeout: 10))
+        XCTAssertFalse(app.alerts["Change course for all starts?"].exists)
+
+        let timeline = app.descendants(matching: .any).matching(identifier: "race_course_timeline").firstMatch
+        XCTAssertTrue(timeline.waitForExistence(timeout: 10))
+        attachScreenshot(named: "state-a-series-code-entry-direct-copy")
+    }
+
     // MARK: - State B — mixed label visible
 
     func testRaceDetailScreen_courseSection_stateB_mixedLabelVisible() {
@@ -156,6 +224,23 @@ final class RaceCourseSectionIntegrationUITests: XCTestCase {
         XCTAssertTrue(changeButton.waitForExistence(timeout: 10))
         XCTAssertTrue(changeButton.isHittable)
         attachScreenshot(named: "mixed-state-action")
+    }
+
+    func testRaceStateBEligibleToken_SelectingTemplateShowsConfirmationBeforeCopy() {
+        launch(scenario: "B", hasCachedRaceToken: true, hasCachedStartToken: false, partialCopy: false)
+        waitForCourseSectionContainer()
+
+        let changeButton = app.buttons["race_course_change_all_button"]
+        XCTAssertTrue(changeButton.waitForExistence(timeout: 10))
+        changeButton.tap()
+
+        let firstTemplate = templateOption(at: 1)
+        XCTAssertTrue(firstTemplate.waitForExistence(timeout: 8))
+        firstTemplate.tap()
+
+        XCTAssertTrue(app.alerts["Change course for all starts?"].waitForExistence(timeout: 8))
+        XCTAssertEqual(copyRequestCountLabel.label, "0")
+        attachScreenshot(named: "state-b-confirmation-before-copy")
     }
 
     func testRaceMixedChangeCourse_CancelMakesNoRaceCopyRequest() {
@@ -274,6 +359,50 @@ final class RaceCourseSectionIntegrationUITests: XCTestCase {
         XCTAssertTrue(changeButton.waitForExistence(timeout: 10))
         XCTAssertTrue(changeButton.isHittable)
         attachScreenshot(named: "shared-timeline-action")
+    }
+
+    func testRaceStateCEligibleToken_SelectingTemplateShowsConfirmationBeforeCopy() {
+        launch(scenario: "C", hasCachedRaceToken: true, hasCachedStartToken: false, partialCopy: false)
+        waitForCourseSectionContainer()
+
+        openSharedStateTemplatePicker()
+        templateOption(at: 1).tap()
+
+        XCTAssertTrue(app.alerts["Change course for all starts?"].waitForExistence(timeout: 8))
+        XCTAssertEqual(copyRequestCountLabel.label, "0")
+
+        let timeline = app.descendants(matching: .any).matching(identifier: "race_course_timeline").firstMatch
+        XCTAssertTrue(timeline.exists)
+        attachScreenshot(named: "state-c-confirmation-before-copy")
+    }
+
+    func testRaceRequestFailure_ShowsLocalizedFailureMessageNotPartialAlert() {
+        launch(
+            scenario: "C",
+            hasCachedRaceToken: true,
+            hasCachedStartToken: false,
+            partialCopy: false,
+            manageLoginScope: nil,
+            requestFailure: true
+        )
+        waitForCourseSectionContainer()
+
+        openSharedStateConfirmation()
+        app.alerts.firstMatch.buttons["Change for all starts"].tap()
+
+        let failureAlert = app.alerts["Course update failed"]
+        XCTAssertTrue(failureAlert.waitForExistence(timeout: 10))
+        let failureMessageQuery = failureAlert.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "The current course assignment was not changed.")
+        )
+        XCTAssertGreaterThan(failureMessageQuery.count, 0)
+        XCTAssertFalse(app.alerts["Course assignment incomplete"].exists)
+
+        let timeline = app.descendants(matching: .any).matching(identifier: "race_course_timeline").firstMatch
+        XCTAssertTrue(timeline.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Mark 1"].exists)
+        XCTAssertEqual(copyRequestCountLabel.label, "1")
+        attachScreenshot(named: "race-request-failure")
     }
 
     func testRaceSharedChangeCourse_CancelKeepsSharedTimeline() {
@@ -505,6 +634,29 @@ final class RaceCourseSectionIntegrationUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func enterManageCodeAndVerify() {
+        let prefixField = app.descendants(matching: .any).matching(identifier: "code_entry_prefix_field").firstMatch
+        let suffixField = app.descendants(matching: .any).matching(identifier: "code_entry_suffix_field").firstMatch
+        let verifyButton = app.descendants(matching: .any).matching(identifier: "code_entry_verify_button").firstMatch
+
+        XCTAssertTrue(prefixField.waitForExistence(timeout: 8))
+        prefixField.tap()
+        prefixField.typeText("MANA")
+
+        XCTAssertTrue(suffixField.waitForExistence(timeout: 8))
+        suffixField.tap()
+        suffixField.typeText("1234")
+
+        XCTAssertTrue(verifyButton.waitForExistence(timeout: 8))
+        verifyButton.tap()
+    }
+
+    private func waitForLabel(_ element: XCUIElement, toEqual value: String, timeout: TimeInterval) -> Bool {
+        let predicate = NSPredicate(format: "label == %@", value)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 
     private var copyRequestCountLabel: XCUIElement {

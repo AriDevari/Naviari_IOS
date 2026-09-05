@@ -20,6 +20,7 @@
 "close_button" = "Close";
 "back_button" = "Back";
 "actions_cancel" = "Cancel";
+"actions_ok" = "OK";
 "participate_button" = "Start GPS Broadcast";
 "participate_title" = "GPS Broadcast";
 "participate_rehearsal_button" = "Test Broadcast";
@@ -286,7 +287,16 @@
 "race_course_change_all_confirm_action" = "Change for all starts";
 "race_course_copy_error_title" = "Course assignment incomplete";
 "race_course_copy_partial_message" = "%d of %d starts were updated. Some starts could not be assigned a course.";
+"race_course_copy_request_failed_title" = "Course update failed";
+"race_course_copy_request_failed_message" = "The current course assignment was not changed. Check the connection and try again.";
+"race_course_copy_request_failed_message_with_detail" = "The current course assignment was not changed. Check the connection and try again. %@";
 "race_course_manage_code_hint" = "Enter the race or series management code to assign a course to all starts. A start-level code is not accepted here.";
+"manage_code_scope_invalid_race_course" = "This code cannot manage this race.";
+"manage_code_scope_invalid_race_buoy" = "This code cannot manage buoys for this race.";
+"manage_code_scope_invalid_start_course" = "This code cannot manage this start.";
+"manage_code_scope_invalid_generic" = "This code cannot manage this action.";
+"manage_code_role_invalid" = "This code is not a management code.";
+"manage_code_login_invalid_response" = "The management code response was invalid. Please try again.";
 
 // --- Buoys MVP ---
 "buoy_section_title" = "Buoys";

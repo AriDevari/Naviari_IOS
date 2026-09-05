@@ -18,19 +18,27 @@ struct ContentView: View {
     var body: some View {
         let uiTestScenario = CourseEditUITestScenario.current
         let startDetailCourseReplacementScenario = StartDetailCourseReplacementUITestScenario.current
+        let startDetailCourseManagementScenario = StartDetailCourseManagementUITestScenario.current
         let raceCourseSectionScenario = RaceCourseSectionUITestScenario.current
         let raceDetailScreenScenario = RaceDetailScreenUITestScenario.current
         let buoySectionScenario = BuoySectionUITestScenario.current
+        let manageAccessContinuationScenario = ManageAccessContinuationUITestScenario.current
         let isUITestActive = uiTestScenario != nil
             || startDetailCourseReplacementScenario != nil
+            || startDetailCourseManagementScenario != nil
             || raceCourseSectionScenario != nil
             || raceDetailScreenScenario != nil
             || buoySectionScenario != nil
+            || manageAccessContinuationScenario != nil
 
         ZStack {
             Group {
                 if let buoySectionScenario {
                     BuoySectionUITestHarnessView(scenario: buoySectionScenario)
+                } else if let manageAccessContinuationScenario {
+                    ManageAccessContinuationUITestHarnessView(scenario: manageAccessContinuationScenario)
+                } else if let startDetailCourseManagementScenario {
+                    StartDetailCourseManagementUITestHarnessView(scenario: startDetailCourseManagementScenario)
                 } else if let startDetailCourseReplacementScenario {
                     StartDetailCourseReplacementUITestHarnessView(scenario: startDetailCourseReplacementScenario)
                 } else if let raceDetailScreenScenario {

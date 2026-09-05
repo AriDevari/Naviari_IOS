@@ -419,7 +419,7 @@ struct StartDetailScreen: View {
             syncRehearsalNotification()
         }
         .sheet(isPresented: $showParticipationCodeModal) {
-            CodeEntryView(
+            CodeEntryView<String>(
                 titleKey: "participate_code_modal_title",
                 messageKey: "participate_code_modal_message",
                 verifyButtonKey: "participate_code_verify_button",
@@ -443,6 +443,7 @@ struct StartDetailScreen: View {
                             onParticipate()
                         }
                     }
+                    return nil
                 },
                 onCancel: {
                     showParticipationCodeModal = false
@@ -450,69 +451,7 @@ struct StartDetailScreen: View {
             )
         }
         .sheet(isPresented: $showCodeModal) {
-            CodeEntryView(
-                titleKey: "set_start_time_manage_code_title",
-                messageKey: "set_start_time_manage_code_message",
-                verifyButtonKey: "set_start_time_manage_code_verify_button",
-                cancelButtonKey: "actions_cancel",
-                accentColor: Theme.RaceManager.primaryColor,
-                onVerify: { code in
-                    try await accessService.exchangeManageCodeForToken(code)
-                },
-                onSuccess: { token in
-                    storage.saveToken(
-                        token: token,
-                        startId: currentStartIdentifier,
-                        raceId: raceIdentifier,
-                        seriesId: seriesIdentifier
-                    )
-                    showCodeModal = false
-
-                    let pendingTemplate = pendingTemplateSelection
-                    let pendingEditTarget = pendingCourseItemEditTarget
-                    let pendingManageNavigation = pendingManageNavigationTarget
-                    let pendingBuoyAction = pendingBuoyManageAction
-
-                    Task {
-                        await loadStoredManageAccess()
-
-                        if let pendingTemplate {
-                            if loadedCourse != nil {
-                                await MainActor.run {
-                                    showCourseChangeConfirmation = true
-                                }
-                            } else {
-                                await MainActor.run {
-                                    pendingTemplateSelection = nil
-                                }
-                                await copyTemplateToStart(pendingTemplate)
-                            }
-                        } else if let pendingEditTarget {
-                            await MainActor.run {
-                                pendingCourseItemEditTarget = nil
-                                courseItemEditTarget = pendingEditTarget
-                            }
-                        } else if let pendingBuoyAction {
-                            await MainActor.run {
-                                pendingBuoyManageAction = nil
-                                performAuthorizedBuoyManageAction(pendingBuoyAction)
-                            }
-                        } else if let pendingManageNavigation {
-                            await MainActor.run {
-                                pendingManageNavigationTarget = nil
-                                performManageProtectedNavigation(pendingManageNavigation)
-                            }
-                        }
-                    }
-                },
-                onCancel: {
-                    pendingTemplateSelection = nil
-                    pendingCourseItemEditTarget = nil
-                    pendingBuoyManageAction = nil
-                    pendingManageNavigationTarget = nil
-                    showCodeModal = false
-                }
-            )
+            manageCodeEntrySheet
         }
         .sheet(item: $courseItemEditTarget) { target in
             courseItemEditSheet(for: target)
@@ -544,6 +483,77 @@ struct StartDetailScreen: View {
         .onDisappear {
             dismissRehearsalNotificationIfNeeded()
         }
+    }
+
+    private var manageCodeEntrySheet: some View {
+        CodeEntryView<ManageAccessLoginResult>(
+            titleKey: "set_start_time_manage_code_title",
+            messageKey: "set_start_time_manage_code_message",
+            verifyButtonKey: "set_start_time_manage_code_verify_button",
+            cancelButtonKey: "actions_cancel",
+            accentColor: Theme.RaceManager.primaryColor,
+            onVerify: { code in
+                try await accessService.exchangeManageCodeForLoginResult(code)
+            },
+            onSuccess: { loginResult in
+                guard loginResult.role == "manage" else {
+                    return "manage_code_role_invalid"
+                }
+                guard managesStartHierarchy(loginResult) else {
+                    return pendingTemplateSelection == nil
+                        ? "manage_code_scope_invalid_generic"
+                        : "manage_code_scope_invalid_start_course"
+                }
+
+                storage.save(loginResult: loginResult)
+                showCodeModal = false
+
+                let pendingTemplate = pendingTemplateSelection
+                let pendingEditTarget = pendingCourseItemEditTarget
+                let pendingManageNavigation = pendingManageNavigationTarget
+                let pendingBuoyAction = pendingBuoyManageAction
+
+                Task {
+                    await loadStoredManageAccess()
+
+                    if let pendingTemplate {
+                        if loadedCourse != nil {
+                            await MainActor.run {
+                                showCourseChangeConfirmation = true
+                            }
+                        } else {
+                            await MainActor.run {
+                                pendingTemplateSelection = nil
+                            }
+                            await copyTemplateToStart(pendingTemplate)
+                        }
+                    } else if let pendingEditTarget {
+                        await MainActor.run {
+                            pendingCourseItemEditTarget = nil
+                            courseItemEditTarget = pendingEditTarget
+                        }
+                    } else if let pendingBuoyAction {
+                        await MainActor.run {
+                            pendingBuoyManageAction = nil
+                            performAuthorizedBuoyManageAction(pendingBuoyAction)
+                        }
+                    } else if let pendingManageNavigation {
+                        await MainActor.run {
+                            pendingManageNavigationTarget = nil
+                            performManageProtectedNavigation(pendingManageNavigation)
+                        }
+                    }
+                }
+                return nil
+            },
+            onCancel: {
+                pendingTemplateSelection = nil
+                pendingCourseItemEditTarget = nil
+                pendingBuoyManageAction = nil
+                pendingManageNavigationTarget = nil
+                showCodeModal = false
+            }
+        )
     }
 
     @ViewBuilder
@@ -814,6 +824,17 @@ struct StartDetailScreen: View {
         storedToken = tokenRecord.token
         storedScope = tokenRecord.scope
         storedScopeId = tokenRecord.scopeId
+    }
+
+    private func managesStartHierarchy(_ loginResult: ManageAccessLoginResult) -> Bool {
+        switch loginResult.scope {
+        case .start:
+            return loginResult.scopeId == currentStartIdentifier
+        case .race:
+            return loginResult.scopeId == raceIdentifier
+        case .series:
+            return loginResult.scopeId == seriesIdentifier
+        }
     }
 
     private func loadStoredParticipationAccess() async {

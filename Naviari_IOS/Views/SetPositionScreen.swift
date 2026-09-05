@@ -70,25 +70,28 @@ struct SetPositionScreen: View {
             .accessibilityIdentifier("set_position_screen")
         }
         .sheet(isPresented: $showCodeModal) {
-            CodeEntryView(
+            CodeEntryView<ManageAccessLoginResult>(
                 titleKey: "set_start_time_manage_code_title",
                 messageKey: "set_start_time_manage_code_message",
                 verifyButtonKey: "set_start_time_manage_code_verify_button",
                 cancelButtonKey: "back_button",
                 accentColor: AppUI.brandPrimary,
                 onVerify: { code in
-                    try await accessService.exchangeManageCodeForToken(code)
+                    try await accessService.exchangeManageCodeForLoginResult(code)
                 },
-                onSuccess: { token in
-                    storage.saveToken(
-                        token: token,
-                        startId: startIdentifier,
-                        raceId: raceIdentifier,
-                        seriesId: seriesIdentifier
-                    )
+                onSuccess: { loginResult in
+                    guard loginResult.role == "manage" else {
+                        return "manage_code_role_invalid"
+                    }
+                    guard managesStartHierarchy(loginResult) else {
+                        return "manage_code_scope_invalid_generic"
+                    }
+
+                    storage.save(loginResult: loginResult)
                     showCodeModal = false
                     submissionError = nil
                     Task { await loadStoredManageAccess() }
+                    return nil
                 },
                 onCancel: {
                     showCodeModal = false
@@ -130,6 +133,17 @@ struct SetPositionScreen: View {
             return scopeId == raceIdentifier
         case .series:
             return scopeId == seriesIdentifier
+        }
+    }
+
+    private func managesStartHierarchy(_ loginResult: ManageAccessLoginResult) -> Bool {
+        switch loginResult.scope {
+        case .start:
+            return loginResult.scopeId == startIdentifier
+        case .race:
+            return loginResult.scopeId == raceIdentifier
+        case .series:
+            return loginResult.scopeId == seriesIdentifier
         }
     }
 

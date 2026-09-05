@@ -177,36 +177,103 @@ final class RaceDetailViewModelTests: XCTestCase {
         }
     }
 
-    func testCopyTemplateToRace_onRequestFailure_reportsAllFailures() async {
+    func testCopyTemplateToRace_requestFailurePreservesCourseStateAndReturnsRequestFailedOutcome() async {
         let starts = [
             makeStart(id: "start-1"),
             makeStart(id: "start-2"),
-            makeStart(id: "start-3"),
         ]
+
+        configureStartDetailHandler(perStartCourses: [
+            "start-1": "course-shared",
+            "start-2": "course-shared",
+        ])
+
+        let viewModel = makeViewModel()
+        await viewModel.loadCourseState(starts: starts)
+
         let counter = CallCounter()
 
         configureCopyAndReloadHandler(
             copyCounter: counter,
-            perStartCoursesAfter: ["start-1": nil, "start-2": nil, "start-3": nil],
-            raceCopyResult: .failure
+            perStartCoursesAfter: ["start-1": "course-new", "start-2": "course-new"],
+            raceCopyResult: .requestFailure(statusCode: 500, message: "Temporary course update failure.")
         )
 
-        let viewModel = makeViewModel()
-
-        await viewModel.copyTemplateToRace(
+        let outcome = await viewModel.copyTemplateToRace(
             templateId: "template-1",
             starts: starts,
             accessToken: "manage-token"
         )
 
         XCTAssertEqual(counter.copyCallCount, 1)
+        XCTAssertEqual(counter.startDetailCallCount, 0)
         XCTAssertEqual(viewModel.copySuccessCount, 0)
-        XCTAssertEqual(viewModel.copyFailureCount, 3)
-        switch viewModel.courseState {
-        case .noneSet:
-            break
+        XCTAssertEqual(viewModel.copyFailureCount, 0)
+
+        switch outcome {
+        case let .requestFailed(detail):
+            XCTAssertEqual(detail, "Temporary course update failure.")
         default:
-            XCTFail("Expected .noneSet after failed copy reload, got \(viewModel.courseState)")
+            XCTFail("Expected .requestFailed, got \(outcome)")
+        }
+
+        switch viewModel.courseState {
+        case let .allSameId(course):
+            XCTAssertEqual(course.id, "course-shared")
+        default:
+            XCTFail("Expected .allSameId to remain unchanged after request failure, got \(viewModel.courseState)")
+        }
+    }
+
+    func testCopyTemplateToRace_partial201ShowsPartialOutcomeOnlyWhenLinkedCountIsLessThanTotal() async {
+        let starts = [
+            makeStart(id: "start-1"),
+            makeStart(id: "start-2"),
+            makeStart(id: "start-3"),
+        ]
+
+        let partialCounter = CallCounter()
+        configureCopyAndReloadHandler(
+            copyCounter: partialCounter,
+            perStartCoursesAfter: ["start-1": "course-new", "start-2": nil, "start-3": "course-new"],
+            raceCopyResult: .success(linkedStartCount: 2, totalStartCount: 3)
+        )
+
+        let partialViewModel = makeViewModel()
+        let partialOutcome = await partialViewModel.copyTemplateToRace(
+            templateId: "template-1",
+            starts: starts,
+            accessToken: "manage-token"
+        )
+
+        switch partialOutcome {
+        case let .partial(linkedStartCount, totalStartCount):
+            XCTAssertEqual(linkedStartCount, 2)
+            XCTAssertEqual(totalStartCount, 3)
+        default:
+            XCTFail("Expected .partial for linked count below total, got \(partialOutcome)")
+        }
+
+        let completeCounter = CallCounter()
+        configureCopyAndReloadHandler(
+            copyCounter: completeCounter,
+            perStartCoursesAfter: ["start-1": "course-new", "start-2": "course-new", "start-3": "course-new"],
+            raceCopyResult: .success(linkedStartCount: 3, totalStartCount: 3)
+        )
+
+        let completeViewModel = makeViewModel()
+        let completeOutcome = await completeViewModel.copyTemplateToRace(
+            templateId: "template-1",
+            starts: starts,
+            accessToken: "manage-token"
+        )
+
+        switch completeOutcome {
+        case let .complete(linkedStartCount, totalStartCount):
+            XCTAssertEqual(linkedStartCount, 3)
+            XCTAssertEqual(totalStartCount, 3)
+        default:
+            XCTFail("Expected .complete when linked count matches total, got \(completeOutcome)")
         }
     }
 
@@ -358,7 +425,7 @@ final class RaceDetailViewModelTests: XCTestCase {
 
     private enum RaceCopyResult {
         case success(linkedStartCount: Int, totalStartCount: Int)
-        case failure
+        case requestFailure(statusCode: Int, message: String?)
     }
 
     /// Stubs `POST /api/races/{id}/course-copy` and the follow-up
@@ -386,9 +453,15 @@ final class RaceDetailViewModelTests: XCTestCase {
                     """.data(using: .utf8)!
                     let response = HTTPURLResponse(url: request.url!, statusCode: 201, httpVersion: nil, headerFields: nil)!
                     return (response, payload)
-                case .failure:
-                    let response = HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!
-                    return (response, Data(#"{"error":"forced failure"}"#.utf8))
+                case let .requestFailure(statusCode, message):
+                    let response = HTTPURLResponse(url: request.url!, statusCode: statusCode, httpVersion: nil, headerFields: nil)!
+                    let payload: Data
+                    if let message {
+                        payload = Data("{\"error\":\"\(message)\"}".utf8)
+                    } else {
+                        payload = Data("{}".utf8)
+                    }
+                    return (response, payload)
                 }
             }
 

@@ -6,7 +6,27 @@
 //  race-level course section (S3 of ios-race-level-course-selection).
 //
 
+import OSLog
 import SwiftUI
+
+private enum RaceCourseCopyAlert: Identifiable {
+    case partial(successCount: Int, totalCount: Int)
+    case requestFailed(detail: String?)
+
+    var id: String {
+        switch self {
+        case let .partial(successCount, totalCount):
+            return "partial-\(successCount)-\(totalCount)"
+        case let .requestFailed(detail):
+            return "request-failed-\(detail ?? "none")"
+        }
+    }
+}
+
+private enum RaceTemplateSelectionDispatch: String {
+    case directCopy = "direct_copy"
+    case confirmation = "confirmation"
+}
 
 /// Displays metadata for the selected race plus its list of starts and
 /// the race-level course section.
@@ -25,13 +45,12 @@ struct RaceDetailScreen: View {
     @State private var pendingBuoyManageAction: PendingBuoyManageAction?
     @State private var courseItemEditTarget: CourseItemEditTarget?
     @State private var buoySetPositionTarget: BuoyRecord?
-    @State private var copyFailureAlertVisible = false
-    @State private var copyFailureSuccessCount = 0
-    @State private var copyFailureTotalCount = 0
+    @State private var copyAlert: RaceCourseCopyAlert?
     @State private var preferredActiveCourseItemId: String?
 
     private let accessService = ParticipationService()
     private let storage = ManageAccessStorage.shared
+    private let logger = Logger(subsystem: "fi.mobiari.naviari-ios", category: "RaceDetailScreen")
 
     init(
         summary: RaceSummary,
@@ -219,19 +238,27 @@ struct RaceDetailScreen: View {
         .task(id: courseStateTransitionKey) {
             handleCourseStateChange(courseViewModel.courseState)
         }
-        .alert(
-            Text("race_course_copy_error_title"),
-            isPresented: $copyFailureAlertVisible
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(
-                String(
-                    format: NSLocalizedString("race_course_copy_partial_message", comment: ""),
-                    copyFailureSuccessCount,
-                    copyFailureTotalCount
+        .alert(item: $copyAlert) { alert in
+            switch alert {
+            case let .partial(successCount, totalCount):
+                return Alert(
+                    title: Text("race_course_copy_error_title"),
+                    message: Text(
+                        String(
+                            format: NSLocalizedString("race_course_copy_partial_message", comment: ""),
+                            successCount,
+                            totalCount
+                        )
+                    ),
+                    dismissButton: .cancel(Text("actions_ok"))
                 )
-            )
+            case let .requestFailed(detail):
+                return Alert(
+                    title: Text("race_course_copy_request_failed_title"),
+                    message: Text(copyRequestFailureMessage(detail: detail)),
+                    dismissButton: .cancel(Text("actions_ok"))
+                )
+            }
         }
         .alert(
             Text("race_course_change_all_confirm_title"),
@@ -247,23 +274,26 @@ struct RaceDetailScreen: View {
             Text("race_course_change_all_confirm_message")
         }
         .sheet(isPresented: $showCodeModal) {
-            CodeEntryView(
+            CodeEntryView<ManageAccessLoginResult>(
                 titleKey: "set_start_time_manage_code_title",
                 messageKey: "race_course_manage_code_hint",
                 verifyButtonKey: "set_start_time_manage_code_verify_button",
                 cancelButtonKey: "actions_cancel",
                 accentColor: Theme.RaceManager.primaryColor,
                 onVerify: { code in
-                    try await accessService.exchangeManageCodeForToken(code)
+                    try await accessService.exchangeManageCodeForLoginResult(code)
                 },
-                onSuccess: { token in
-                    // Race-level: never persist a start-scoped record.
-                    storage.saveToken(
-                        token: token,
-                        startId: nil,
-                        raceId: raceIdentifier,
-                        seriesId: seriesIdentifier
-                    )
+                onSuccess: { loginResult in
+                    guard loginResult.role == "manage" else {
+                        return "manage_code_role_invalid"
+                    }
+                    guard managesRaceHierarchy(loginResult) else {
+                        return pendingBuoyManageAction == nil
+                            ? "manage_code_scope_invalid_race_course"
+                            : "manage_code_scope_invalid_race_buoy"
+                    }
+
+                    storage.save(loginResult: loginResult)
                     showCodeModal = false
 
                     let pendingTemplateLocal = pendingTemplate
@@ -278,7 +308,7 @@ struct RaceDetailScreen: View {
                             guard courseViewModel.hasValidRaceLevelToken else {
                                 return
                             }
-                            showCourseChangeConfirmation = true
+                            continuePendingTemplateSelectionIfAuthorized()
                         } else if let pendingEditLocal {
                             pendingCourseItemEditTarget = nil
                             courseItemEditTarget = pendingEditLocal
@@ -287,6 +317,7 @@ struct RaceDetailScreen: View {
                             performAuthorizedBuoyManageAction(pendingBuoyActionLocal)
                         }
                     }
+                    return nil
                 },
                 onCancel: {
                     pendingTemplate = nil
@@ -366,6 +397,59 @@ struct RaceDetailScreen: View {
         }
     }
 
+    private func managesRaceHierarchy(_ loginResult: ManageAccessLoginResult) -> Bool {
+        switch loginResult.scope {
+        case .race:
+            return loginResult.scopeId == raceIdentifier
+        case .series:
+            return loginResult.scopeId == seriesIdentifier
+        case .start:
+            return false
+        }
+    }
+
+    private func templateSelectionDispatch(for state: RaceCourseState) -> RaceTemplateSelectionDispatch? {
+        switch state {
+        case .noneSet:
+            return .directCopy
+        case .mixedSet, .allSameId:
+            return .confirmation
+        case .loading, .error, .noStarts:
+            return nil
+        }
+    }
+
+    private func continuePendingTemplateSelectionIfAuthorized() {
+        guard let dispatch = templateSelectionDispatch(for: courseViewModel.courseState),
+              let template = pendingTemplate else {
+            pendingTemplate = nil
+            return
+        }
+
+        courseViewModel.reloadToken()
+        guard courseViewModel.hasValidRaceLevelToken,
+              let accessToken = courseViewModel.storedToken else {
+            pendingCourseItemEditTarget = nil
+            pendingBuoyManageAction = nil
+            showCourseChangeConfirmation = false
+            showCodeModal = true
+            return
+        }
+
+        logger.info("raceCourseDispatch action=\(dispatch.rawValue, privacy: .public)")
+
+        switch dispatch {
+        case .directCopy:
+            pendingTemplate = nil
+            showCourseChangeConfirmation = false
+            Task {
+                await performTemplateCopy(template: template, accessToken: accessToken)
+            }
+        case .confirmation:
+            showCourseChangeConfirmation = true
+        }
+    }
+
     // MARK: - Section callbacks
 
     private func handleTemplateSelected(_ template: RaceCourse) {
@@ -374,7 +458,7 @@ struct RaceDetailScreen: View {
         showCourseChangeConfirmation = false
 
         if courseViewModel.hasValidRaceLevelToken, courseViewModel.storedToken != nil {
-            showCourseChangeConfirmation = true
+            continuePendingTemplateSelectionIfAuthorized()
             return
         }
 
@@ -489,19 +573,38 @@ struct RaceDetailScreen: View {
     private func performTemplateCopy(template: RaceCourse, accessToken: String) async {
         let starts = viewModel.starts(for: summary)
         guard !starts.isEmpty else { return }
-        await courseViewModel.copyTemplateToRace(
+        let outcome = await courseViewModel.copyTemplateToRace(
             templateId: template.id,
             starts: starts,
             accessToken: accessToken
         )
-        let success = courseViewModel.copySuccessCount
-        let failure = courseViewModel.copyFailureCount
-        let total = success + failure
-        if failure > 0 && total > 0 {
-            copyFailureSuccessCount = success
-            copyFailureTotalCount = total
-            copyFailureAlertVisible = true
+
+        switch outcome {
+        case let .partial(linkedStartCount, totalStartCount):
+            copyAlert = .partial(successCount: linkedStartCount, totalCount: totalStartCount)
+        case let .requestFailed(detail):
+            copyAlert = .requestFailed(detail: detail)
+        case .noResult, .complete:
+            break
         }
+    }
+
+    private func copyRequestFailureMessage(detail: String?) -> String {
+        guard let detail = normalizedAlertDetail(detail) else {
+            return NSLocalizedString("race_course_copy_request_failed_message", comment: "")
+        }
+
+        return String(
+            format: NSLocalizedString("race_course_copy_request_failed_message_with_detail", comment: ""),
+            detail
+        )
+    }
+
+    private func normalizedAlertDetail(_ detail: String?) -> String? {
+        guard let detail = detail?.trimmingCharacters(in: .whitespacesAndNewlines), !detail.isEmpty else {
+            return nil
+        }
+        return detail
     }
 
     // MARK: - Edit navigation
