@@ -329,6 +329,8 @@
 "course_edit_start_line_save_success" = "Startlinjen sparades.";
 "course_edit_finish_line_save_success" = "Mållinjen sparades.";
 "course_edit_paste_from_clipboard_invalid_error" = "Urklippet innehåller inga giltiga koordinater.";
+"course_edit_paste_from_clipboard_success" = "Koordinaterna klistrades in";
+"course_edit_gps_position_success" = "Position hämtad med GPS";
 "buoy_edit_name_placeholder" = "t.ex. Gul boj";
 "buoy_edit_description_placeholder" = "Valfritt – pinände, port, reservboj…";
 "buoy_edit_position_subtitle" = "Ange bojens koordinater eller hämta dem med GPS.";

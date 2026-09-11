@@ -436,6 +436,29 @@ struct CourseCoordinateEditorSection: View {
     @EnvironmentObject private var locationManager: LocationDataManager
     @EnvironmentObject private var userNotifications: UserNotifications
 
+    @State private var actionFeedback: ActionFeedback?
+    @State private var actionFeedbackDismissTask: Task<Void, Never>?
+
+    /// Per-instance, in-context feedback for coordinate actions (copy / paste / GPS).
+    /// Rendered inline next to the position buttons so it cannot be hidden behind the
+    /// modal editor or scrolled off-screen in the bottom save bar.
+    struct ActionFeedback: Equatable {
+        let message: String
+        let isError: Bool
+
+        static func success(_ message: String) -> ActionFeedback {
+            ActionFeedback(message: message, isError: false)
+        }
+
+        static func error(_ message: String) -> ActionFeedback {
+            ActionFeedback(message: message, isError: true)
+        }
+    }
+
+    private var actionFeedbackAccessibilityId: String {
+        "\(accessibilityPrefix)_action_feedback_label"
+    }
+
     private var copyableBuoys: [BuoyRecord] {
         buoyOptions
             .filter { $0.coordinate != nil }
@@ -502,12 +525,25 @@ struct CourseCoordinateEditorSection: View {
 
             positionSplitButton
 
+            if let actionFeedback {
+                Text(actionFeedback.message)
+                    .font(AppFont.fixed(13, weight: .medium))
+                    .foregroundStyle(actionFeedback.isError ? Theme.Colors.error : Theme.Colors.textSecondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier(actionFeedbackAccessibilityId)
+            }
+
             if controller.isPositionActionMenuExpanded {
                 positionActionDropdown
             }
         }
         .onReceive(locationManager.$latestLocation) { _ in
             controller.handleLocationUpdate(locationManager: locationManager)
+        }
+        .onDisappear {
+            actionFeedbackDismissTask?.cancel()
+            actionFeedbackDismissTask = nil
         }
     }
 
@@ -772,7 +808,11 @@ struct CourseCoordinateEditorSection: View {
 
     private func handlePrimaryPositionAction() {
         dismissKeyboard()
-        errorMessage = controller.handlePrimaryPositionAction(locationManager: locationManager)
+        if let error = controller.handlePrimaryPositionAction(locationManager: locationManager) {
+            setActionFeedback(.error(error))
+        } else {
+            setActionFeedback(.success(NSLocalizedString("course_edit_gps_position_success", comment: "")))
+        }
     }
 
     private func handleCopyFromBuoyAction() {
@@ -806,25 +846,43 @@ struct CourseCoordinateEditorSection: View {
         switch controller.clipboardCoordinateString(locationManager: locationManager) {
         case let .success(text):
             UIPasteboard.general.string = text
-            errorMessage = nil
             userNotifications.show(
                 message: NSLocalizedString("course_edit_copy_to_clipboard_success", comment: ""),
                 severity: .success
             )
+            setActionFeedback(.success(NSLocalizedString("course_edit_copy_to_clipboard_success", comment: "")))
         case let .failure(error):
-            errorMessage = error
+            setActionFeedback(.error(error))
         }
     }
 
     private func handlePasteFromClipboard() {
         dismissKeyboard()
         controller.isPositionActionMenuExpanded = false
-        errorMessage = controller.handlePasteFromClipboard(UIPasteboard.general.string)
+        if let error = controller.handlePasteFromClipboard(UIPasteboard.general.string) {
+            setActionFeedback(.error(error))
+        } else {
+            setActionFeedback(.success(NSLocalizedString("course_edit_paste_from_clipboard_success", comment: "")))
+        }
     }
 
     private func handleSelectedBuoyCopy(_ buoy: BuoyRecord) {
         controller.handleSelectedBuoyCopy(buoy)
         errorMessage = nil
+    }
+
+    /// Replaces the inline action feedback and (re)schedules a 4 s auto-dismiss.
+    /// Cancelling the previous pending task before scheduling a new one guarantees a
+    /// stale timer can never clear a newer message.
+    private func setActionFeedback(_ feedback: ActionFeedback) {
+        actionFeedbackDismissTask?.cancel()
+        actionFeedback = feedback
+        actionFeedbackDismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            actionFeedback = nil
+            actionFeedbackDismissTask = nil
+        }
     }
 }
 

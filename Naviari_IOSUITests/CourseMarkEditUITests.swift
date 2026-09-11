@@ -250,6 +250,53 @@ final class CourseMarkEditUITests: XCTestCase {
         let errorLabel = app.staticTexts["course_edit_save_error_label"]
         XCTAssertTrue(errorLabel.waitForExistence(timeout: 5))
     }
+
+    func testMarkEditView_copyToClipboardShowsInlineSuccessFeedback() {
+        launchInEditMode()
+
+        let disclosureButton = app.buttons["course_edit_gps_mark_disclosure"]
+        XCTAssertTrue(disclosureButton.waitForExistence(timeout: 5))
+        disclosureButton.tap()
+
+        let copyAction = app.buttons["course_edit_copy_to_clipboard_action"]
+        XCTAssertTrue(copyAction.waitForExistence(timeout: 5))
+        copyAction.tap()
+
+        // Valid prefilled coordinate → inline success feedback rendered next to the
+        // position buttons (not the bottom save bar).
+        let feedback = app.staticTexts["mark_action_feedback_label"]
+        XCTAssertTrue(feedback.waitForExistence(timeout: 5),
+                      "Inline success feedback should appear after a valid copy")
+    }
+
+    func testMarkEditView_copyToClipboardWithIncompleteCoordinateShowsInlineError() {
+        launchInEditMode()
+
+        // Make the coordinate incomplete so the copy action fails to resolve.
+        let dmsLat = app.otherElements["mark_dms_lat"]
+        XCTAssertTrue(dmsLat.waitForExistence(timeout: 5))
+        let degField = dmsLat.textFields.firstMatch
+        degField.tap()
+        degField.clearText()
+        if app.toolbars.buttons["Done"].exists {
+            app.toolbars.buttons["Done"].tap()
+        }
+
+        let disclosureButton = app.buttons["course_edit_gps_mark_disclosure"]
+        XCTAssertTrue(disclosureButton.waitForExistence(timeout: 5))
+        disclosureButton.tap()
+
+        let copyAction = app.buttons["course_edit_copy_to_clipboard_action"]
+        XCTAssertTrue(copyAction.waitForExistence(timeout: 5))
+        copyAction.tap()
+
+        // Action-time failure is surfaced inline, NOT in the bottom save-bar label.
+        let feedback = app.staticTexts["mark_action_feedback_label"]
+        XCTAssertTrue(feedback.waitForExistence(timeout: 5),
+                      "Inline error feedback should appear when copying an incomplete coordinate")
+        XCTAssertFalse(app.staticTexts["course_edit_save_error_label"].exists,
+                       "Action failures must not be routed to the save-bar error label")
+    }
 }
 
 // MARK: - XCUIElement helpers

@@ -329,6 +329,8 @@
 "course_edit_start_line_save_success" = "Start line saved.";
 "course_edit_finish_line_save_success" = "Finish line saved.";
 "course_edit_paste_from_clipboard_invalid_error" = "Clipboard does not contain valid coordinates.";
+"course_edit_paste_from_clipboard_success" = "Coordinates pasted";
+"course_edit_gps_position_success" = "Position set from GPS";
 "buoy_edit_name_placeholder" = "e.g. Yellow buoy";
 "buoy_edit_description_placeholder" = "Optional – pin end, gate, spare buoy…";
 "buoy_edit_position_subtitle" = "Enter buoy coordinates or capture from GPS.";

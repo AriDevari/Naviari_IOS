@@ -329,6 +329,8 @@
 "course_edit_start_line_save_success" = "Lähtölinja tallennettu.";
 "course_edit_finish_line_save_success" = "Maalilinja tallennettu.";
 "course_edit_paste_from_clipboard_invalid_error" = "Leikepöydällä ei ole kelvollisia koordinaatteja.";
+"course_edit_paste_from_clipboard_success" = "Koordinaatit liitetty";
+"course_edit_gps_position_success" = "Sijainti haettu GPS:llä";
 "buoy_edit_name_placeholder" = "esim. Keltainen poiju";
 "buoy_edit_description_placeholder" = "Valinnainen – pinni, portti, varapoiju…";
 "buoy_edit_position_subtitle" = "Syötä poijun koordinaatit tai hae GPS:llä.";
