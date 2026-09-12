@@ -8,6 +8,8 @@ final class CourseCoordinateEditorController: ObservableObject {
     @Published var lon: DMSCoordinate = DMSCoordinate(hemisphere: "E")
     @Published var latEntryState: DMSFieldEntryState = DMSFieldEntryState()
     @Published var lonEntryState: DMSFieldEntryState = DMSFieldEntryState()
+    @Published var latDDMEntryState: DDMFieldEntryState = DDMFieldEntryState()
+    @Published var lonDDMEntryState: DDMFieldEntryState = DDMFieldEntryState()
     @Published var latDecimalText: String = ""
     @Published var lonDecimalText: String = ""
     @Published var bearingDegreesText: String = ""
@@ -27,6 +29,8 @@ final class CourseCoordinateEditorController: ObservableObject {
         lon = DMSCoordinate(hemisphere: "E")
         latEntryState = DMSFieldEntryState()
         lonEntryState = DMSFieldEntryState()
+        latDDMEntryState = DDMFieldEntryState()
+        lonDDMEntryState = DDMFieldEntryState()
         latDecimalText = ""
         lonDecimalText = ""
         bearingDegreesText = ""
@@ -87,6 +91,24 @@ final class CourseCoordinateEditorController: ObservableObject {
             }
 
             return .success(CoordinatePoint(lat: lat.toDecimal(), lon: lon.toDecimal()))
+
+        case .ddm:
+            // DDM has no seconds component: use a DDM-specific completeness check
+            // (degrees + decimal-minutes present). Reusing DMSFieldEntryState.isComplete
+            // would require a non-empty seconds field and wrongly block a valid DDM save.
+            guard latDDMEntryState.isComplete, lonDDMEntryState.isComplete else {
+                return .failure(NSLocalizedString("course_edit_coordinate_incomplete_error", comment: ""))
+            }
+            let latDDM = DDMCoordinate(dms: lat)
+            let lonDDM = DDMCoordinate(dms: lon)
+            guard latDDM.isValid(isLatitude: true) else {
+                return .failure(NSLocalizedString("course_edit_coordinate_lat_invalid_error", comment: ""))
+            }
+            guard lonDDM.isValid(isLatitude: false) else {
+                return .failure(NSLocalizedString("course_edit_coordinate_lon_invalid_error", comment: ""))
+            }
+
+            return .success(CoordinatePoint(lat: latDDM.toDecimal(), lon: lonDDM.toDecimal()))
 
         case .decimal:
             guard let latitude = DecimalCoordinateTextCodec.parse(latDecimalText) else {
@@ -177,6 +199,14 @@ final class CourseCoordinateEditorController: ObservableObject {
         coordinateEntryMode = .dms
     }
 
+    func handleDDMAction() {
+        isPositionActionMenuExpanded = false
+        isBuoyPickerExpanded = false
+        positionInputMode = .coordinateEntry
+        coordinateEntryMode = .ddm
+        syncDDMEntryStates()
+    }
+
     func handleDecimalNumbersAction() {
         isPositionActionMenuExpanded = false
         isBuoyPickerExpanded = false
@@ -229,6 +259,16 @@ final class CourseCoordinateEditorController: ObservableObject {
         refreshPendingCoordinateChange()
     }
 
+    func handleLatitudeDDMEntryStateChanged(_ state: DDMFieldEntryState) {
+        latDDMEntryState = state
+        refreshPendingCoordinateChange()
+    }
+
+    func handleLongitudeDDMEntryStateChanged(_ state: DDMFieldEntryState) {
+        lonDDMEntryState = state
+        refreshPendingCoordinateChange()
+    }
+
     func syncCoordinateBinding(
         from text: String,
         field: CourseCoordinateEditorField,
@@ -255,6 +295,7 @@ final class CourseCoordinateEditorController: ObservableObject {
         lon = DMSCoordinate(from: coordinate.lon, isLat: false)
         latEntryState = entryState(for: lat)
         lonEntryState = entryState(for: lon)
+        syncDDMEntryStates()
         syncDecimalCoordinateTexts()
         if coordinateEntryMode != .bearingDistance {
             bearingDegreesText = ""
@@ -360,6 +401,27 @@ final class CourseCoordinateEditorController: ObservableObject {
         )
     }
 
+    /// Hydrates the DDM entry states from the shared `lat`/`lon` DMSCoordinate state so a
+    /// mode switch into DDM keeps the current coordinate. Mirrors how decimal texts are
+    /// synced: only reflect an entry once the corresponding axis actually has content.
+    private func syncDDMEntryStates() {
+        latDDMEntryState = latEntryState.hasAnyEntry ? ddmEntryState(for: lat) : DDMFieldEntryState()
+        lonDDMEntryState = lonEntryState.hasAnyEntry ? ddmEntryState(for: lon) : DDMFieldEntryState()
+    }
+
+    private func ddmEntryState(for coordinate: DMSCoordinate) -> DDMFieldEntryState {
+        let ddm = DDMCoordinate(dms: coordinate)
+        let minutesText = DDMMinutesTextCodec.displayString(
+            for: ddm.decimalMinutes,
+            locale: Locale(identifier: "en_US_POSIX")
+        )
+
+        return DDMFieldEntryState(
+            degreesText: "\(coordinate.degrees)",
+            minutesText: minutesText
+        )
+    }
+
     private func refreshPendingCoordinateChange() {
         guard hasAnyCoordinateEntry else {
             hasPendingCoordinateChange = false
@@ -371,6 +433,7 @@ final class CourseCoordinateEditorController: ObservableObject {
 
     private var hasAnyCoordinateEntry: Bool {
         latEntryState.hasAnyEntry || lonEntryState.hasAnyEntry
+            || latDDMEntryState.hasAnyEntry || lonDDMEntryState.hasAnyEntry
     }
 
     private func currentCoordinateSnapshot() -> CoordinatePoint? {
@@ -641,6 +704,15 @@ struct CourseCoordinateEditorSection: View {
             )
         }
 
+        if controller.coordinateEntryMode != .ddm {
+            positionActionButton(
+                titleKey: "course_edit_ddm_action",
+                accessibilityIdentifier: "course_edit_ddm_action",
+                showsDivider: true,
+                action: handleDDMAction
+            )
+        }
+
         if controller.coordinateEntryMode != .decimal {
             positionActionButton(
                 titleKey: "course_edit_decimal_numbers_action",
@@ -682,6 +754,27 @@ struct CourseCoordinateEditorSection: View {
                 isPendingSaveHighlight: hasPendingCoordinateChange,
                 onBeginEditing: onLongitudeEditingBegan,
                 onEntryStateChanged: { controller.handleLongitudeEntryStateChanged($0) }
+            )
+
+        case .ddm:
+            CourseDDMField(
+                label: NSLocalizedString("course_edit_lat_label", comment: ""),
+                isLatitude: true,
+                value: $controller.lat,
+                accessibilityIdentifier: "\(accessibilityPrefix)_ddm_lat",
+                isPendingSaveHighlight: hasPendingCoordinateChange,
+                onBeginEditing: onLatitudeEditingBegan,
+                onEntryStateChanged: { controller.handleLatitudeDDMEntryStateChanged($0) }
+            )
+
+            CourseDDMField(
+                label: NSLocalizedString("course_edit_lon_label", comment: ""),
+                isLatitude: false,
+                value: $controller.lon,
+                accessibilityIdentifier: "\(accessibilityPrefix)_ddm_lon",
+                isPendingSaveHighlight: hasPendingCoordinateChange,
+                onBeginEditing: onLongitudeEditingBegan,
+                onEntryStateChanged: { controller.handleLongitudeDDMEntryStateChanged($0) }
             )
 
         case .decimal:
@@ -827,6 +920,12 @@ struct CourseCoordinateEditorSection: View {
         errorMessage = nil
     }
 
+    private func handleDDMAction() {
+        dismissKeyboard()
+        controller.handleDDMAction()
+        errorMessage = nil
+    }
+
     private func handleDecimalNumbersAction() {
         dismissKeyboard()
         controller.handleDecimalNumbersAction()
@@ -893,6 +992,7 @@ enum CourseCoordinatePositionInputMode {
 
 enum CourseCoordinateEntryMode {
     case dms
+    case ddm
     case decimal
     case bearingDistance
 }

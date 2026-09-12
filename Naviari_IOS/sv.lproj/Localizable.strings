@@ -317,6 +317,7 @@
 "buoy_editor_info_body" = "Bojar är lokala objekt på tävlingsnivå i denna MVP. Spara namn, valfri beskrivning och valfria koordinater. Använd Position i listan när du vill öppna positionens guidningsvy.";
 "course_edit_decimal_numbers_action" = "Som decimaltal";
 "course_edit_dms_action" = "Som grader, minuter och sekunder";
+"course_edit_ddm_action" = "Som grader och decimalminuter";
 "course_edit_bearing_distance_action" = "Som bäring och avstånd";
 "course_edit_bearing_label" = "Bäring (°)";
 "course_edit_distance_label" = "Avstånd (m)";

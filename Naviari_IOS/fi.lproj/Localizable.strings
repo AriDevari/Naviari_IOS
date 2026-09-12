@@ -317,6 +317,7 @@
 "buoy_editor_info_body" = "Poijut ovat tässä MVP:ssä paikallisia kisatason kohteita. Tallenna nimi, valinnainen kuvaus ja valinnaiset koordinaatit. Käytä listan Sijainti-toimintoa, kun haluat avata sijainnin ohjenäkymän.";
 "course_edit_decimal_numbers_action" = "Desimaalilukuina";
 "course_edit_dms_action" = "Asteina, minuutteina ja sekunteina";
+"course_edit_ddm_action" = "Asteina ja desimaaliminuutteina";
 "course_edit_bearing_distance_action" = "Suuntimana ja etäisyytenä";
 "course_edit_bearing_label" = "Suuntima (°)";
 "course_edit_distance_label" = "Etäisyys (m)";

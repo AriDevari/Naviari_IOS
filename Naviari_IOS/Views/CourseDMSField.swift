@@ -149,6 +149,184 @@ enum DMSSecondsTextCodec {
     }
 }
 
+// MARK: - DDMCoordinate
+
+/// A geographic coordinate expressed in degrees, decimal minutes, and hemisphere
+/// (e.g. `60° 07.407' N`). This is the DDM (Degrees Decimal Minutes) display/input
+/// surface. The internal/stored representation stays signed decimal degrees; DDM is
+/// just DMS without a separate seconds component, where
+/// `decimalMinutes = minutes + seconds / 60`.
+struct DDMCoordinate: Equatable {
+    var degrees: Int
+    var decimalMinutes: Double
+    /// "N", "S", "E", or "W"
+    var hemisphere: String
+
+    /// Converts this DDM coordinate to a signed decimal degree value.
+    /// Northern and Eastern hemispheres are positive; Southern and Western are negative.
+    /// Sign semantics are identical to `DMSCoordinate.toDecimal()`.
+    func toDecimal() -> Double {
+        let magnitude = Double(degrees) + decimalMinutes / 60.0
+        let isNegative = hemisphere == "S" || hemisphere == "W"
+        return isNegative ? -magnitude : magnitude
+    }
+
+    /// Initialises a DDMCoordinate from a signed decimal degree value.
+    /// - Parameters:
+    ///   - decimal: Signed decimal degrees.
+    ///   - isLat: `true` produces N/S hemisphere; `false` produces E/W.
+    init(from decimal: Double, isLat: Bool) {
+        let positive = decimal >= 0
+        let abs = Swift.abs(decimal)
+        let deg = Int(abs)
+        let minutes = (abs - Double(deg)) * 60.0
+        self.degrees = deg
+        self.decimalMinutes = minutes
+        if isLat {
+            self.hemisphere = positive ? "N" : "S"
+        } else {
+            self.hemisphere = positive ? "E" : "W"
+        }
+    }
+
+    /// Zero-value initialiser — produces 0° 0.000' N (or E when used for longitude).
+    init(degrees: Int = 0, decimalMinutes: Double = 0.0, hemisphere: String = "N") {
+        self.degrees = degrees
+        self.decimalMinutes = decimalMinutes
+        self.hemisphere = hemisphere
+    }
+
+    /// Bridges a `DMSCoordinate` into DDM form: `decimalMinutes = minutes + seconds / 60`.
+    /// Preserves hemisphere and degrees, so `DDMCoordinate(dms:).toDecimal()` equals
+    /// `dms.toDecimal()`.
+    init(dms: DMSCoordinate) {
+        self.degrees = dms.degrees
+        self.decimalMinutes = Double(dms.minutes) + dms.seconds / 60.0
+        self.hemisphere = dms.hemisphere
+    }
+
+    /// Converts back to a `DMSCoordinate` by splitting the decimal minutes:
+    /// `minutes = Int(decimalMinutes); seconds = (decimalMinutes - minutes) * 60`.
+    func toDMS() -> DMSCoordinate {
+        let wholeMinutes = Int(decimalMinutes)
+        let seconds = (decimalMinutes - Double(wholeMinutes)) * 60.0
+        return DMSCoordinate(
+            degrees: degrees,
+            minutes: wholeMinutes,
+            seconds: seconds,
+            hemisphere: hemisphere
+        )
+    }
+
+    func isValid(isLatitude: Bool) -> Bool {
+        let allowedHemispheres = isLatitude ? ["N", "S"] : ["E", "W"]
+        guard allowedHemispheres.contains(hemisphere) else { return false }
+        guard degrees >= 0, decimalMinutes >= 0, decimalMinutes < 60 else { return false }
+
+        let maxDegrees = isLatitude ? 90 : 180
+        guard degrees <= maxDegrees else { return false }
+
+        if degrees == maxDegrees {
+            return decimalMinutes == 0
+        }
+
+        return true
+    }
+}
+
+/// Text-entry completeness for a single DDM axis. DDM has no seconds component, so
+/// unlike `DMSFieldEntryState` it is complete once degrees and decimal-minutes are
+/// present. Reusing `DMSFieldEntryState.isComplete` here would wrongly require a
+/// seconds field and block a valid DDM save.
+struct DDMFieldEntryState: Equatable {
+    var degreesText: String = ""
+    var minutesText: String = ""
+
+    var hasAnyEntry: Bool {
+        !degreesText.isEmpty || !minutesText.isEmpty
+    }
+
+    var isComplete: Bool {
+        !degreesText.isEmpty && !minutesText.isEmpty
+    }
+}
+
+/// Locale-aware sanitize/parse/display for the DDM decimal-minutes field, modelled on
+/// `DMSSecondsTextCodec`. Precision is 3 decimals (e.g. `07.407'`). Display guards the
+/// `59.9996' -> 60.000'` rounding boundary so a rounded value never reads as >= 60.
+enum DDMMinutesTextCodec {
+    static let maximumFractionDigits = 3
+
+    static func placeholder(locale: Locale = .autoupdatingCurrent) -> String {
+        "00\(decimalSeparator(in: locale))000"
+    }
+
+    static func displayString(for minutes: Double, locale: Locale = .autoupdatingCurrent) -> String {
+        var rounded = (minutes * 1000).rounded() / 1000
+        // Guard the rounding boundary: a value like 59.9996 rounds to 60.000, which is an
+        // invalid decimal-minutes reading. Clamp just below 60 so display never yields >= 60.
+        if rounded >= 60 {
+            rounded = 59.999
+        }
+
+        let formatter = NumberFormatter()
+        formatter.locale = locale
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+        // Marine-chartplotter style: pad the whole-minute part to 2 digits (e.g. 07.407').
+        formatter.minimumIntegerDigits = 2
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = maximumFractionDigits
+
+        return formatter.string(from: NSNumber(value: rounded)) ?? fallbackDisplayString(for: rounded)
+    }
+
+    static func sanitize(_ input: String, maxLength: Int, locale: Locale = .autoupdatingCurrent) -> String {
+        let separator = decimalSeparator(in: locale)
+        var result = ""
+        var hasSeparator = false
+
+        for scalar in input.unicodeScalars {
+            if CharacterSet.decimalDigits.contains(scalar) {
+                result.unicodeScalars.append(scalar)
+            } else if isSupportedDecimalSeparator(scalar) {
+                if !hasSeparator {
+                    result.append(separator)
+                    hasSeparator = true
+                }
+            }
+
+            if result.count >= maxLength {
+                break
+            }
+        }
+
+        return result
+    }
+
+    static func parse(_ input: String, locale: Locale = .autoupdatingCurrent) -> Double? {
+        guard !input.isEmpty else { return nil }
+
+        let normalized = input.replacingOccurrences(of: decimalSeparator(in: locale), with: ".")
+        return Double(normalized)
+    }
+
+    private static func decimalSeparator(in locale: Locale) -> String {
+        locale.decimalSeparator ?? "."
+    }
+
+    private static func isSupportedDecimalSeparator(_ scalar: UnicodeScalar) -> Bool {
+        scalar == "." || scalar == ","
+    }
+
+    private static func fallbackDisplayString(for minutes: Double) -> String {
+        if minutes.truncatingRemainder(dividingBy: 1) == 0 {
+            return String(format: "%02d", Int(minutes))
+        }
+        return String(format: "%06.3f", minutes)
+    }
+}
+
 // MARK: - CourseDMSField
 
 private enum DMSPart: Hashable {

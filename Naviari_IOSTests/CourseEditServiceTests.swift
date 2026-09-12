@@ -145,6 +145,189 @@ final class CourseEditServiceTests: XCTestCase {
         }
     }
 
+    // MARK: - DDMCoordinate conversion tests
+
+    func testDDMCoordinateToDecimal_northernLatitude() {
+        // 60° 07.407' N = 60 + 7.407/60 = 60.12345
+        let ddm = DDMCoordinate(degrees: 60, decimalMinutes: 7.407, hemisphere: "N")
+        XCTAssertEqual(ddm.toDecimal(), 60.12345, accuracy: 0.000001)
+    }
+
+    func testDDMCoordinateToDecimal_easternLongitudeIsPositive() {
+        let ddm = DDMCoordinate(degrees: 24, decimalMinutes: 55.402, hemisphere: "E")
+        XCTAssertGreaterThan(ddm.toDecimal(), 0, "Eastern hemisphere should produce a positive decimal")
+    }
+
+    func testDDMCoordinateToDecimal_southHemisphereIsNegative() {
+        let ddm = DDMCoordinate(degrees: 33, decimalMinutes: 52.0, hemisphere: "S")
+        XCTAssertLessThan(ddm.toDecimal(), 0, "Southern hemisphere should produce a negative decimal")
+    }
+
+    func testDDMCoordinateToDecimal_westHemisphereIsNegative() {
+        let ddm = DDMCoordinate(degrees: 118, decimalMinutes: 15.0, hemisphere: "W")
+        XCTAssertLessThan(ddm.toDecimal(), 0, "Western hemisphere should produce a negative decimal")
+    }
+
+    func testDDMCoordinateFromDecimal_roundTripLatitude() {
+        let original = 60.123456
+        let ddm = DDMCoordinate(from: original, isLat: true)
+        XCTAssertEqual(ddm.hemisphere, "N")
+        XCTAssertEqual(ddm.toDecimal(), original, accuracy: 0.0000001)
+    }
+
+    func testDDMCoordinateFromDecimal_roundTripNegativeLongitude() {
+        let original = -24.987654
+        let ddm = DDMCoordinate(from: original, isLat: false)
+        XCTAssertEqual(ddm.hemisphere, "W")
+        XCTAssertEqual(ddm.toDecimal(), original, accuracy: 0.0000001)
+    }
+
+    func testDDMCoordinate_bridgesDMSLosslessly() {
+        // Converting DMS -> DDM must preserve the decimal value (decimalMinutes = min + sec/60).
+        let dms = DMSCoordinate(degrees: 60, minutes: 7, seconds: 24.42, hemisphere: "N")
+        let ddm = DDMCoordinate(dms: dms)
+        XCTAssertEqual(ddm.toDecimal(), dms.toDecimal(), accuracy: 0.0000001)
+    }
+
+    func testDDMCoordinate_toDMSRoundTrip() {
+        let ddm = DDMCoordinate(degrees: 24, decimalMinutes: 55.402, hemisphere: "E")
+        let restored = DDMCoordinate(dms: ddm.toDMS())
+        XCTAssertEqual(restored.toDecimal(), ddm.toDecimal(), accuracy: 0.0000001)
+    }
+
+    // MARK: DDMCoordinate boundary / validity
+
+    func testDDMCoordinateValidity_minutesJustBelow60AreValid() {
+        XCTAssertTrue(DDMCoordinate(degrees: 59, decimalMinutes: 59.99, hemisphere: "N").isValid(isLatitude: true))
+    }
+
+    func testDDMCoordinateValidity_minutesAt60AreInvalid() {
+        XCTAssertFalse(DDMCoordinate(degrees: 59, decimalMinutes: 60.0, hemisphere: "N").isValid(isLatitude: true))
+    }
+
+    func testDDMCoordinateValidity_zeroMinutesAreValid() {
+        XCTAssertTrue(DDMCoordinate(degrees: 12, decimalMinutes: 0.0, hemisphere: "E").isValid(isLatitude: false))
+    }
+
+    func testDDMCoordinateValidity_maxLatitudeRequiresZeroMinutes() {
+        XCTAssertTrue(DDMCoordinate(degrees: 90, decimalMinutes: 0.0, hemisphere: "N").isValid(isLatitude: true))
+        XCTAssertFalse(DDMCoordinate(degrees: 90, decimalMinutes: 0.5, hemisphere: "N").isValid(isLatitude: true))
+    }
+
+    func testDDMCoordinateValidity_maxLongitudeRequiresZeroMinutes() {
+        XCTAssertTrue(DDMCoordinate(degrees: 180, decimalMinutes: 0.0, hemisphere: "E").isValid(isLatitude: false))
+        XCTAssertFalse(DDMCoordinate(degrees: 180, decimalMinutes: 0.001, hemisphere: "E").isValid(isLatitude: false))
+    }
+
+    // MARK: DDMMinutesTextCodec
+
+    func testDDMMinutesTextCodecDisplayString_usesThreeDecimalsWithLeadingZero() {
+        // Marine-chartplotter style: whole-minute part padded to 2 digits.
+        XCTAssertEqual(DDMMinutesTextCodec.displayString(for: 7.407, locale: Locale(identifier: "en_US")), "07.407")
+    }
+
+    func testDDMMinutesTextCodecDisplayString_padsWholeMinutesAndKeepsFraction() {
+        XCTAssertEqual(DDMMinutesTextCodec.displayString(for: 5.4, locale: Locale(identifier: "en_US")), "05.4")
+    }
+
+    func testDDMMinutesTextCodecDisplayString_doesNotPadTwoDigitMinutes() {
+        XCTAssertEqual(DDMMinutesTextCodec.displayString(for: 55.402, locale: Locale(identifier: "fi_FI")), "55,402")
+    }
+
+    func testDDMMinutesTextCodecPlaceholder_usesLeadingZeroForm() {
+        XCTAssertEqual(DDMMinutesTextCodec.placeholder(locale: Locale(identifier: "en_US")), "00.000")
+    }
+
+    func testDDMMinutesTextCodecDisplayString_guardsRoundingBoundary() {
+        // 59.9996 must NOT round up to 60.000 on display, and must parse back below 60.
+        let displayed = DDMMinutesTextCodec.displayString(for: 59.9996, locale: Locale(identifier: "en_US"))
+        XCTAssertNotEqual(displayed, "60")
+        let parsedBack = DDMMinutesTextCodec.parse(displayed, locale: Locale(identifier: "en_US"))
+        XCTAssertNotNil(parsedBack)
+        XCTAssertLessThan(parsedBack ?? 60, 60)
+    }
+
+    func testDDMMinutesTextCodecSanitize_usesLocaleDecimalSeparator() {
+        XCTAssertEqual(DDMMinutesTextCodec.sanitize("7.407", maxLength: 6, locale: Locale(identifier: "fi_FI")), "7,407")
+    }
+
+    func testDDMMinutesTextCodecParse_acceptsLocaleDecimalSeparator() {
+        XCTAssertEqual(DDMMinutesTextCodec.parse("7,407", locale: Locale(identifier: "fi_FI")), 7.407)
+    }
+
+    func testDDMMinutesTextCodecParse_leadingZeroParsesIdentically() {
+        XCTAssertEqual(
+            DDMMinutesTextCodec.parse("07.407", locale: Locale(identifier: "en_US")),
+            DDMMinutesTextCodec.parse("7.407", locale: Locale(identifier: "en_US"))
+        )
+    }
+
+    // MARK: resolvedCoordinate(.ddm)
+
+    @MainActor
+    func testResolvedCoordinateDDM_acceptsCompleteEntryWithoutSeconds() {
+        let locationManager = LocationDataManager()
+        let controller = CourseCoordinateEditorController()
+        controller.coordinateEntryMode = .ddm
+        // 60° 07.407' N, 24° 55.402' E as the shared DMS state.
+        controller.lat = DMSCoordinate(degrees: 60, minutes: 7, seconds: 24.42, hemisphere: "N")
+        controller.lon = DMSCoordinate(degrees: 24, minutes: 55, seconds: 24.12, hemisphere: "E")
+        controller.latDDMEntryState = DDMFieldEntryState(degreesText: "60", minutesText: "7.407")
+        controller.lonDDMEntryState = DDMFieldEntryState(degreesText: "24", minutesText: "55.402")
+
+        // The DMS entry states carry no seconds; a seconds-based gate WOULD reject this.
+        XCTAssertFalse(controller.latEntryState.isComplete,
+                       "Precondition: DMS completeness gate would block because seconds are empty.")
+
+        switch controller.resolvedCoordinate(locationManager: locationManager, persistChanges: false) {
+        case let .success(coordinate):
+            XCTAssertEqual(coordinate.lat, 60.12345, accuracy: 0.001)
+            XCTAssertEqual(coordinate.lon, 24.92337, accuracy: 0.001)
+        case let .failure(error):
+            XCTFail("DDM must accept a complete entry that has no seconds field: \(error)")
+        }
+    }
+
+    @MainActor
+    func testResolvedCoordinateDDM_rejectsIncompleteEntry() {
+        let locationManager = LocationDataManager()
+        let controller = CourseCoordinateEditorController()
+        controller.coordinateEntryMode = .ddm
+        controller.lat = DMSCoordinate(degrees: 60, minutes: 7, seconds: 24.42, hemisphere: "N")
+        controller.lon = DMSCoordinate(degrees: 24, minutes: 55, seconds: 24.12, hemisphere: "E")
+        // Latitude decimal-minutes missing -> incomplete.
+        controller.latDDMEntryState = DDMFieldEntryState(degreesText: "60", minutesText: "")
+        controller.lonDDMEntryState = DDMFieldEntryState(degreesText: "24", minutesText: "55.402")
+
+        switch controller.resolvedCoordinate(locationManager: locationManager, persistChanges: false) {
+        case .success:
+            XCTFail("DDM must reject an incomplete entry (missing decimal minutes).")
+        case let .failure(error):
+            XCTAssertEqual(error, NSLocalizedString("course_edit_coordinate_incomplete_error", comment: ""))
+        }
+    }
+
+    @MainActor
+    func testCoordinateModeRoundTrip_dmsToDdmToDecimalPreservesCoordinate() {
+        let locationManager = LocationDataManager()
+        let controller = CourseCoordinateEditorController()
+        let original = CoordinatePoint(lat: 60.123456, lon: 24.923370)
+        controller.prefill(coordinate: original)
+
+        // Switch DMS -> DDM -> decimal on the same value.
+        controller.handleDMSAction()
+        controller.handleDDMAction()
+        controller.handleDecimalNumbersAction()
+
+        switch controller.resolvedCoordinate(locationManager: locationManager, persistChanges: false) {
+        case let .success(coordinate):
+            XCTAssertEqual(coordinate.lat, original.lat, accuracy: 0.000001)
+            XCTAssertEqual(coordinate.lon, original.lon, accuracy: 0.000001)
+        case let .failure(error):
+            XCTFail("Round-trip DMS->DDM->decimal must preserve the coordinate: \(error)")
+        }
+    }
+
     // MARK: - RaceService mock tests
 
     /// Returns a RaceService wired to the mock session and records the last request.

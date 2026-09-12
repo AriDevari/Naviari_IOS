@@ -269,6 +269,96 @@ final class CourseMarkEditUITests: XCTestCase {
                       "Inline success feedback should appear after a valid copy")
     }
 
+    // MARK: - DDM (Degrees Decimal Minutes) mode
+
+    /// Opens the position action menu and switches the editor into DDM mode.
+    private func switchToDDMMode() {
+        let disclosureButton = app.buttons["course_edit_gps_mark_disclosure"]
+        XCTAssertTrue(disclosureButton.waitForExistence(timeout: 5))
+        disclosureButton.tap()
+
+        let ddmAction = app.buttons["course_edit_ddm_action"]
+        XCTAssertTrue(ddmAction.waitForExistence(timeout: 5))
+        ddmAction.tap()
+    }
+
+    func testMarkEditView_ddmActionShowsStructuredFieldsPrefilled() {
+        launchInEditMode()
+        switchToDDMMode()
+
+        // Both structured DDM containers should now be present.
+        let ddmLat = app.otherElements["mark_ddm_lat"]
+        let ddmLon = app.otherElements["mark_ddm_lon"]
+        XCTAssertTrue(ddmLat.waitForExistence(timeout: 5))
+        XCTAssertTrue(ddmLon.waitForExistence(timeout: 5))
+
+        // Degrees prefill from the existing mark (60.12 / 24.95).
+        XCTAssertEqual(ddmLat.textFields.element(boundBy: 0).value as? String, "60")
+        XCTAssertEqual(ddmLon.textFields.element(boundBy: 0).value as? String, "24")
+
+        // Decimal-minutes box prefills too, in leading-zero chartplotter form:
+        // 60.12 → 07.2'. Normalise the locale decimal separator before comparing.
+        let latMinutesValue = (ddmLat.textFields.element(boundBy: 1).value as? String ?? "")
+            .replacingOccurrences(of: ",", with: ".")
+        XCTAssertTrue(latMinutesValue.hasPrefix("07.2"),
+                      "Latitude decimal-minutes should prefill to ~07.2', got: \(latMinutesValue)")
+    }
+
+    func testMarkEditView_ddmEntryResolvesAndRoundTripsToDecimal() {
+        launchInEditMode()
+        switchToDDMMode()
+
+        // Enter a value via the DDM field's hemisphere control: flip latitude N → S.
+        // A button tap is a deterministic interaction (custom numeric text boxes are not
+        // reliably clearable in XCUITest), and flipping to S must resolve to a NEGATIVE
+        // decimal — proving the DDM field writes to the shared coordinate and round-trips.
+        let ddmLat = app.otherElements["mark_ddm_lat"]
+        XCTAssertTrue(ddmLat.waitForExistence(timeout: 5))
+        let southButton = ddmLat.buttons["S"]
+        XCTAssertTrue(southButton.waitForExistence(timeout: 5))
+        southButton.tap()
+
+        // Switch to decimal mode; the DDM change must have resolved into the shared
+        // coordinate and round-trip to the decimal representation.
+        let disclosureButton = app.buttons["course_edit_gps_mark_disclosure"]
+        XCTAssertTrue(disclosureButton.waitForExistence(timeout: 5))
+        disclosureButton.tap()
+        let decimalAction = app.buttons["course_edit_decimal_numbers_action"]
+        XCTAssertTrue(decimalAction.waitForExistence(timeout: 5))
+        decimalAction.tap()
+
+        let decimalLat = app.textFields["mark_decimal_lat"]
+        XCTAssertTrue(decimalLat.waitForExistence(timeout: 5))
+        // Normalise the locale decimal separator before comparing. 60.12 N → -60.12.
+        let decimalValue = (decimalLat.value as? String ?? "").replacingOccurrences(of: ",", with: ".")
+        XCTAssertTrue(decimalValue.hasPrefix("-60.1"),
+                      "Flipping latitude to S in DDM should resolve to ~-60.12 in decimal, got: \(decimalValue)")
+    }
+
+    func testMarkEditView_ddmInvalidLatitudeShowsValidationErrorOnSave() {
+        launchInEditMode()
+        switchToDDMMode()
+
+        // Set latitude degrees out of range (91) — the .ddm resolve path must reject it.
+        let ddmLat = app.otherElements["mark_ddm_lat"]
+        XCTAssertTrue(ddmLat.waitForExistence(timeout: 5))
+        let latDegrees = ddmLat.textFields.firstMatch
+        latDegrees.tap()
+        latDegrees.clearText()
+        latDegrees.typeText("91")
+        if app.toolbars.buttons["Done"].exists {
+            app.toolbars.buttons["Done"].tap()
+        }
+
+        let saveButton = app.buttons["course_edit_save_button"]
+        XCTAssertTrue(saveButton.exists)
+        saveButton.tap()
+
+        let errorLabel = app.staticTexts["course_edit_save_error_label"]
+        XCTAssertTrue(errorLabel.waitForExistence(timeout: 5),
+                      "An out-of-range DDM latitude must surface a validation error on save")
+    }
+
     func testMarkEditView_copyToClipboardWithIncompleteCoordinateShowsInlineError() {
         launchInEditMode()
 
