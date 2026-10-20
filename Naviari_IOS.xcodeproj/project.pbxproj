@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C3F0A0012F9000000000A001 /* SwiftCentrifuge in Frameworks */ = {isa = PBXBuildFile; productRef = C3F0A0022F9000000000A002 /* SwiftCentrifuge */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		024717C22F33E9AE0029E7BC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C3F0A0012F9000000000A001 /* SwiftCentrifuge in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = Naviari_IOS;
 			packageProductDependencies = (
+				C3F0A0022F9000000000A002 /* SwiftCentrifuge */,
 			);
 			productName = Naviari_IOS;
 			productReference = 024717AF2F33E9AC0029E7BC /* Naviari_IOS.app */;
@@ -197,6 +203,9 @@
 			);
 			mainGroup = 024717A62F33E9AC0029E7BC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C3F0A0032F9000000000A003 /* XCRemoteSwiftPackageReference "centrifuge-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 024717B02F33E9AC0029E7BC /* Products */;
 			projectDirPath = "";
@@ -586,6 +595,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C3F0A0032F9000000000A003 /* XCRemoteSwiftPackageReference "centrifuge-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/centrifugal/centrifuge-swift.git";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.10.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C3F0A0022F9000000000A002 /* SwiftCentrifuge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C3F0A0032F9000000000A003 /* XCRemoteSwiftPackageReference "centrifuge-swift" */;
+			productName = SwiftCentrifuge;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 024717A72F33E9AC0029E7BC /* Project object */;
 }

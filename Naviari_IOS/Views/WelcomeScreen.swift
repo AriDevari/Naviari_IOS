@@ -52,5 +52,7 @@ struct WelcomeScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 24)
         .background(Theme.Colors.surfacePrimary)
+        .overlay(alignment: .bottom) { CentrifugoPOCLabel() } // POC: throwaway Centrifugo spike
+        .onAppear { CentrifugoPOCClient.shared.startIfNeeded() } // POC: throwaway Centrifugo spike
     }
 }
